@@ -15,12 +15,7 @@ export default function Tile({ widget, def, editing, onConfigure, onRemove }) {
   const Body = def?.component;
   return (
     <section className={`tile accent-${def?.accent ?? 'cyan'}`}>
-      <span className="corner tl" />
-      <span className="corner tr" />
-      <span className="corner bl" />
-      <span className="corner br" />
       <header className="tile-head">
-        <span className="tile-icon">{def?.icon ?? '?'}</span>
         <h3 className="tile-title">{widget.title}</h3>
         <div className="tile-actions no-drag">
           {def?.fields?.length > 0 && (

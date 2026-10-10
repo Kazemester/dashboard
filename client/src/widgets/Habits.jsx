@@ -95,7 +95,7 @@ export default function Habits({ widget, editing }) {
                     ✕
                   </button>
                 ) : (
-                  <>🔥{streak(set)}</>
+                  <>{streak(set)}d</>
                 )}
               </div>
             </React.Fragment>

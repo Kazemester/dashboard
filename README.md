@@ -1,6 +1,6 @@
 # NEXUS // Command Deck
 
-Saját hosztolású, sci-fi stílusú személyes dashboard csempékből (widgetekből). Úgy működik, mint az iPhone Control Center vagy a widgetek: egy katalógusból választasz modult, a rácsra teszed, áthelyezed, átméretezed. Minden (elrendezés, beállítások, pomodoro-statisztika, szokások, célok, chat-előzmények) **a saját PostgreSQL adatbázisodba** mentődik, és Docker Compose-zal fut. Ugyanez a csomag később egy VM-re is felrakható.
+Saját hosztolású, minimalista, JARVIS-szerű személyes dashboard csempékből (widgetekből). Úgy működik, mint az iPhone Control Center vagy a widgetek: egy katalógusból választasz modult, a rácsra teszed, áthelyezed, átméretezed. Minden (elrendezés, beállítások, pomodoro-statisztika, szokások, célok, chat-előzmények) **a saját PostgreSQL adatbázisodba** mentődik, és Docker Compose-zal fut. Ugyanez a csomag később egy VM-re is felrakható.
 
 ![NEXUS dashboard](docs/screenshot.png)
 
@@ -16,7 +16,7 @@ Utána nyisd meg: **http://localhost:3000**
 Az első indításkor üres a fedélzet, és megnyílik a modul-katalógus.
 
 - **+ Modul**: új csempe hozzáadása a katalógusból
-- **✎ Szerkesztés**: a csempék „remegni” kezdenek (mint iOS-en), ilyenkor a fejlécüknél fogva húzhatók, a jobb alsó sarkuknál átméretezhetők, a ✕-szel törölhetők
+- **Szerkesztés**: a csempék szaggatott keretet kapnak, ilyenkor a fejlécüknél fogva húzhatók, a jobb alsó sarkuknál átméretezhetők, a ✕-szel törölhetők
 - **⚙**: az adott csempe beállításai (cím, adatforrás, megjelenítés…)
 
 ## Modulok

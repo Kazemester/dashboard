@@ -41,7 +41,7 @@ export default function MailDigest({ widget }) {
 
           {r.important?.length > 0 && (
             <>
-              <div className="eyebrow accent">⚡ FONTOS</div>
+              <div className="eyebrow accent">FONTOS</div>
               {r.important.map((m, i) => (
                 <div key={i} className="mail-item">
                   <div className="mail-subj">{m.subject}</div>
@@ -56,7 +56,7 @@ export default function MailDigest({ widget }) {
 
           {r.todos?.length > 0 && (
             <>
-              <div className="eyebrow accent">☐ TEENDŐK</div>
+              <div className="eyebrow accent">TEENDŐK</div>
               <ul className="todo">
                 {r.todos.map((t, i) => (
                   <li key={i}>{t}</li>

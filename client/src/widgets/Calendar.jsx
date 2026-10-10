@@ -31,7 +31,7 @@ export default function Calendar({ widget, onConfigure }) {
           {e}
         </div>
       ))}
-      {!data.events.length && <div className="muted center-text">Nincs esemény a következő napokban. 🌌</div>}
+      {!data.events.length && <div className="muted center-text">Nincs esemény a következő napokban.</div>}
       {Object.entries(groups).map(([day, evs]) => (
         <div key={day} className="agenda-day">
           <div className={`agenda-date ${day === today ? 'today' : ''}`}>{label(day)}</div>

@@ -1,16 +1,18 @@
 import React from 'react';
 import { useWidgetData } from '../hooks.js';
 
-// WMO weather codes → icon + label
+// WMO weather codes → monochrome glyph + label
+const T = '\uFE0E';
+const SUN = `☀${T}`, CLOUD = `☁${T}`, RAIN = `☂${T}`, SNOW = `❄${T}`, FOG = '≋', STORM = 'ϟ';
 const WMO = {
-  0: ['☀️', 'Derült'], 1: ['🌤️', 'Többnyire derült'], 2: ['⛅', 'Részben felhős'], 3: ['☁️', 'Borult'],
-  45: ['🌫️', 'Köd'], 48: ['🌫️', 'Zúzmarás köd'], 51: ['🌦️', 'Szitálás'], 53: ['🌦️', 'Szitálás'], 55: ['🌦️', 'Erős szitálás'],
-  61: ['🌧️', 'Gyenge eső'], 63: ['🌧️', 'Eső'], 65: ['🌧️', 'Erős eső'], 66: ['🌧️', 'Ónos eső'], 67: ['🌧️', 'Ónos eső'],
-  71: ['🌨️', 'Gyenge havazás'], 73: ['🌨️', 'Havazás'], 75: ['❄️', 'Erős havazás'], 77: ['🌨️', 'Hószemcse'],
-  80: ['🌦️', 'Zápor'], 81: ['🌧️', 'Zápor'], 82: ['⛈️', 'Heves zápor'], 85: ['🌨️', 'Hózápor'], 86: ['🌨️', 'Hózápor'],
-  95: ['⛈️', 'Zivatar'], 96: ['⛈️', 'Zivatar jégesővel'], 99: ['⛈️', 'Zivatar jégesővel'],
+  0: [SUN, 'Derült'], 1: [SUN, 'Többnyire derült'], 2: [CLOUD, 'Részben felhős'], 3: [CLOUD, 'Borult'],
+  45: [FOG, 'Köd'], 48: [FOG, 'Zúzmarás köd'], 51: [RAIN, 'Szitálás'], 53: [RAIN, 'Szitálás'], 55: [RAIN, 'Erős szitálás'],
+  61: [RAIN, 'Gyenge eső'], 63: [RAIN, 'Eső'], 65: [RAIN, 'Erős eső'], 66: [RAIN, 'Ónos eső'], 67: [RAIN, 'Ónos eső'],
+  71: [SNOW, 'Gyenge havazás'], 73: [SNOW, 'Havazás'], 75: [SNOW, 'Erős havazás'], 77: [SNOW, 'Hószemcse'],
+  80: [RAIN, 'Zápor'], 81: [RAIN, 'Zápor'], 82: [STORM, 'Heves zápor'], 85: [SNOW, 'Hózápor'], 86: [SNOW, 'Hózápor'],
+  95: [STORM, 'Zivatar'], 96: [STORM, 'Zivatar jégesővel'], 99: [STORM, 'Zivatar jégesővel'],
 };
-const wmo = (c) => WMO[c] ?? ['🛰️', `Kód ${c}`];
+const wmo = (c) => WMO[c] ?? ['·', `Kód ${c}`];
 
 export default function Weather({ widget }) {
   const { data, error } = useWidgetData(`/widgets/${widget.id}/weather`, { interval: 10 * 60_000 });
@@ -30,8 +32,8 @@ export default function Weather({ widget }) {
         </div>
         <div className="weather-meta">
           <div className="eyebrow">{data.place}</div>
-          <div>💧 {c.relative_humidity_2m}%</div>
-          <div>🌬 {Math.round(c.wind_speed_10m)} km/h</div>
+          <div><span className="muted">PÁRA</span> {c.relative_humidity_2m}%</div>
+          <div><span className="muted">SZÉL</span> {Math.round(c.wind_speed_10m)} km/h</div>
         </div>
       </div>
       <div className="weather-days">
@@ -42,7 +44,7 @@ export default function Weather({ widget }) {
             <span>
               {Math.round(data.daily.temperature_2m_max[i])}° <span className="muted">{Math.round(data.daily.temperature_2m_min[i])}°</span>
             </span>
-            <span className="muted sm">☔ {data.daily.precipitation_probability_max[i] ?? 0}%</span>
+            <span className="muted sm">{data.daily.precipitation_probability_max[i] ?? 0}%</span>
           </div>
         ))}
       </div>

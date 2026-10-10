@@ -44,7 +44,7 @@ export default function Chat({ widget }) {
   return (
     <div className="chat">
       <div className="chat-log">
-        {!data?.length && <div className="muted center-text">Csatorna nyitva. Kérdezz bármit. ▍</div>}
+        {!data?.length && <div className="muted center-text">Csatorna nyitva. Kérdezz bármit.</div>}
         {data?.map((m) => (
           <div key={m.id} className={`msg msg-${m.role}`}>
             <span className="msg-who">{m.role === 'user' ? 'TE' : 'AI'}</span>

@@ -63,7 +63,7 @@ export async function runDigest(widget) {
   const mails = await fetchMails(cfg);
   let result;
   if (!mails.length) {
-    result = { headline: 'Nincs új levél a megadott időszakban. 🛰️', important: [], categories: [], todos: [] };
+    result = { headline: 'Nincs új levél a megadott időszakban.', important: [], categories: [], todos: [] };
   } else {
     const extra = cfg.instructions ? `\nExtra user rules: ${cfg.instructions}` : '';
     const raw = await chat(
