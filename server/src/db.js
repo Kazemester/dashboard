@@ -1,0 +1,93 @@
+import pg from 'pg';
+
+// DATE columns come back as plain 'YYYY-MM-DD' strings instead of JS Dates (no TZ shifting).
+pg.types.setTypeParser(1082, (v) => v);
+
+export const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL || 'postgres://nexus:nexus@localhost:5432/nexus',
+});
+
+export const q = (text, params) => pool.query(text, params);
+
+const SCHEMA = `
+CREATE TABLE IF NOT EXISTS widgets (
+  id         TEXT PRIMARY KEY,
+  type       TEXT NOT NULL,
+  title      TEXT NOT NULL,
+  config     JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value JSONB NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS habits (
+  id         SERIAL PRIMARY KEY,
+  widget_id  TEXT NOT NULL REFERENCES widgets(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  color      TEXT NOT NULL DEFAULT '#00f0ff',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS habit_checks (
+  habit_id INTEGER NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+  day      DATE NOT NULL,
+  PRIMARY KEY (habit_id, day)
+);
+
+CREATE TABLE IF NOT EXISTS progress_items (
+  id        SERIAL PRIMARY KEY,
+  widget_id TEXT NOT NULL REFERENCES widgets(id) ON DELETE CASCADE,
+  label     TEXT NOT NULL,
+  value     DOUBLE PRECISION NOT NULL DEFAULT 0,
+  target    DOUBLE PRECISION NOT NULL DEFAULT 100,
+  unit      TEXT NOT NULL DEFAULT '',
+  color     TEXT NOT NULL DEFAULT '#00f0ff',
+  sort      INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS progress_history (
+  id         SERIAL PRIMARY KEY,
+  item_id    INTEGER NOT NULL REFERENCES progress_items(id) ON DELETE CASCADE,
+  value      DOUBLE PRECISION NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS pomodoro_sessions (
+  id           SERIAL PRIMARY KEY,
+  widget_id    TEXT NOT NULL REFERENCES widgets(id) ON DELETE CASCADE,
+  kind         TEXT NOT NULL,
+  duration_sec INTEGER NOT NULL,
+  completed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id         SERIAL PRIMARY KEY,
+  widget_id  TEXT NOT NULL REFERENCES widgets(id) ON DELETE CASCADE,
+  role       TEXT NOT NULL,
+  content    TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS mail_digests (
+  id         SERIAL PRIMARY KEY,
+  widget_id  TEXT NOT NULL REFERENCES widgets(id) ON DELETE CASCADE,
+  result     JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+`;
+
+export async function migrate(retries = 30) {
+  for (let i = 1; ; i++) {
+    try {
+      await q(SCHEMA);
+      return;
+    } catch (err) {
+      if (i >= retries) throw err;
+      console.log(`[db] not ready (${err.code || err.message}), retry ${i}/${retries}...`);
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+}
