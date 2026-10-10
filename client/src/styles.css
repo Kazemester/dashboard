@@ -619,3 +619,34 @@ select.input option { background: #0a0f12; }
 .brief-text { white-space: pre-wrap; line-height: 1.55; font-size: 15px; flex: 1; overflow: auto; }
 /* bars stacked in column layouts must not stretch vertically */
 .counter > .bar, .expenses > .bar, .tp-row > .bar { flex: 0 0 2px; }
+
+/* stocks */
+.stocks { display: flex; flex-direction: column; gap: 8px; height: 100%; }
+.stk-list { list-style: none; margin: 0; padding: 0; flex: 1; overflow: auto; }
+.stk-list li { display: grid; grid-template-columns: minmax(80px, 1.1fr) minmax(50px, 1fr) auto; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.stk-list li:hover .stk-sym { color: var(--accent); }
+.stk-list li.err { grid-template-columns: 1fr; cursor: default; }
+.stk-list li.err .stk-sub { color: #fca5a5; white-space: normal; }
+.stk-name { display: flex; flex-direction: column; min-width: 0; }
+.stk-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stk-sym { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; display: inline-flex; align-items: center; gap: 6px; }
+.stk-sym.lg { font-size: 15px; }
+.stk-open { width: 4px; height: 4px; }
+.stk-price { display: flex; flex-direction: column; align-items: flex-end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stk-chg { font-family: var(--font-mono); font-size: 10.5px; }
+.stk-chg.up { color: var(--accent); }
+.stk-chg.down { color: var(--danger); }
+.spark-line.down .spark-path { stroke: var(--danger); opacity: 0.8; }
+.stk-foot { display: flex; justify-content: space-between; align-items: center; }
+.stk-search { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+.stk-results { list-style: none; margin: 0; padding: 0; flex: 1; overflow: auto; }
+.stk-results li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.stk-res-main { display: flex; flex-direction: column; min-width: 0; }
+.stk-res-name { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stk-res-meta { font-family: var(--font-mono); font-size: 9.5px; color: var(--muted); text-align: right; white-space: nowrap; }
+.stk-detail { display: flex; flex-direction: column; gap: 10px; height: 100%; overflow: auto; }
+.stk-d-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; }
+.stk-d-price { text-align: right; }
+.stk-d-price .big-num { font-size: 32px; }
+.stk-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px 12px; border-top: 1px solid var(--line); padding-top: 10px; font-variant-numeric: tabular-nums; font-size: 13px; }
+.stk-stats > div { display: flex; flex-direction: column; gap: 2px; }

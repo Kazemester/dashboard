@@ -89,6 +89,13 @@ export default function App() {
     setConfiguring(null);
   };
 
+  // Tiles that edit their own config in place (e.g. a stock watchlist).
+  const updateConfig = async (w, patch) => {
+    const updated = await api.patch(`/widgets/${w.id}`, { config: { ...w.config, ...patch } });
+    setWidgets((ws) => ws.map((x) => (x.id === w.id ? updated : x)));
+    return updated;
+  };
+
   // Make sure every widget has a layout entry (e.g. after manual DB edits).
   const safeLayouts = useMemo(() => {
     let l = layouts;
@@ -150,6 +157,7 @@ export default function App() {
                   def={def}
                   editing={editing}
                   onConfigure={() => setConfiguring(w)}
+                  onUpdateConfig={(patch) => updateConfig(w, patch)}
                   onRemove={() => removeWidget(w)}
                 />
               </div>

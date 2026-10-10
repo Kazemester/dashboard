@@ -11,7 +11,7 @@ class ErrorBoundary extends Component {
   }
 }
 
-export default function Tile({ widget, def, editing, onConfigure, onRemove }) {
+export default function Tile({ widget, def, editing, onConfigure, onUpdateConfig, onRemove }) {
   const Body = def?.component;
   return (
     <section className={`tile accent-${def?.accent ?? 'cyan'}`}>
@@ -32,7 +32,7 @@ export default function Tile({ widget, def, editing, onConfigure, onRemove }) {
       </header>
       <div className="tile-body no-drag">
         <ErrorBoundary>
-          {Body ? <Body widget={widget} editing={editing} onConfigure={onConfigure} /> : <div className="w-error">Ismeretlen modul: {widget.type}</div>}
+          {Body ? <Body widget={widget} editing={editing} onConfigure={onConfigure} onUpdateConfig={onUpdateConfig} /> : <div className="w-error">Ismeretlen modul: {widget.type}</div>}
         </ErrorBoundary>
       </div>
     </section>

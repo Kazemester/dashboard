@@ -30,6 +30,7 @@ import SystemMonitor from './SystemMonitor.jsx';
 import Uptime from './Uptime.jsx';
 import HomeAssistant from './HomeAssistant.jsx';
 import Brief from './Brief.jsx';
+import Stocks from './Stocks.jsx';
 
 export const CATEGORIES = {
   focus: 'Fókusz & feladatok',
@@ -440,6 +441,30 @@ export const REGISTRY = {
       { key: 'watch', label: 'Figyelt devizák', placeholder: 'USD, GBP, CHF' },
     ],
   },
+  stocks: {
+    name: 'Tőzsde',
+    icon: '↗',
+    category: 'money',
+    description: 'Részvények, indexek, arany és nyersanyagok, devizák, kripto. Piac szerint kereshető, grafikonnal és napi statisztikákkal.',
+    size: { w: 4, h: 8, minW: 3, minH: 5 },
+    component: Stocks,
+    defaultConfig: { provider: 'auto', refreshMin: 5, symbols: [] },
+    fields: [
+      {
+        key: 'provider',
+        label: 'Adatszolgáltató',
+        type: 'select',
+        options: [
+          ['auto', 'Automatikus (Twelve Data, ha van kulcs, különben Yahoo)'],
+          ['twelvedata', 'Twelve Data (ingyenes kulcs)'],
+          ['yahoo', 'Yahoo Finance (kulcs nélkül)'],
+        ],
+        help: 'Twelve Data kulcs: twelvedata.com → ingyenes regisztráció, majd SECRET_TWELVEDATA_KEY a .env-be. Az ingyenes csomag percenként 8 lekérést enged, a nem amerikai tőzsdék egy része csak fizetős csomagban érhető el. A Yahoo kulcs nélkül szinte minden piacot lefed (BÉT, indexek, határidős arany), de felhős szerverről gyakran blokkol.',
+      },
+      { key: 'defaultMarket', label: 'Alapértelmezett piac a keresőben', type: 'select', options: [['all', 'Mind'], ['us', 'USA'], ['eu', 'Európa'], ['hu', 'BÉT'], ['asia', 'Ázsia'], ['index', 'Indexek'], ['commodity', 'Nyersanyag'], ['fx', 'Deviza'], ['crypto', 'Kripto'], ['etf', 'ETF']] },
+      { key: 'refreshMin', label: 'Frissítés (perc)', type: 'number', min: 1, help: 'Twelve Data ingyenes csomagnál 10+ perc ajánlott (napi 800 kérés).' },
+    ],
+  },
   github: {
     name: 'GitHub repók',
     icon: '⑂',
@@ -536,6 +561,44 @@ export const REGISTRY = {
 
 // Picker entries: every widget type, plus ready-made presets of the generic API connector.
 const PRESETS = [
+  {
+    key: 'preset-gold',
+    type: 'stocks',
+    name: 'Arany & nyersanyagok',
+    icon: '◆',
+    description: 'Tőzsde preset: arany, ezüst, WTI olaj USD-ben.',
+    defaultConfig: { provider: 'auto', refreshMin: 5, symbols: [
+      { ids: { twelvedata: 'XAU/USD', yahoo: 'GC=F' }, symbol: 'XAU/USD', name: 'Arany', type: 'commodity' },
+      { ids: { twelvedata: 'XAG/USD', yahoo: 'SI=F' }, symbol: 'XAG/USD', name: 'Ezüst', type: 'commodity' },
+      { ids: { twelvedata: 'WTI/USD', yahoo: 'CL=F' }, symbol: 'WTI', name: 'WTI kőolaj', type: 'commodity' },
+    ] },
+  },
+  {
+    key: 'preset-tech',
+    type: 'stocks',
+    name: 'Tech részvények',
+    icon: '↗',
+    description: 'Tőzsde preset: Apple, Microsoft, NVIDIA, SpaceX (NASDAQ).',
+    defaultConfig: { provider: 'auto', refreshMin: 5, symbols: [
+      { ids: { twelvedata: 'AAPL:NASDAQ', yahoo: 'AAPL' }, symbol: 'AAPL', name: 'Apple Inc.', type: 'stock' },
+      { ids: { twelvedata: 'MSFT:NASDAQ', yahoo: 'MSFT' }, symbol: 'MSFT', name: 'Microsoft', type: 'stock' },
+      { ids: { twelvedata: 'NVDA:NASDAQ', yahoo: 'NVDA' }, symbol: 'NVDA', name: 'NVIDIA', type: 'stock' },
+      { ids: { twelvedata: 'SPCX:NASDAQ', yahoo: 'SPCX' }, symbol: 'SPCX', name: 'Space Exploration Technologies (SpaceX)', type: 'stock' },
+    ] },
+  },
+  {
+    key: 'preset-bet',
+    type: 'stocks',
+    name: 'Budapesti tőzsde',
+    icon: '₣',
+    description: 'Tőzsde preset: OTP, MOL, Richter, Magyar Telekom (BÉT, forintban).',
+    defaultConfig: { provider: 'auto', refreshMin: 10, defaultMarket: 'hu', symbols: [
+      { ids: { twelvedata: 'OTP:BSE' }, symbol: 'OTP', name: 'OTP Bank', type: 'stock', region: 'hu' },
+      { ids: { twelvedata: 'MOL:BSE' }, symbol: 'MOL', name: 'MOL', type: 'stock', region: 'hu' },
+      { ids: { twelvedata: 'RICHT:BSE' }, symbol: 'RICHTER', name: 'Richter Gedeon', type: 'stock', region: 'hu' },
+      { ids: { twelvedata: 'MTEL:BSE' }, symbol: 'MTEL', name: 'Magyar Telekom', type: 'stock', region: 'hu' },
+    ] },
+  },
   {
     key: 'preset-water',
     type: 'counter',

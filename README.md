@@ -61,6 +61,7 @@ Az első indításkor üres a fedélzet, és megnyílik a modul-katalógus.
 |---|---|
 | ₿ Kripto figyelőlista | Árak, 24 órás változás, 7 napos görbe (CoinGecko) |
 | ⇄ Valutaváltó | Átváltás EKB árfolyammal, figyelt devizák |
+| ↗ Tőzsde | Részvények, indexek, arany és nyersanyagok, devizák, kripto. Piac szerint kereshető, grafikonnal és napi statisztikákkal (presetek: Arany & nyersanyagok, Tech részvények, Budapesti tőzsde) |
 
 **Otthon & rendszer**
 | Modul | Mit csinál |
@@ -91,6 +92,18 @@ Az első indításkor üres a fedélzet, és megnyílik a modul-katalógus.
 ![](docs/screenshot-3.png)
 
 </details>
+
+### Tőzsde csempe
+
+![Keresés](docs/stocks-search.png) ![Részletek](docs/stocks-detail.png)
+
+- **Keresés piac szerint:** Mind / USA / Európa / BÉT / Ázsia / Indexek / Nyersanyag / Deviza / Kripto / ETF. A köznapi nevek is működnek: „space x” → SPCX (NASDAQ), „arany” → XAU/USD, „olaj”, „forint”, „bitcoin”.
+- **Figyelőlista:** árfolyam, napi változás, néhány napos görbe. Egy sorra kattintva részletes grafikon jelenik meg (1N / 5N / 1H / 6H / 1É / 5É), és látszik az előző záró, a napi és az 52 hetes csúcs és mélypont, a forgalom, valamint hogy nyitva van-e a tőzsde.
+- **Adatszolgáltató** (csempénként állítható):
+  - **Twelve Data:** [ingyenes kulcs](https://twelvedata.com/pricing), utána `SECRET_TWELVEDATA_KEY=...` a `.env`-be. Stabil, napi 800 és percenként 8 lekérést enged; a szerver ütemezi a kéréseket, hogy beleférjen. A nem amerikai tőzsdék (pl. BÉT, XETRA) egy része csak a fizetős csomagban érhető el, ilyenkor a csempe soronként kiírja a hibát.
+  - **Yahoo Finance:** kulcs nélkül, szinte minden piac (BÉT, indexek, határidős arany). Nem hivatalos API, ezért felhős vagy VM IP-ről gyakran korlátoz; otthoni gépen általában működik.
+  - Ha van Twelve Data kulcs, alapból azt használja, ha nincs, a Yahoot.
+- Az árak szolgáltatótól függően néhány perc késéssel érkezhetnek. Tájékoztató jellegűek, kereskedési döntéshez ne erre támaszkodj.
 
 ### Home Assistant bekötése
 
