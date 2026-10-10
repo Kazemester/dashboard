@@ -37,6 +37,15 @@ CREATE TABLE IF NOT EXISTS habit_checks (
   PRIMARY KEY (habit_id, day)
 );
 
+-- Monthly habit view: a habit is shown from start_month until (excluding) end_month.
+ALTER TABLE habits ADD COLUMN IF NOT EXISTS start_month DATE;
+ALTER TABLE habits ADD COLUMN IF NOT EXISTS end_month DATE;
+UPDATE habits h SET start_month = date_trunc('month', LEAST(
+    h.created_at::date,
+    COALESCE((SELECT MIN(day) FROM habit_checks c WHERE c.habit_id = h.id), h.created_at::date)
+  ))::date
+WHERE start_month IS NULL;
+
 CREATE TABLE IF NOT EXISTS progress_items (
   id        SERIAL PRIMARY KEY,
   widget_id TEXT NOT NULL REFERENCES widgets(id) ON DELETE CASCADE,

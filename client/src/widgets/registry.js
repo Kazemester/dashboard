@@ -44,13 +44,11 @@ export const REGISTRY = {
     icon: '◈',
     accent: 'green',
     category: 'focus',
-    description: 'Napi szokások pipálása, sorozatok (streak) és napi teljesítés.',
-    size: { w: 4, h: 6, minW: 3, minH: 4 },
+    description: 'Havi rács (1-től a hónap végéig), lapozható hónapok, havonta bővíthető sorok.',
+    size: { w: 6, h: 6, minW: 4, minH: 4 },
     component: Habits,
-    defaultConfig: { days: 7 },
-    fields: [
-      { key: 'days', label: 'Megjelenített napok', type: 'select', options: [[7, '7 nap'], [14, '14 nap'], [21, '21 nap'], [30, '30 nap']] },
-    ],
+    defaultConfig: {},
+    fields: [],
   },
   progress: {
     name: 'Progress sávok',

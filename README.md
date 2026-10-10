@@ -24,7 +24,7 @@ Az első indításkor üres a fedélzet, és megnyílik a modul-katalógus.
 | Modul | Mit csinál | Adat |
 |---|---|---|
 | ◴ **Pomodoro** | Fókusz, rövid és hosszú szünet, körök, hangjelzés, böngészős értesítés, heti fókuszperc-diagram. Oldalfrissítés után is fut tovább. | DB |
-| ◈ **Szokáskövető** | Szokások napi pipálása 7–30 napos rácson, 🔥 sorozat (streak), napi teljesítés-sáv | DB |
+| ◈ **Szokáskövető** | Havi nézet (1-jétől a hónap végéig), ‹ › lapozás a hónapok között. Az új sor a hozzáadás hónapjától jelenik meg (a későbbi hónapokban is), eltávolítani egy adott hónaptól lehet, a korábbi előzmények megmaradnak. Havi és napi teljesítés. | DB |
 | ▤ **Progress sávok** | Bővíthető célok (érték / cél / egység), vízszintes sávok vagy oszlopdiagram, +/− léptetés, előzmény-sparkline | DB |
 | ▦ **Naptár** | Google, iCloud, Outlook stb. naptárak **iCal (.ics) linkkel**, ismétlődő eseményekkel, színkódolva | iCal |
 | ☁ **Időjárás** | Aktuális idő + 5 napos előrejelzés | Open-Meteo (nem kell kulcs) |

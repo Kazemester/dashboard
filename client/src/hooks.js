@@ -6,30 +6,30 @@ export function useWidgetData(url, { interval = 0, deps = [] } = {}) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const alive = useRef(true);
+  const latest = useRef(0); // id of the newest request; older responses are ignored
 
   const reload = useCallback(async () => {
+    const id = ++latest.current;
     setLoading(true);
     try {
       const d = await api.get(url);
-      if (alive.current) {
+      if (id === latest.current) {
         setData(d);
         setError(null);
       }
     } catch (e) {
-      if (alive.current) setError(e.message);
+      if (id === latest.current) setError(e.message);
     } finally {
-      if (alive.current) setLoading(false);
+      if (id === latest.current) setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, ...deps]);
 
   useEffect(() => {
-    alive.current = true;
     reload();
     const t = interval ? setInterval(reload, interval) : null;
     return () => {
-      alive.current = false;
+      latest.current++; // invalidate in-flight requests (unmount / url change)
       if (t) clearInterval(t);
     };
   }, [reload, interval]);
