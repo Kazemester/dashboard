@@ -12,6 +12,12 @@ import calendar from './routes/calendar.js';
 import feeds from './routes/feeds.js';
 import chatRoutes from './routes/chat.js';
 import mail, { startMailScheduler } from './routes/mail.js';
+import items from './routes/items.js';
+import system from './routes/system.js';
+import markets from './routes/markets.js';
+import env from './routes/env.js';
+import homeassistant from './routes/homeassistant.js';
+import brief from './routes/brief.js';
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -33,7 +39,7 @@ if (PASSWORD) {
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.get('/api/status', (_req, res) => res.json({ llm: llmConfigured(), model: process.env.LLM_MODEL || 'grok-4' }));
 
-for (const router of [dashboard, habits, progress, pomodoro, calendar, feeds, chatRoutes, mail]) {
+for (const router of [dashboard, habits, progress, pomodoro, calendar, feeds, chatRoutes, mail, items, system, markets, env, homeassistant, brief]) {
   app.use('/api', router);
 }
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));

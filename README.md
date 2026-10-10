@@ -21,18 +21,84 @@ Az első indításkor üres a fedélzet, és megnyílik a modul-katalógus.
 
 ## Modulok
 
-| Modul | Mit csinál | Adat |
-|---|---|---|
-| ◴ **Pomodoro** | Fókusz, rövid és hosszú szünet, körök, hangjelzés, böngészős értesítés, heti fókuszperc-diagram. Oldalfrissítés után is fut tovább. | DB |
-| ◈ **Szokáskövető** | Havi nézet (1-jétől a hónap végéig), ‹ › lapozás a hónapok között. Az új sor a hozzáadás hónapjától jelenik meg (a későbbi hónapokban is), eltávolítani egy adott hónaptól lehet, a korábbi előzmények megmaradnak. Havi és napi teljesítés. | DB |
-| ▤ **Progress sávok** | Bővíthető célok (érték / cél / egység), vízszintes sávok vagy oszlopdiagram, +/− léptetés, előzmény-sparkline | DB |
-| ▦ **Naptár** | Google, iCloud, Outlook stb. naptárak **iCal (.ics) linkkel**, ismétlődő eseményekkel, színkódolva | iCal |
-| ☁ **Időjárás** | Aktuális idő + 5 napos előrejelzés | Open-Meteo (nem kell kulcs) |
-| ≋ **Hírek (RSS)** | Több RSS/Atom csatorna összefésülve | RSS |
-| ⌁ **API connector** | **Bármilyen** JSON API: nagy szám, lista vagy nyers JSON. Előre beállított példák: Bitcoin, EUR/HUF, Hacker News | bármi |
-| ◉ **AI Chat** | Chat Grokkal (vagy bármilyen OpenAI-kompatibilis modellel), saját személyiség (system prompt), mentett előzmények | LLM |
-| ✉ **Mail bot** | AI bot: IMAP-on átnézi az olvasatlan leveleket, összefoglal, kiemeli a fontosakat, teendőlistát ír, kategorizál. Kézzel vagy ütemezve fut. | IMAP + LLM |
-| ◷ **Világóra** | Analóg óra + időzónák | – |
+32 modultípus és több kész preset, kategóriánként. A legtöbbhöz **nem kell fiók vagy API-kulcs**.
+
+**Fókusz & feladatok**
+| Modul | Mit csinál |
+|---|---|
+| ◴ Pomodoro | Fókusz / szünet körök, hangjelzés, értesítés, heti fókuszpercek. Oldalfrissítés után is fut. |
+| ◈ Szokáskövető | Havi rács (1-jétől a hónap végéig), ‹ › lapozás. A sorok a felvétel hónapjától látszanak, eltávolítani hónaponként lehet. |
+| ▤ Progress sávok | Bővíthető célok sávként vagy oszlopdiagramként, előzmény-görbével |
+| ☑ Teendők | Feladatlista határidőkkel, a lejártak kiemelve |
+| ✎ Jegyzet | Gyors jegyzetfüzet automatikus mentéssel |
+| ⧗ Visszaszámláló | Napok a fontos eseményekig, évente ismétlődő eseményekkel (születésnap) |
+| ⏱ Stopper / időzítő | Stopper körökkel, időzítő gyorsgombokkal és hangjelzéssel |
+
+**Élet & egészség**
+| Modul | Mit csinál |
+|---|---|
+| ⊕ Napi számláló | Víz, kávé, fekvőtámasz… napi céllal és 14 napos előzménnyel (presetek: Vízfogyasztás) |
+| ◑ Hangulatnapló | Napi hangulat 1–5, havi naptárban, átlaggal |
+| ∿ Mérésnapló | Számértékek grafikonon céllal és változással (presetek: Testsúly, Alvás) |
+| ¤ Költségkövető | Havi kiadások kategóriánként, kerettel és hó végi becsléssel |
+| ◔ Idő haladása | Nap / hét / hónap / év, és opcionálisan az élet százalékban |
+
+**Info**
+| Modul | Mit csinál |
+|---|---|
+| ☁ Időjárás | Aktuális idő + 5 napos előrejelzés (Open-Meteo) |
+| ≈ Levegő & pollen | Európai AQI, PM2.5/PM10, UV, pollen (parlagfű, fű, nyír, éger, üröm) |
+| ☾ Nap & Hold | Napkelte/napnyugta, a Nap útja, nappal hossza és változása, holdfázis |
+| ▦ Naptár | Google / iCloud / Outlook iCal linkkel |
+| ≋ Hírek (RSS) | Bármilyen RSS/Atom feed (preset: YouTube csatornák) |
+| ❝ Napi idézet | Naponta új idézet, saját idézetekkel bővíthető |
+| ⌘ Gyorslinkek | Ikonos gyorsindító |
+| ▣ Képkeret | Képek / webkamera URL-ből, diavetítéssel |
+| ◷ Világóra | Analóg óra + időzónák |
+
+**Pénz & piac**
+| Modul | Mit csinál |
+|---|---|
+| ₿ Kripto figyelőlista | Árak, 24 órás változás, 7 napos görbe (CoinGecko) |
+| ⇄ Valutaváltó | Átváltás EKB árfolyammal, figyelt devizák |
+
+**Otthon & rendszer**
+| Modul | Mit csinál |
+|---|---|
+| ▥ Szerver monitor | CPU, RAM, lemez, uptime, DB méret a dashboardot futtató gépről |
+| ⇵ Szolgáltatás-figyelő | Elérhetők-e az oldalaid és eszközeid: státusz, válaszidő, előzmény |
+| ⌂ Home Assistant | Control Center-szerű kapcsolók (lámpa, kapcsoló, jelenet…) és szenzorértékek |
+
+**Adat & API**
+| Modul | Mit csinál |
+|---|---|
+| ⌁ API connector | Bármilyen JSON API (presetek: Bitcoin, EUR/HUF, Hacker News) |
+| ⑂ GitHub repók | Csillagok, forkok, nyitott issue-k/PR-ek |
+| ⧉ Beágyazás | Bármilyen beágyazható oldal: Grafana, YouTube, Spotify, Google Sheets… |
+
+**AI**
+| Modul | Mit csinál |
+|---|---|
+| ◎ JARVIS napi brief | A többi csempe adataiból napi összefoglaló. AI kulcs nélkül is működik (egyszerű szöveges összefoglaló). |
+| ◉ AI Chat | Chat Grokkal / bármilyen OpenAI-kompatibilis modellel |
+| ✉ Mail bot | IMAP-on átnézi a leveleket, kiemeli a fontosakat, teendőlistát ír |
+
+![Modul katalógus](docs/catalog.png)
+
+<details><summary>További képek</summary>
+
+![](docs/screenshot-2.png)
+![](docs/screenshot-3.png)
+
+</details>
+
+### Home Assistant bekötése
+
+1. HA → Profil → Biztonság → **Long-lived access tokens** → Token létrehozása
+2. `.env`: `SECRET_HA_URL=http://homeassistant.local:8123` és `SECRET_HA_TOKEN=...`
+3. A csempe beállításainál sorold fel az entitásokat (`light.nappali`, `switch.kavefozo`, `scene.mozi`, `sensor.homerseklet`…).
+
+A lámpák, kapcsolók, ventilátorok, redőnyök, automatizmusok egy érintéssel kapcsolhatók, a jelenetek és scriptek futtathatók. A szenzorok csak olvashatók.
 
 ### Naptár bekötése
 

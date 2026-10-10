@@ -58,7 +58,7 @@ function Field({ field, value, onChange }) {
       );
     }
     default:
-      return <input {...common} type={field.type === 'password' ? 'password' : 'text'} onChange={(e) => onChange(e.target.value)} />;
+      return <input {...common} type={['password', 'date'].includes(field.type) ? field.type : 'text'} onChange={(e) => onChange(e.target.value)} />;
   }
 }
 

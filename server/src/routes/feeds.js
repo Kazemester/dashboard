@@ -2,29 +2,19 @@ import { Router } from 'express';
 import Parser from 'rss-parser';
 import { getWidget, cached, HttpError } from '../util.js';
 import { resolveSecrets, resolveSecretsDeep } from '../secrets.js';
+import { weather } from '../services/openmeteo.js';
 
 const r = Router();
-const rss = new Parser({ timeout: 15_000 });
+const rss = new Parser({
+  timeout: 15_000,
+  // some feeds (e.g. Reddit) reject the default library user agent
+  headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NEXUS-dashboard/0.1; +https://github.com/Kazemester/dashboard)' },
+});
 
 // ---------- Weather (Open-Meteo, no API key needed) ----------
 r.get('/widgets/:id/weather', async (req, res) => {
   const w = await getWidget(req.params.id, 'weather');
-  const city = w.config.city || 'Budapest';
-  const data = await cached(`${w.id}:weather:${city}`, 10 * 60_000, async () => {
-    const geo = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/search?count=1&language=hu&name=${encodeURIComponent(city)}`,
-    ).then((x) => x.json());
-    const place = geo.results?.[0];
-    if (!place) throw new HttpError(404, `City not found: ${city}`);
-    const fc = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}` +
-        '&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day' +
-        '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max' +
-        '&timezone=auto&forecast_days=5',
-    ).then((x) => x.json());
-    return { place: `${place.name}, ${place.country_code}`, current: fc.current, daily: fc.daily };
-  });
-  res.json(data);
+  res.json(await weather(w.config.city || 'Budapest'));
 });
 
 // ---------- News / RSS ----------

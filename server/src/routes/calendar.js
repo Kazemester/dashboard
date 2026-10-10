@@ -22,9 +22,8 @@ function expand(event, from, to) {
   }
 }
 
-r.get('/widgets/:id/calendar', async (req, res) => {
-  const w = await getWidget(req.params.id, 'calendar');
-  const days = Number(w.config.days) || 7;
+// Events of a calendar widget between today 00:00 and today + days.
+export async function loadEvents(w, days = Number(w.config.days) || 7) {
   const from = new Date();
   from.setHours(0, 0, 0, 0);
   const to = new Date(from.getTime() + days * 86400_000);
@@ -42,7 +41,7 @@ r.get('/widgets/:id/calendar', async (req, res) => {
             allDay: inst.isFullDay,
             location: ev.location?.val ?? ev.location ?? '',
             source: src.name || `Calendar ${idx + 1}`,
-            color: src.color || '#00f0ff',
+            color: src.color || '#67e8f9',
           })),
         );
       } catch (err) {
@@ -51,10 +50,15 @@ r.get('/widgets/:id/calendar', async (req, res) => {
     }),
   );
   const flat = results.flat();
-  res.json({
+  return {
     events: flat.filter((e) => !e.error).sort((a, b) => new Date(a.start) - new Date(b.start)),
     errors: flat.filter((e) => e.error).map((e) => e.error),
-  });
+  };
+}
+
+r.get('/widgets/:id/calendar', async (req, res) => {
+  const w = await getWidget(req.params.id, 'calendar');
+  res.json(await loadEvents(w));
 });
 
 export default r;

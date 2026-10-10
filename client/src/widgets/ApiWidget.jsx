@@ -7,7 +7,7 @@ const get = (obj, path) =>
 export default function ApiWidget({ widget, onConfigure }) {
   const cfg = widget.config;
   const refresh = Math.max(10, Number(cfg.refreshSec) || 300) * 1000;
-  const { data, error, reload, loading } = useWidgetData(`/widgets/${widget.id}/api`, { interval: cfg.url ? refresh : 0, deps: [cfg.url, cfg.path] });
+  const { data, error, reload, loading } = useWidgetData(cfg.url ? `/widgets/${widget.id}/api` : null, { interval: cfg.url ? refresh : 0, deps: [cfg.url, cfg.path] });
 
   if (!cfg.url)
     return (

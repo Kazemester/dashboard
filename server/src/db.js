@@ -46,6 +46,26 @@ UPDATE habits h SET start_month = date_trunc('month', LEAST(
   ))::date
 WHERE start_month IS NULL;
 
+-- Generic per-widget records (todos, counters, mood, expenses, metric logs...).
+CREATE TABLE IF NOT EXISTS widget_items (
+  id         SERIAL PRIMARY KEY,
+  widget_id  TEXT NOT NULL REFERENCES widgets(id) ON DELETE CASCADE,
+  kind       TEXT NOT NULL DEFAULT 'item',
+  day        DATE,
+  value      DOUBLE PRECISION,
+  data       JSONB NOT NULL DEFAULT '{}',
+  sort       INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS widget_items_lookup ON widget_items (widget_id, kind, day);
+
+-- Free-form per-widget state (notes text, cached AI briefings...).
+CREATE TABLE IF NOT EXISTS widget_state (
+  widget_id  TEXT PRIMARY KEY REFERENCES widgets(id) ON DELETE CASCADE,
+  value      JSONB NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS progress_items (
   id        SERIAL PRIMARY KEY,
   widget_id TEXT NOT NULL REFERENCES widgets(id) ON DELETE CASCADE,
