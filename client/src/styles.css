@@ -692,3 +692,32 @@ select.input option { background: var(--surface); color: var(--text); }
   .theme-btn { padding: 7px 10px; }
   .theme-pop { position: fixed; left: 16px; right: 16px; top: 64px; width: auto; }
 }
+
+/* =================== infinite canvas (desktop) =================== */
+.app.canvas-mode { height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+.canvas-mode .topbar { position: relative; flex-shrink: 0; }
+.canvas-main { position: relative; flex: 1; min-height: 0; }
+.canvas-main .empty { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.canvas-main .empty .btn { pointer-events: auto; }
+.canvas-viewport {
+  position: absolute; inset: 0; overflow: hidden; cursor: default; touch-action: none;
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--accent) 40%, transparent) 1.2px, transparent 1.6px);
+}
+.canvas-viewport.space, .canvas-viewport.space * { cursor: grab !important; }
+.canvas-viewport.panning, .canvas-viewport.panning * { cursor: grabbing !important; user-select: none; }
+.canvas-viewport.far { background-image: none; }
+.canvas-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.canvas-grid { min-height: 100px; }
+/* tiles are moved by RGL inside the scaled world; keep their own transitions for drag feedback only */
+.canvas-world .react-grid-item:not(.react-draggable-dragging):not(.resizing) { transition: transform 0.15s ease, width 0.15s, height 0.15s; }
+.canvas-ui { position: absolute; z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); border: 1px solid var(--line-strong); backdrop-filter: blur(6px); }
+.zoom-ctrl { right: 16px; bottom: 16px; display: flex; align-items: center; gap: 2px; padding: 3px; }
+.zoom-pct { min-width: 52px; background: transparent; border: none; cursor: pointer; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.zoom-pct:hover { color: var(--accent); }
+.minimap { left: 16px; bottom: 16px; overflow: hidden; cursor: pointer; }
+.minimap i { position: absolute; background: var(--accent-dim); }
+.minimap b { position: absolute; border: 1px solid var(--accent); background: var(--accent-soft); }
+.canvas-hint { left: 50%; bottom: 16px; transform: translateX(-50%); padding: 5px 12px; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.12em; color: var(--muted); border-color: var(--line); pointer-events: none; opacity: 0.8; }
+@media (max-width: 1100px) { .canvas-hint { display: none; } }
+/* on the canvas the dot grid must not show through the tiles */
+.canvas-world .tile { background: color-mix(in srgb, var(--bg) 97%, var(--text)); }

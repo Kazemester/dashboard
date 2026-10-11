@@ -8,10 +8,29 @@ const r = Router();
 r.get('/dashboard', async (_req, res) => {
   const [{ rows: widgets }, { rows: s }] = await Promise.all([
     q('SELECT id, type, title, config FROM widgets ORDER BY created_at'),
-    q("SELECT key, value FROM settings WHERE key IN ('layouts', 'appearance')"),
+    q("SELECT key, value FROM settings WHERE key IN ('layouts', 'appearance', 'canvas')"),
   ]);
   const setting = (k) => s.find((x) => x.key === k)?.value;
-  res.json({ widgets, layouts: setting('layouts') ?? {}, appearance: setting('appearance') ?? null });
+  res.json({ widgets, layouts: setting('layouts') ?? {}, appearance: setting('appearance') ?? null, canvas: setting('canvas') ?? null });
+});
+
+// Tile positions on the desktop infinite canvas (grid cells; the world grows as needed).
+const int = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
+r.put('/settings/canvas', async (req, res) => {
+  const items = req.body;
+  if (!Array.isArray(items) || items.length > 2000) throw new HttpError(400, 'canvas must be an array');
+  const clean = items.map((l) => {
+    if (typeof l?.i !== 'string' || !int(l.x, 0, 100000) || !int(l.y, 0, 100000) || !int(l.w, 1, 100) || !int(l.h, 1, 200)) {
+      throw new HttpError(400, 'invalid canvas item');
+    }
+    return { i: l.i, x: l.x, y: l.y, w: l.w, h: l.h, ...(int(l.minW, 1, 100) ? { minW: l.minW } : {}), ...(int(l.minH, 1, 200) ? { minH: l.minH } : {}) };
+  });
+  await q(
+    `INSERT INTO settings (key, value) VALUES ('canvas', $1)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+    [JSON.stringify(clean)],
+  );
+  res.json({ ok: true });
 });
 
 // Theme + custom colours chosen in the header.

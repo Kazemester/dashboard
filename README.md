@@ -15,8 +15,15 @@ Utána nyisd meg: **http://localhost:3000**
 
 Az első indításkor üres a fedélzet, és megnyílik a modul-katalógus.
 
-- **+ Modul**: új csempe hozzáadása a katalógusból
+- **Végtelen vászon** (asztali gépen, a draw.io mintájára): a csempék szabadon elhelyezhetők minden irányban, a vászon magától nő
+  - mozgatás: az üres háttér húzása, görgő vagy touchpad, középső egérgomb, vagy **szóköz + húzás**
+  - nagyítás: **Ctrl/⌘ + görgő** vagy csippentés, mindig a kurzor felé; −/+, 100% és **⤢ Mindent mutat** gomb jobb alul
+  - **minitérkép** bal alul: kattints vagy húzd, és odaugrik
+  - telefonon a csempék egymás alatt jelennek meg (görgethető lista)
+- **+ Modul**: új csempe hozzáadása a katalógusból (a képernyő közepére, az első szabad helyre)
 - **Szerkesztés**: a csempék szaggatott keretet kapnak, ilyenkor a fejlécüknél fogva húzhatók, a jobb alsó sarkuknál átméretezhetők, a ✕-szel törölhetők
+
+![Végtelen vászon](docs/canvas.png)
 - **⚙**: az adott csempe beállításai (cím, adatforrás, megjelenítés…)
 
 ## Megjelenés
