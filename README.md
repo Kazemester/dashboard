@@ -19,6 +19,12 @@ Az első indításkor üres a fedélzet, és megnyílik a modul-katalógus.
 - **Szerkesztés**: a csempék szaggatott keretet kapnak, ilyenkor a fejlécüknél fogva húzhatók, a jobb alsó sarkuknál átméretezhetők, a ✕-szel törölhetők
 - **⚙**: az adott csempe beállításai (cím, adatforrás, megjelenítés…)
 
+## Megjelenés
+
+A fejléc mindig látszik, görgetés közben is. A **Téma** gombbal 7 kész téma közül választhatsz (JARVIS, Borostyán, Vörös riasztás, Terminál, Ibolya, Grafit, Világos), és külön beállíthatod a **háttér** és a **kiemelés** színét. A szövegszín magától igazodik a háttér világosságához. A beállítás az adatbázisba mentődik, így minden eszközön és böngészőben ugyanaz jelenik meg.
+
+![Témaválasztó](docs/theme-picker.png)
+
 ## Modulok
 
 32 modultípus és több kész preset, kategóriánként. A legtöbbhöz **nem kell fiók vagy API-kulcs**.

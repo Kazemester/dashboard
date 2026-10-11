@@ -6,6 +6,7 @@ import Tile from './components/Tile.jsx';
 import WidgetPicker from './components/WidgetPicker.jsx';
 import ConfigModal from './components/ConfigModal.jsx';
 import TopBar from './components/TopBar.jsx';
+import { applyAppearance, cachedAppearance } from './theme.js';
 
 const Grid = WidthProvider(Responsive);
 const COLS = { lg: 12, md: 10, sm: 6, xs: 2 };
@@ -32,18 +33,32 @@ export default function App() {
   const [configuring, setConfiguring] = useState(null);
   const [error, setError] = useState(null);
   const saveTimer = useRef(null);
+  const [appearance, setAppearance] = useState(cachedAppearance);
+  const appearanceTimer = useRef(null);
 
   useEffect(() => {
     api
       .get('/dashboard')
-      .then(({ widgets, layouts }) => {
+      .then(({ widgets, layouts, appearance: saved }) => {
         setWidgets(widgets);
         setLayouts(layouts);
+        if (saved) setAppearance(saved);
         if (!widgets.length) setPicker(true);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoaded(true));
   }, []);
+
+  useEffect(() => {
+    applyAppearance(appearance);
+  }, [appearance]);
+
+  const changeAppearance = (next) => {
+    setAppearance(next);
+    clearTimeout(appearanceTimer.current);
+    // colour inputs fire continuously while dragging — save once the user settles
+    appearanceTimer.current = setTimeout(() => api.put('/settings/appearance', next).catch((e) => setError(e.message)), 500);
+  };
 
   const persistLayouts = useCallback((next) => {
     clearTimeout(saveTimer.current);
@@ -115,6 +130,8 @@ export default function App() {
         onToggleEdit={() => setEditing((e) => !e)}
         onAdd={() => setPicker(true)}
         count={widgets.length}
+        appearance={appearance}
+        onAppearance={changeAppearance}
       />
 
       {error && (

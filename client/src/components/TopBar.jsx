@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNow } from '../hooks.js';
 import { api } from '../api.js';
+import ThemePicker from './ThemePicker.jsx';
 
-export default function TopBar({ editing, onToggleEdit, onAdd, count }) {
+export default function TopBar({ editing, onToggleEdit, onAdd, count, appearance, onAppearance }) {
   const now = useNow(1000);
   const [status, setStatus] = useState(null);
   useEffect(() => {
@@ -36,6 +37,7 @@ export default function TopBar({ editing, onToggleEdit, onAdd, count }) {
             {now.toLocaleDateString('hu-HU', { weekday: 'short', month: 'short', day: 'numeric' })}
           </span>
         </div>
+        <ThemePicker appearance={appearance} onChange={onAppearance} />
         <button className={`btn btn-ghost ${editing ? 'btn-active' : ''}`} onClick={onToggleEdit}>
           {editing ? 'Kész' : 'Szerkesztés'}
         </button>

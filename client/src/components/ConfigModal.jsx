@@ -33,7 +33,7 @@ function Field({ field, value, onChange }) {
         </label>
       );
     case 'color':
-      return <input type="color" className="color" value={value || '#00f0ff'} onChange={(e) => onChange(e.target.value)} />;
+      return <input type="color" className="color" value={value || '#67e8f9'} onChange={(e) => onChange(e.target.value)} />;
     case 'list': {
       const rows = Array.isArray(value) ? value : [];
       const set = (i, k, v) => onChange(rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)));

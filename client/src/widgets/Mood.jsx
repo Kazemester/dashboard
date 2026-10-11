@@ -60,7 +60,7 @@ export default function Mood({ widget }) {
             <button
               key={d}
               className={`mood-day ${d === sel ? 'sel' : ''} ${d === today ? 'today' : ''}`}
-              style={{ '--lvl': v ? v / 5 : 0, color: v >= 4 ? '#03161c' : undefined }}
+              style={{ '--lvl': v ? v / 5 : 0, color: v >= 4 ? 'var(--bg)' : undefined }}
               disabled={d > today}
               onClick={() => setSel(d)}
               title={byDay[d]?.data?.note || d}

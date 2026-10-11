@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useWidgetData, fmtNum } from '../hooks.js';
 import { Sparkline, LineChart } from '../components/Charts.jsx';
+import { currentAppearance, hexToRgba } from '../theme.js';
 
 const TYPE_LABEL = { stock: 'részvény', etf: 'ETF', index: 'index', commodity: 'nyersanyag', fx: 'deviza', crypto: 'kripto', other: '' };
 const digitsFor = (p) => (p == null ? 2 : Number.isInteger(p) ? 0 : Math.abs(p) >= 1 ? 2 : 4);
@@ -23,12 +24,13 @@ function DayRange({ range, price }) {
 
 // TradingView's official embeddable chart (used when the provider has no price history API).
 function TvChart({ symbol }) {
+  const { accent, scheme } = currentAppearance();
   const cfg = {
-    symbols: [[symbol, `${symbol}|1D`]], chartOnly: true, width: '100%', height: '100%', locale: 'hu', colorTheme: 'dark', autosize: true,
+    symbols: [[symbol, `${symbol}|1D`]], chartOnly: true, width: '100%', height: '100%', locale: 'hu', colorTheme: scheme, autosize: true,
     showVolume: false, showMA: false, hideDateRanges: false, hideMarketStatus: true, hideSymbolLogo: true, scalePosition: 'right', scaleMode: 'Normal',
     fontFamily: 'JetBrains Mono, monospace', fontSize: '10', noTimeScale: false, valuesTracking: '1', changeMode: 'price-and-percent', chartType: 'area',
-    lineWidth: 2, lineType: 0, isTransparent: true, lineColor: 'rgba(103, 232, 249, 1)', topColor: 'rgba(103, 232, 249, 0.22)', bottomColor: 'rgba(103, 232, 249, 0)',
-    gridLineColor: 'rgba(103, 232, 249, 0.06)', dateRanges: ['1d|1', '1w|15', '1m|30', '3m|60', '12m|1D', '60m|1W', 'all|1M'],
+    lineWidth: 2, lineType: 0, isTransparent: true, lineColor: hexToRgba(accent, 1), topColor: hexToRgba(accent, 0.22), bottomColor: hexToRgba(accent, 0),
+    gridLineColor: hexToRgba(accent, 0.06), dateRanges: ['1d|1', '1w|15', '1m|30', '3m|60', '12m|1D', '60m|1W', 'all|1M'],
   };
   const src = `https://www.tradingview-widget.com/embed-widget/symbol-overview/?locale=hu#${encodeURIComponent(JSON.stringify(cfg))}`;
   return <iframe className="tv-chart" src={src} title={symbol} loading="lazy" />;

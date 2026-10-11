@@ -8,9 +8,25 @@ const r = Router();
 r.get('/dashboard', async (_req, res) => {
   const [{ rows: widgets }, { rows: s }] = await Promise.all([
     q('SELECT id, type, title, config FROM widgets ORDER BY created_at'),
-    q("SELECT value FROM settings WHERE key = 'layouts'"),
+    q("SELECT key, value FROM settings WHERE key IN ('layouts', 'appearance')"),
   ]);
-  res.json({ widgets, layouts: s[0]?.value ?? {} });
+  const setting = (k) => s.find((x) => x.key === k)?.value;
+  res.json({ widgets, layouts: setting('layouts') ?? {}, appearance: setting('appearance') ?? null });
+});
+
+// Theme + custom colours chosen in the header.
+const HEX = /^#[0-9a-f]{6}$/i;
+r.put('/settings/appearance', async (req, res) => {
+  const { theme, bg = null, accent = null } = req.body ?? {};
+  if (typeof theme !== 'string' || !/^[a-z]{1,30}$/.test(theme)) throw new HttpError(400, 'invalid theme');
+  for (const c of [bg, accent]) if (c !== null && !HEX.test(c)) throw new HttpError(400, 'colours must be #rrggbb');
+  const value = { theme, bg, accent };
+  await q(
+    `INSERT INTO settings (key, value) VALUES ('appearance', $1)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+    [JSON.stringify(value)],
+  );
+  res.json(value);
 });
 
 r.put('/layouts', async (req, res) => {
