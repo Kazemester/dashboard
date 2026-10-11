@@ -152,7 +152,7 @@ function Detail({ item, provider, meta, onBack, onRemove }) {
       <div className="stk-d-head">
         <div>
           <div className="stk-sym lg">{item.symbol}</div>
-          <div className="muted sm">{data?.name || item.name}</div>
+          <div className="muted sm">{item.name || data?.name}</div>
         </div>
         <div className="stk-d-price">
           <span className="big-num">{price != null ? fmtNum(price, digitsFor(price)) : '–'}</span>
