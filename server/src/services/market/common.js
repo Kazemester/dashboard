@@ -43,39 +43,42 @@ export function matchesMarket(item, market) {
 
 // Everyday names → what the providers actually call them.
 const ALIASES = [
-  [/^(space ?x|spacex)$/, { td: ['Space Exploration Technologies', 'SPCX'], yahoo: ['SPCX', 'Space Exploration Technologies'] }],
-  [/^(arany|gold|xau)$/, { td: ['XAU/USD'], yahoo: ['GC=F', 'gold'] }],
-  [/^(ezust|silver|xag)$/, { td: ['XAG/USD'], yahoo: ['SI=F', 'silver'] }],
-  [/^(olaj|koolaj|oil|wti|crude)$/, { td: ['WTI/USD'], yahoo: ['CL=F', 'BZ=F'] }],
-  [/^(brent)$/, { td: ['BRENT'], yahoo: ['BZ=F'] }],
-  [/^(foldgaz|gaz|natural gas)$/, { td: [], yahoo: ['NG=F'] }],
-  [/^(bitcoin|btc)$/, { td: ['BTC/USD'], yahoo: ['BTC-USD'] }],
-  [/^(ethereum|eth)$/, { td: ['ETH/USD'], yahoo: ['ETH-USD'] }],
-  [/^(forint|huf)$/, { td: ['EUR/HUF', 'USD/HUF'], yahoo: ['EURHUF=X', 'HUF=X'] }],
-  [/^(euro|eur)$/, { td: ['EUR/USD', 'EUR/HUF'], yahoo: ['EURUSD=X', 'EURHUF=X'] }],
-  [/^(s&?p ?500|sp500|s&p)$/, { td: ['SPY'], yahoo: ['^GSPC', 'SPY'] }],
-  [/^(nasdaq)$/, { td: ['QQQ'], yahoo: ['^IXIC', 'QQQ'] }],
-  [/^(dow|dow jones)$/, { td: ['DIA'], yahoo: ['^DJI', 'DIA'] }],
-  [/^(dax)$/, { td: ['DAX'], yahoo: ['^GDAXI'] }],
-  [/^(richter)$/, { td: ['RICHT'], yahoo: ['Richter Gedeon'] }],
-  [/^(telekom|magyar telekom)$/, { td: ['Magyar Telekom'], yahoo: ['Magyar Telekom'] }],
+  [/^(space ?x|spacex)$/, { prefer: 'stock', td: ['Space Exploration Technologies', 'SPCX'], yahoo: ['SPCX', 'Space Exploration Technologies'], tv: ['SPCX'] }],
+  [/^(arany|gold|xau)$/, { prefer: 'commodity', td: ['XAU/USD'], yahoo: ['GC=F', 'gold'], tv: ['gold'] }],
+  [/^(ezust|silver|xag)$/, { prefer: 'commodity', td: ['XAG/USD'], yahoo: ['SI=F', 'silver'], tv: ['silver'] }],
+  [/^(olaj|koolaj|oil|wti|crude)$/, { prefer: 'commodity', td: ['WTI/USD'], yahoo: ['CL=F', 'BZ=F'], tv: ['USOIL', 'UKOIL'] }],
+  [/^(brent)$/, { prefer: 'commodity', td: ['BRENT'], yahoo: ['BZ=F'], tv: ['UKOIL'] }],
+  [/^(foldgaz|gaz|natural gas)$/, { prefer: 'commodity', td: [], yahoo: ['NG=F'], tv: ['NATURALGAS'] }],
+  [/^(bitcoin|btc)$/, { prefer: 'crypto', td: ['BTC/USD'], yahoo: ['BTC-USD'], tv: ['BTCUSD'] }],
+  [/^(ethereum|eth)$/, { prefer: 'crypto', td: ['ETH/USD'], yahoo: ['ETH-USD'], tv: ['ETHUSD'] }],
+  [/^(forint|huf)$/, { prefer: 'fx', td: ['EUR/HUF', 'USD/HUF'], yahoo: ['EURHUF=X', 'HUF=X'], tv: ['EURHUF', 'USDHUF'] }],
+  [/^(euro|eur)$/, { prefer: 'fx', td: ['EUR/USD', 'EUR/HUF'], yahoo: ['EURUSD=X', 'EURHUF=X'], tv: ['EURUSD', 'EURHUF'] }],
+  [/^(s&?p ?500|sp500|s&p)$/, { prefer: 'index', td: ['SPY'], yahoo: ['^GSPC', 'SPY'], tv: ['SPX'] }],
+  [/^(nasdaq)$/, { prefer: 'index', td: ['QQQ'], yahoo: ['^IXIC', 'QQQ'], tv: ['NDX', 'IXIC'] }],
+  [/^(dow|dow jones)$/, { prefer: 'index', td: ['DIA'], yahoo: ['^DJI', 'DIA'], tv: ['DJI'] }],
+  [/^(dax)$/, { prefer: 'index', td: ['DAX'], yahoo: ['^GDAXI'], tv: ['DAX'] }],
+  [/^(bux)$/, { prefer: 'index', td: [], yahoo: [], tv: ['BUX'] }],
+  [/^(richter)$/, { prefer: 'stock', td: ['RICHT'], yahoo: ['Richter Gedeon'], tv: ['RICHTER'] }],
+  [/^(telekom|magyar telekom)$/, { prefer: 'stock', td: ['Magyar Telekom'], yahoo: ['Magyar Telekom'], tv: ['MTELEKOM'] }],
 ];
 const fold = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 export function expandQuery(q, provider) {
   const f = fold(q);
   const hit = ALIASES.find(([re]) => re.test(f));
-  return [...new Set([...(hit ? hit[1][provider] : []), q])];
+  return { queries: [...new Set([...(hit ? hit[1][provider] ?? [] : []), q])], prefer: hit?.[1].prefer };
 }
 
 // Rank search results: exact symbol, primary listings and plain stocks first; drop warrants.
-const MAJOR = new Set(['NASDAQ', 'NYSE', 'XETR', 'LSE', 'BSE', 'Euronext', 'SIX', 'TSX', 'NMS', 'NYQ', 'BUD', 'GER', 'COMMODITY', 'PHYSICAL CURRENCY', 'CCC', 'CCY', 'CMX', 'NYM']);
-export function rank(items, q) {
+const MAJOR = new Set(['NASDAQ', 'NYSE', 'XETR', 'LSE', 'BSE', 'Euronext', 'SIX', 'TSX', 'NMS', 'NYQ', 'BUD', 'GER', 'COMMODITY', 'PHYSICAL CURRENCY', 'CCC', 'CCY', 'CMX', 'NYM', 'BET', 'TVC', 'SP', 'FX_IDC', 'BITSTAMP', 'COINBASE', 'AMEX', 'EURONEXT']);
+export function rank(items, q, prefer) {
   const Q = q.toUpperCase();
   const score = (x) =>
     (x.symbol.toUpperCase() === Q ? 0 : 10) +
     (x.type === 'stock' || x.type === 'commodity' || x.type === 'fx' || x.type === 'index' ? 0 : 3) +
     (MAJOR.has(x.exchange) ? 0 : 2) +
-    (x.region === 'us' ? 0 : 1);
+    (x.region === 'us' ? 0 : 1) +
+    (x.synthetic ? 1 : 0) +
+    (prefer && x.type !== prefer ? 20 : 0);
   const seen = new Set();
   return items
     .filter((x) => x.type !== 'warrant')

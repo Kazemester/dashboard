@@ -650,3 +650,14 @@ select.input option { background: #0a0f12; }
 .stk-d-price .big-num { font-size: 32px; }
 .stk-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px 12px; border-top: 1px solid var(--line); padding-top: 10px; font-variant-numeric: tabular-nums; font-size: 13px; }
 .stk-stats > div { display: flex; flex-direction: column; gap: 2px; }
+.day-range { position: relative; height: 1px; background: var(--line-strong); margin: 0 4px; }
+.day-range i { position: absolute; top: -3px; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; background: var(--accent); }
+.stk-res-price { font-family: var(--font-ui); font-weight: 500; font-size: 13px; color: var(--text); }
+.stk-res-price .up { color: var(--accent); font-size: 10.5px; }
+.stk-res-price .down { color: var(--danger); font-size: 10.5px; }
+.tv-chart { width: 100%; height: 220px; min-height: 180px; border: 0; display: block; flex-shrink: 0; }
+.stk-perf { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; font-family: var(--font-mono); font-size: 11.5px; }
+.stk-perf > div { display: flex; flex-direction: column; gap: 2px; }
+.stk-perf .up span:last-child { color: var(--accent); }
+.stk-perf .down span:last-child { color: var(--danger); }
+.tv-link { align-self: flex-end; margin-top: -4px; }

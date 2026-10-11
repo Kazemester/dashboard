@@ -4,10 +4,35 @@ import { useWidgetData, fmtNum } from '../hooks.js';
 import { Sparkline, LineChart } from '../components/Charts.jsx';
 
 const TYPE_LABEL = { stock: 'részvény', etf: 'ETF', index: 'index', commodity: 'nyersanyag', fx: 'deviza', crypto: 'kripto', other: '' };
-const digitsFor = (p) => (p == null ? 2 : p >= 1000 ? 2 : p >= 1 ? 2 : 4);
+const digitsFor = (p) => (p == null ? 2 : Number.isInteger(p) ? 0 : Math.abs(p) >= 1 ? 2 : 4);
 const money = (v, cur) => (v == null ? '–' : `${fmtNum(v, digitsFor(v))}${cur ? ` ${cur}` : ''}`);
 const pct = (v) => (v == null ? '–' : `${v >= 0 ? '+' : '−'}${fmtNum(Math.abs(v), 2)}%`);
 const itemKey = (i) => (i.ids ? Object.values(i.ids).join('|') : `${i.provider}:${i.id}`);
+const PROVIDER_LABEL = { twelvedata: 'TWELVE DATA', tradingview: 'TRADINGVIEW', yahoo: 'YAHOO' };
+
+// Where today's price sits between the day's low and high.
+function DayRange({ range, price }) {
+  if (!range || range.high <= range.low || price == null) return <span />;
+  const f = Math.max(0, Math.min(1, (price - range.low) / (range.high - range.low)));
+  return (
+    <span className="day-range" title={`Napi sáv: ${fmtNum(range.low, digitsFor(range.low))} – ${fmtNum(range.high, digitsFor(range.high))}`}>
+      <i style={{ left: `${f * 100}%` }} />
+    </span>
+  );
+}
+
+// TradingView's official embeddable chart (used when the provider has no price history API).
+function TvChart({ symbol }) {
+  const cfg = {
+    symbols: [[symbol, `${symbol}|1D`]], chartOnly: true, width: '100%', height: '100%', locale: 'hu', colorTheme: 'dark', autosize: true,
+    showVolume: false, showMA: false, hideDateRanges: false, hideMarketStatus: true, hideSymbolLogo: true, scalePosition: 'right', scaleMode: 'Normal',
+    fontFamily: 'JetBrains Mono, monospace', fontSize: '10', noTimeScale: false, valuesTracking: '1', changeMode: 'price-and-percent', chartType: 'area',
+    lineWidth: 2, lineType: 0, isTransparent: true, lineColor: 'rgba(103, 232, 249, 1)', topColor: 'rgba(103, 232, 249, 0.22)', bottomColor: 'rgba(103, 232, 249, 0)',
+    gridLineColor: 'rgba(103, 232, 249, 0.06)', dateRanges: ['1d|1', '1w|15', '1m|30', '3m|60', '12m|1D', '60m|1W', 'all|1M'],
+  };
+  const src = `https://www.tradingview-widget.com/embed-widget/symbol-overview/?locale=hu#${encodeURIComponent(JSON.stringify(cfg))}`;
+  return <iframe className="tv-chart" src={src} title={symbol} loading="lazy" />;
+}
 
 function useMeta() {
   const [meta, setMeta] = useState(null);
@@ -76,6 +101,13 @@ function Search({ widget, meta, onAdd, onClose, has }) {
                   <span className="stk-res-name">{r.name}</span>
                 </div>
                 <span className="stk-res-meta">
+                  {r.price != null && (
+                    <b className="stk-res-price">
+                      {fmtNum(r.price, digitsFor(r.price))}
+                      {r.changePct != null && <span className={r.changePct >= 0 ? 'up' : 'down'}> {pct(r.changePct)}</span>}
+                      <br />
+                    </b>
+                  )}
                   {r.exchange}
                   {r.currency ? ` · ${r.currency}` : ''}
                   {TYPE_LABEL[r.type] ? ` · ${TYPE_LABEL[r.type]}` : ''}
@@ -131,14 +163,22 @@ function Detail({ item, provider, meta, onBack, onRemove }) {
           </div>
         </div>
       </div>
-      <div className="chips">
+      {!data?.embed && <div className="chips">
         {Object.entries(meta?.ranges ?? {}).map(([k, label]) => (
           <button key={k} className={`chip ${range === k ? 'chip-on' : ''}`} onClick={() => setRange(k)}>
             {label}
           </button>
         ))}
-      </div>
+      </div>}
       {error && <div className="w-error sm">{error}</div>}
+      {data?.embed && (
+        <>
+          <TvChart symbol={data.embed.symbol} />
+          <a className="muted sm tv-link" href={`https://www.tradingview.com/symbols/${data.embed.symbol.replace(':', '-')}/`} target="_blank" rel="noreferrer">
+            Teljes grafikon a TradingView-n ↗
+          </a>
+        </>
+      )}
       {!data && !error && <div className="loading">GRAFIKON…</div>}
       {series.length > 1 && <LineChart points={series.map((p) => ({ x: fmtX(p.t), y: p.close }))} goal={range === '1d' ? st.prevClose : undefined} height={140} digits={digitsFor(price)} />}
       {data && (
@@ -163,6 +203,19 @@ function Detail({ item, provider, meta, onBack, onRemove }) {
             ))}
         </div>
       )}
+      {data?.perf && (
+        <div className="stk-perf">
+          {Object.entries(data.perf)
+            .filter(([, v]) => v != null)
+            .map(([k, v]) => (
+              <div key={k} className={v >= 0 ? 'up' : 'down'}>
+                <span className="eyebrow">{k}</span>
+                <span>{pct(v)}</span>
+              </div>
+            ))}
+        </div>
+      )}
+      {data?.delayMin > 0 && <div className="muted sm">Az adat kb. {data.delayMin} perc késéssel érkezik.</div>}
     </div>
   );
 }
@@ -215,7 +268,7 @@ export default function Stocks({ widget, onUpdateConfig }) {
                 </span>
                 <span className="muted sm stk-sub">{i.error ? i.error : i.name}</span>
               </div>
-              {!i.error && <Sparkline values={i.spark ?? []} height={22} className={up ? 'up' : 'down'} />}
+              {!i.error && (i.spark?.length > 1 ? <Sparkline values={i.spark} height={22} className={up ? 'up' : 'down'} /> : <DayRange range={i.range} price={i.price} />)}
               {!i.error && (
                 <div className="stk-price">
                   <span>{money(i.price, i.currency)}</span>
@@ -230,7 +283,7 @@ export default function Stocks({ widget, onUpdateConfig }) {
         <button className="btn btn-ghost sm" onClick={() => setMode('search')}>
           + Hozzáadás
         </button>
-        <span className="eyebrow">{data ? `${data.provider === 'twelvedata' ? 'TWELVE DATA' : 'YAHOO'} · ${new Date(items[0]?.fetchedAt ?? Date.now()).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}` : ''}</span>
+        <span className="eyebrow">{data ? `${PROVIDER_LABEL[data.provider] ?? data.provider} · ${new Date(items[0]?.fetchedAt ?? Date.now()).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}` : ''}</span>
       </div>
     </div>
   );
