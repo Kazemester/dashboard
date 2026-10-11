@@ -6,7 +6,7 @@ export const CELL_W = 96;
 export const CELL_H = 44;
 export const GAP = 14;
 const MIN_COLS = 160;
-const EDGE = 8; // keep at least this many free cells left / above the content (the world grows as needed)
+const EDGE = 3; // keep at least this many free cells left / above the content (the world grows as needed)
 const ZOOM_MIN = 0.1;
 const ZOOM_MAX = 2;
 const VIEW_KEY = 'nexus:canvas-view';
@@ -46,6 +46,48 @@ export function findFreeSpot(items, w, h, cx, cy) {
   }
   const b = items.reduce((m, it) => Math.max(m, it.y + it.h), 0);
   return { x: x0, y: b + 1 };
+}
+
+// After a drag: the moved tile stays where it was dropped, or goes to the nearest free spot.
+function resolveDrag(layout, id) {
+  const moved = layout.find((l) => l.i === id);
+  const others = layout.filter((l) => l.i !== id);
+  if (!moved || !others.some((o) => overlaps(o, moved))) return layout;
+  const spot = findFreeSpot(others, moved.w, moved.h, moved.x + moved.w / 2, moved.y + moved.h / 2);
+  return layout.map((l) => (l.i === id ? { ...l, ...spot } : l));
+}
+
+// After a resize: the resized tile keeps its size; tiles it now covers step aside to the nearest free spot.
+function resolveResize(layout, id) {
+  const resized = layout.find((l) => l.i === id);
+  if (!resized) return layout;
+  const rest = layout.filter((l) => l.i !== id);
+  const result = [resized, ...rest.filter((l) => !overlaps(l, resized))];
+  for (const l of rest.filter((o) => overlaps(o, resized))) {
+    result.push({ ...l, ...findFreeSpot(result, l.w, l.h, l.x + l.w / 2, l.y + l.h / 2) });
+  }
+  return result;
+}
+
+// "Rendezés": pack tiles top-left first, in reading order, into a band `width` cells wide.
+export function arrange(items, width, origin = { x: 24, y: 24 }) {
+  const order = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
+  const W = Math.max(width, ...order.map((l) => l.w));
+  const placed = [];
+  for (const l of order) {
+    let spot = null;
+    for (let y = 0; !spot; y++) {
+      for (let x = 0; x + l.w <= W; x++) {
+        const cand = { x, y, w: l.w, h: l.h };
+        if (!placed.some((p) => overlaps(p, cand))) {
+          spot = cand;
+          break;
+        }
+      }
+    }
+    placed.push({ ...l, x: spot.x, y: spot.y });
+  }
+  return placed.map((l) => ({ ...l, x: l.x + origin.x, y: l.y + origin.y }));
 }
 
 function loadView() {
@@ -101,6 +143,9 @@ export default function Canvas({ items, onItemsChange, editing, children, onApi 
     [items, size],
   );
 
+  const fitRef = useRef(fit);
+  fitRef.current = fit;
+
   // First visit: show everything.
   useEffect(() => {
     if (!view && items.length && size.w > 0) fit();
@@ -137,12 +182,22 @@ export default function Canvas({ items, onItemsChange, editing, children, onApi 
   useEffect(() => {
     onApi?.({
       centerCell,
+      // tidy everything into a band as wide as the screen (at 100%), then show it all
+      arrange: () => {
+        // band width chosen so the packed block has the screen's aspect ratio (fills the screen when fitted)
+        const area = items.reduce((a, l) => a + l.w * (CELL_W + GAP) * l.h * (CELL_H + GAP), 0);
+        const widthPx = Math.sqrt(area * (size.w / Math.max(1, size.h)));
+        const cols = Math.min(48, Math.max(8, Math.round(widthPx / (CELL_W + GAP))));
+        const next = arrange(items, cols, { x: EDGE * 4, y: EDGE * 4 });
+        onItemsChange(next);
+        setTimeout(() => fitRef.current?.(next), 0);
+      },
       reveal: (l) => {
         const p = toPx(l);
         centerOn(p.x + p.w / 2, p.y + p.h / 2);
       },
     });
-  }, [onApi, centerCell, centerOn]);
+  }, [onApi, centerCell, centerOn, items, size, onItemsChange]);
 
   // ---------- wheel: pan, ctrl/⌘ (or pinch) zooms ----------
   useEffect(() => {
@@ -178,7 +233,12 @@ export default function Canvas({ items, onItemsChange, editing, children, onApi 
         setSpace(true);
       }
     };
-    const up = (e) => e.code === 'Space' && setSpace(false);
+    const up = (e) => {
+      if (e.code !== 'Space') return;
+      setSpace(false);
+      // space is our pan key: don't let it also "click" the focused button (e.g. toggle edit mode off)
+      if (!/input|textarea|select/i.test(e.target.tagName) && !e.target.isContentEditable) e.preventDefault();
+    };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     return () => {
@@ -187,10 +247,14 @@ export default function Canvas({ items, onItemsChange, editing, children, onApi 
     };
   }, []);
 
+  // Capture phase: with space held (or the middle button) we pan even over a tile, and preventDefault on
+  // pointerdown suppresses the mousedown the tile's drag handler would otherwise get. Tiles stay
+  // isDraggable the whole time — toggling it does not reach react-grid-layout's memoised items.
   const onPointerDown = (e) => {
     const onTile = e.target.closest('.react-grid-item, .canvas-ui');
     if (!(e.button === 1 || (e.button === 0 && (space || !onTile)))) return;
     e.preventDefault();
+    e.stopPropagation();
     pan.current = { id: e.pointerId, sx: e.clientX, sy: e.clientY, x: v.x, y: v.y };
     vpRef.current.setPointerCapture(e.pointerId);
     setPanning(true);
@@ -225,9 +289,72 @@ export default function Canvas({ items, onItemsChange, editing, children, onApi 
   );
 
   const strip = (layout) => layout.map(({ i, x, y, w, h, minW, minH }) => ({ i, x, y, w, h, minW, minH }));
-  const commit = (layout) => onItemsChange(normalise(strip(layout)));
+  const interacting = useRef(false); // a tile is being dragged / resized
+
+  // The world starts at cell 0; keep at least half a screen of it left of / above the viewport, so wherever
+  // you pan there is canvas under the cursor to drop onto. Grows by shifting all tiles and the view together.
+  useEffect(() => {
+    if (!view || interacting.current || !items.length) return;
+    const cw = (CELL_W + GAP) * view.zoom;
+    const ch = (CELL_H + GAP) * view.zoom;
+    const dx = view.x > -size.w / 2 ? Math.ceil((view.x + size.w / 2) / cw) + 10 : 0;
+    const dy = view.y > -size.h / 2 ? Math.ceil((view.y + size.h / 2) / ch) + 10 : 0;
+    if (!dx && !dy) return;
+    onItemsChange(items.map((l) => ({ ...l, x: l.x + dx, y: l.y + dy })));
+    setView((c) => ({ ...c, x: c.x - dx * cw, y: c.y - dy * ch }));
+    // a pan in progress computes the view from its start point — move that too, or the next mouse move undoes this
+    if (pan.current) {
+      pan.current.x -= dx * cw;
+      pan.current.y -= dy * ch;
+    }
+  }, [view, items, size, onItemsChange]);
+  const [ghost, setGhost] = useState(null);
+  const lastDrag = useRef(null);
+
+  // While dragging, tiles may overlap freely (so the tile follows the cursor); show where it will land.
+  const onStart = () => {
+    interacting.current = true;
+  };
+  const onDrag = (layout, _old, item) => {
+    const resolved = resolveDrag(strip(layout), item.i).find((l) => l.i === item.i);
+    lastDrag.current = { i: item.i, x: item.x, y: item.y };
+    setGhost(resolved.x !== item.x || resolved.y !== item.y ? resolved : null);
+  };
+  // react-grid-layout stores the very `layout` array it passes to onDragStop / onResizeStop right after
+  // calling us. Writing the resolved positions into those objects keeps its internal state and ours identical
+  // (handing them over as props instead races with that setState).
+  const applyTo = (rglLayout, resolved) => {
+    const byId = Object.fromEntries(resolved.map((l) => [l.i, l]));
+    for (const l of rglLayout) {
+      const r = byId[l.i];
+      if (r) Object.assign(l, { x: r.x, y: r.y, w: r.w, h: r.h });
+    }
+  };
+  const onDragStop = (layout, _old, item) => {
+    interacting.current = false;
+    setGhost(null);
+    // land exactly where the preview / placeholder last was (the drop event can round one cell differently)
+    const last = lastDrag.current?.i === item.i ? lastDrag.current : null;
+    lastDrag.current = null;
+    const dropped = strip(layout).map((l) => (last && l.i === item.i ? { ...l, x: last.x, y: last.y } : l));
+    const final = normalise(resolveDrag(dropped, item.i));
+    applyTo(layout, final);
+    onItemsChange(final);
+  };
+  const onResizeStop = (layout, _old, item) => {
+    interacting.current = false;
+    const final = normalise(resolveResize(strip(layout), item.i));
+    applyTo(layout, final);
+    onItemsChange(final);
+  };
 
   const layout = useMemo(() => items.map((l) => ({ ...l })), [items]);
+  // react-grid-layout's items only re-render when their children change. When the drag handle mode flips
+  // (zoomed out: whole tile; otherwise: header) hand them fresh elements once so the new mode applies.
+  const grabAll = v.zoom < 0.5;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // (plain array map: React.Children.map would prefix the keys react-grid-layout matches the layout by)
+  const tiles = useMemo(() => [].concat(children).map((c) => React.cloneElement(c)), [children, grabAll]);
   const content = bounds(items);
 
   // ---------- minimap ----------
@@ -262,7 +389,7 @@ export default function Canvas({ items, onItemsChange, editing, children, onApi 
       ref={vpRef}
       className={`canvas-viewport ${panning ? 'panning' : ''} ${space ? 'space' : ''} ${v.zoom < 0.3 ? 'far' : ''}`}
       style={bg}
-      onPointerDown={onPointerDown}
+      onPointerDownCapture={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endPan}
       onPointerCancel={endPan}
@@ -276,18 +403,23 @@ export default function Canvas({ items, onItemsChange, editing, children, onApi 
           rowHeight={CELL_H}
           margin={[GAP, GAP]}
           compactType={null}
-          preventCollision
+          allowOverlap
           transformScale={v.zoom}
-          isDraggable={editing && !space}
-          isResizable={editing && !space}
-          draggableHandle=".tile-head"
-          draggableCancel=".no-drag"
+          isDraggable={editing}
+          isResizable={editing}
+          // zoomed out, headers are tiny targets: let the whole tile be grabbed (except controls)
+          draggableHandle={grabAll ? undefined : '.tile-head'}
+          draggableCancel={grabAll ? 'button, input, textarea, select, a, iframe, .react-resizable-handle' : '.no-drag'}
           resizeHandles={['se']}
-          onDragStop={commit}
-          onResizeStop={commit}
+          onDragStart={onStart}
+          onResizeStart={onStart}
+          onDrag={onDrag}
+          onDragStop={onDragStop}
+          onResizeStop={onResizeStop}
         >
-          {children}
+          {tiles}
         </GridLayout>
+        {ghost && <div className="canvas-ghost" style={{ left: toPx(ghost).x, top: toPx(ghost).y, width: toPx(ghost).w, height: toPx(ghost).h }} />}
       </div>
 
       {mmArea && (

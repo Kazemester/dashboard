@@ -19,6 +19,9 @@ Az első indításkor üres a fedélzet, és megnyílik a modul-katalógus.
   - mozgatás: az üres háttér húzása, görgő vagy touchpad, középső egérgomb, vagy **szóköz + húzás**
   - nagyítás: **Ctrl/⌘ + görgő** vagy csippentés, mindig a kurzor felé; −/+, 100% és **⤢ Mindent mutat** gomb jobb alul
   - **minitérkép** bal alul: kattints vagy húzd, és odaugrik
+  - **Rendezés** gomb a fejlécben: egy kattintással hézag nélküli, a képernyő arányához igazított rácsba rendezi a csempéket (12 másodpercig visszavonható)
+  - húzás közben a csempe a kurzort követi; ha foglalt helyre engednéd el, szaggatott keret mutatja, melyik legközelebbi szabad helyre kerül. Átméretezéskor a kitakart szomszédok húzódnak arrébb
+  - kicsinyítve (50% alatt) szerkesztéskor az egész csempe megfogható, nem csak a fejléce
   - telefonon a csempék egymás alatt jelennek meg (görgethető lista)
 - **+ Modul**: új csempe hozzáadása a katalógusból (a képernyő közepére, az első szabad helyre)
 - **Szerkesztés**: a csempék szaggatott keretet kapnak, ilyenkor a fejlécüknél fogva húzhatók, a jobb alsó sarkuknál átméretezhetők, a ✕-szel törölhetők

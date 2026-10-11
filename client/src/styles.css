@@ -709,7 +709,10 @@ select.input option { background: var(--surface); color: var(--text); }
 .canvas-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
 .canvas-grid { min-height: 100px; }
 /* tiles are moved by RGL inside the scaled world; keep their own transitions for drag feedback only */
-.canvas-world .react-grid-item:not(.react-draggable-dragging):not(.resizing) { transition: transform 0.15s ease, width 0.15s, height 0.15s; }
+/* no position transitions on the canvas: when the world grows, tiles and view must move in the same frame */
+.canvas-world .react-grid-item { transition: none !important; }
+.canvas-ghost { position: absolute; z-index: 1; border: 1px dashed var(--accent); background: var(--accent-soft); border-radius: var(--radius); pointer-events: none; }
+.canvas-ghost::after { content: 'ide kerül'; position: absolute; left: 8px; top: 6px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
 .canvas-ui { position: absolute; z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); border: 1px solid var(--line-strong); backdrop-filter: blur(6px); }
 .zoom-ctrl { right: 16px; bottom: 16px; display: flex; align-items: center; gap: 2px; padding: 3px; }
 .zoom-pct { min-width: 52px; background: transparent; border: none; cursor: pointer; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
@@ -721,3 +724,4 @@ select.input option { background: var(--surface); color: var(--text); }
 @media (max-width: 1100px) { .canvas-hint { display: none; } }
 /* on the canvas the dot grid must not show through the tiles */
 .canvas-world .tile { background: color-mix(in srgb, var(--bg) 97%, var(--text)); }
+.toast.toast-info { border-color: var(--accent-dim); color: var(--text); display: flex; align-items: center; gap: 14px; cursor: default; z-index: 61; }

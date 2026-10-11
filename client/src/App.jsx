@@ -57,6 +57,8 @@ export default function App() {
   const canvasTimer = useRef(null);
   const canvasApi = useRef(null);
   const isDesktop = useIsDesktop();
+  const [undo, setUndo] = useState(null); // previous canvas after "Rendezés"
+  const undoTimer = useRef(null);
 
   useEffect(() => {
     api
@@ -118,6 +120,18 @@ export default function App() {
     }
     return items;
   }, [canvas, widgets]);
+
+  const arrangeCanvas = () => {
+    const before = safeCanvas;
+    canvasApi.current?.arrange();
+    setUndo(before);
+    clearTimeout(undoTimer.current);
+    undoTimer.current = setTimeout(() => setUndo(null), 12_000);
+  };
+  const undoArrange = () => {
+    changeCanvas(undo);
+    setUndo(null);
+  };
 
   const onLayoutChange = useCallback(
     (_current, all) => {
@@ -213,10 +227,20 @@ export default function App() {
         editing={editing}
         onToggleEdit={() => setEditing((e) => !e)}
         onAdd={() => setPicker(true)}
+        onArrange={isDesktop && widgets.length > 1 ? arrangeCanvas : null}
         count={widgets.length}
         appearance={appearance}
         onAppearance={changeAppearance}
       />
+
+      {undo && (
+        <div className="toast toast-info">
+          Csempék rendezve.
+          <button className="btn btn-primary sm" onClick={undoArrange}>
+            Visszavonás
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="toast" onClick={() => setError(null)}>

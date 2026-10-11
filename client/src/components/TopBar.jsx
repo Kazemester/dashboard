@@ -3,7 +3,7 @@ import { useNow } from '../hooks.js';
 import { api } from '../api.js';
 import ThemePicker from './ThemePicker.jsx';
 
-export default function TopBar({ editing, onToggleEdit, onAdd, count, appearance, onAppearance }) {
+export default function TopBar({ editing, onToggleEdit, onAdd, onArrange, count, appearance, onAppearance }) {
   const now = useNow(1000);
   const [status, setStatus] = useState(null);
   useEffect(() => {
@@ -38,6 +38,11 @@ export default function TopBar({ editing, onToggleEdit, onAdd, count, appearance
           </span>
         </div>
         <ThemePicker appearance={appearance} onChange={onAppearance} />
+        {onArrange && (
+          <button className="btn btn-ghost" onClick={onArrange} title="Csempék rendezése hézag nélküli rácsba">
+            Rendezés
+          </button>
+        )}
         <button className={`btn btn-ghost ${editing ? 'btn-active' : ''}`} onClick={onToggleEdit}>
           {editing ? 'Kész' : 'Szerkesztés'}
         </button>
