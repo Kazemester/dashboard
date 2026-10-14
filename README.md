@@ -37,7 +37,7 @@ A fejléc mindig látszik, görgetés közben is. A **Téma** gombbal 7 kész t�
 
 ## Modulok
 
-32 modultípus és több kész preset, kategóriánként. A legtöbbhöz **nem kell fiók vagy API-kulcs**.
+33 modultípus és több kész preset, kategóriánként. A legtöbbhöz **nem kell fiók vagy API-kulcs**.
 
 **Fókusz & feladatok**
 | Modul | Mit csinál |
@@ -99,6 +99,7 @@ A fejléc mindig látszik, görgetés közben is. A **Téma** gombbal 7 kész t�
 | ◎ JARVIS napi brief | A többi csempe adataiból napi összefoglaló. AI kulcs nélkül is működik (egyszerű szöveges összefoglaló). |
 | ◉ AI Chat | Chat Grokkal / bármilyen OpenAI-kompatibilis modellel |
 | ✉ Mail bot | IMAP-on átnézi a leveleket, kiemeli a fontosakat, teendőlistát ír |
+| ⌂ Látványterv | Vázlatból vagy SketchUp/Revit képernyőképből fotórealisztikus látványterv a gépeden futó ComfyUI-jal |
 
 ![Modul katalógus](docs/catalog.png)
 
@@ -170,6 +171,24 @@ A bot csak olvas (`BODY.PEEK`), ezért a levelek nem lesznek olvasottnak jelölv
 **Helyi modell (Ollama):** a kis modellek egyszerre csak kevés szöveget látnak (alapból ~4000 token), ezért a bot ilyenkor rövidebben adja át a leveleket. Egy 7B-s modell már használható összefoglalót ad, de a felhős modellek (Grok, GPT) érezhetően jobbak. Egy helyi modell egy-két percig is dolgozhat egy futáson.
 
 > ⚠️ **Adatvédelem:** felhős AI esetén a levelek tárgya, feladója és szövegének eleje a szolgáltatóhoz kerül. Ollamával minden a gépeden marad.
+
+### Látványterv (ComfyUI)
+
+![Látványterv](docs/latvanyterv.png)
+
+Vázlatból, kézi rajz fotójából vagy SketchUp/Revit képernyőképből készít látványtervet. A képet a **saját gépeden futó [ComfyUI](https://www.comfy.org/)** rendereli Stable Diffusion vagy FLUX modellel. Ha van hozzá ControlNet modell, a vázlat vonalai és a perspektíva megmaradnak. Semmi nem megy felhőbe. (Az Ollama erre nem jó, mert az szöveges modelleket futtat.)
+
+Beállítás Macen:
+1. Telepítsd a **ComfyUI Desktop** alkalmazást (comfy.org). Ez a **8000-es** porton fut, a kézi telepítésű ComfyUI a 8188-ason.
+2. Tölts le egy modellt a ComfyUI `models/checkpoints` mappájába, például egy SDXL modellt (`sd_xl_base_1.0.safetensors`, vagy egy építészetre finomhangolt SDXL modellt a Civitai-ról), és hozzá egy **illő ControlNetet** a `models/controlnet` mappába. SDXL-hez SDXL canny vagy union ControlNet kell (pl. `controlnet-union-sdxl-1.0`), SD 1.5-höz `control_v11p_sd15_canny`. A csempe magától választ illő ControlNetet; ha nem talál, csak img2img fut.
+3. A csempe ⚙ beállításainál add meg a címet: `http://host.docker.internal:8000` (Desktop) vagy `http://host.docker.internal:8188`.
+4. Húzd a csempére a képet (vagy ⌘V), írd le angolul, mit szeretnél (pl. *modern family house, white plaster and larch cladding*), válassz hangulatot, majd **▶ Render**.
+
+Bemenet szerint két mód van:
+- **Vázlat:** vonalrajzhoz. A modell mindent újrarajzol, a ControlNet tartja a vonalakat. ControlNet nélkül ez nem működik.
+- **Képernyőkép / fotó:** fehér makett, SketchUp-nézet vagy fotó. Az eredetiből a fényt és a tömegeket is megtartja, a **Szabadság** csúszkával állíthatod, mennyire térhet el tőle.
+
+A renderek (az eredeti képpel együtt, csempénként az utolsó 40) a saját adatbázisodba kerülnek. A galériában egy képre kattintva összehasonlíthatod az eredetivel, letöltheted, vagy a beállításaival újra futtathatod. Egy SDXL render M1 Pro-n nagyjából 30–90 másodperc, egy FLUX render 1–3 perc.
 
 ### API connector példák
 

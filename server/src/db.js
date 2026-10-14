@@ -106,6 +106,21 @@ CREATE TABLE IF NOT EXISTS mail_digests (
   result     JSONB NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS renders (
+  id          SERIAL PRIMARY KEY,
+  widget_id   TEXT NOT NULL REFERENCES widgets(id) ON DELETE CASCADE,
+  prompt      TEXT NOT NULL,
+  params      JSONB NOT NULL DEFAULT '{}',
+  status      TEXT NOT NULL,
+  error       TEXT,
+  input       BYTEA NOT NULL,
+  input_type  TEXT NOT NULL,
+  output      BYTEA,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  finished_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS renders_widget ON renders (widget_id, id);
 `;
 
 export async function migrate(retries = 30) {

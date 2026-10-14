@@ -20,8 +20,11 @@ import homeassistant from './routes/homeassistant.js';
 import brief from './routes/brief.js';
 import stocks from './routes/stocks.js';
 import ai from './routes/ai.js';
+import render, { recoverRenders } from './routes/render.js';
 
 const app = express();
+// Render uploads carry a whole image; everything else stays small.
+app.use('/api/widgets/:id/render', express.json({ limit: '17mb' }));
 app.use(express.json({ limit: '1mb' }));
 
 // Optional HTTP Basic auth — set DASHBOARD_PASSWORD before exposing the app on a VM.
@@ -44,7 +47,7 @@ app.get('/api/status', async (_req, res) => {
   res.json({ llm: ai.configured, model: ai.model });
 });
 
-for (const router of [dashboard, habits, progress, pomodoro, calendar, feeds, chatRoutes, mail, items, system, markets, env, homeassistant, brief, stocks, ai]) {
+for (const router of [dashboard, habits, progress, pomodoro, calendar, feeds, chatRoutes, mail, items, system, markets, env, homeassistant, brief, stocks, ai, render]) {
   app.use('/api', router);
 }
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
@@ -62,5 +65,6 @@ app.use((err, _req, res, _next) => {
 
 const port = Number(process.env.PORT) || 3000;
 await migrate();
+await recoverRenders();
 startMailScheduler();
 app.listen(port, () => console.log(`NEXUS dashboard listening on :${port}`));

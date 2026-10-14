@@ -7,6 +7,7 @@ import News from './News.jsx';
 import ApiWidget from './ApiWidget.jsx';
 import Chat from './Chat.jsx';
 import MailDigest from './MailDigest.jsx';
+import Render from './Render.jsx';
 import Clock from './Clock.jsx';
 import Todo from './Todo.jsx';
 import Notes from './Notes.jsx';
@@ -206,6 +207,37 @@ export const REGISTRY = {
       { key: 'instructions', label: 'Extra szabályok a botnak', type: 'textarea', placeholder: 'pl. A banki és NAV levelek mindig fontosak. A LinkedIn értesítéseket hagyd ki.' },
       { key: 'language', label: 'Nyelv', placeholder: 'Hungarian' },
       { key: 'model', label: 'Modell (üresen: a fejléc AI beállításaiban megadott)', placeholder: 'grok-4' },
+    ],
+  },
+  render: {
+    name: 'Látványterv',
+    icon: '⌂',
+    accent: 'amber',
+    category: 'ai',
+    description: 'Vázlatból vagy SketchUp / Revit képernyőképből fotórealisztikus látványterv, a gépeden futó ComfyUI-jal (Stable Diffusion / FLUX + ControlNet).',
+    size: { w: 5, h: 12, minW: 4, minH: 8 },
+    component: Render,
+    defaultConfig: { comfyUrl: '', steps: 25, cfg: 6, megapixels: 1 },
+    fields: [
+      {
+        key: 'comfyUrl',
+        label: 'ComfyUI címe',
+        placeholder: 'http://host.docker.internal:8188',
+        help: 'ComfyUI Desktop alkalmazás: http://host.docker.internal:8000 · kézi telepítés: http://host.docker.internal:8188. Üresen a COMFYUI_URL környezeti változó vagy a 8188-as port.',
+      },
+      { key: 'steps', label: 'Lépések (több = lassabb, részletesebb)', type: 'number', min: 4, max: 60 },
+      { key: 'cfg', label: 'CFG (mennyire kövesse a promptot)', type: 'number', min: 1, max: 15, help: 'SDXL / SD1.5: 5–7. Turbo / Lightning modellekhez 1–2 és 6–8 lépés.' },
+      {
+        key: 'megapixels',
+        label: 'Felbontás',
+        type: 'select',
+        options: [
+          ['0.5', '0,5 MP (SD 1.5 modellekhez, gyors)'],
+          ['1', '1 MP (SDXL / FLUX, ~1024×1024)'],
+          ['1.5', '1,5 MP (lassabb)'],
+        ],
+      },
+      { key: 'negative', label: 'Negatív prompt (amit ne rajzoljon)', type: 'textarea', placeholder: 'blurry, distorted, warped lines, text, watermark…' },
     ],
   },
   // ---------- Fókusz & feladatok ----------

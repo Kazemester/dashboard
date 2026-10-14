@@ -750,3 +750,30 @@ select.input option { background: var(--surface); color: var(--text); }
 .mail-preview p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
 .mail-ask { flex: 1; min-height: 160px; }
 .mail-suggest { display: flex; flex-direction: column; gap: 8px; }
+
+/* ---------- Látványterv (ComfyUI render) ---------- */
+.render { display: flex; flex-direction: column; gap: 8px; height: 100%; overflow-y: auto; padding-right: 2px; }
+.render-status { display: flex; align-items: center; gap: 6px; background: none; border: none; color: var(--muted); cursor: pointer; padding: 0; letter-spacing: 0.06em; }
+.render-status:hover { color: var(--accent); }
+.render-status .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+.render-status .dot.ok { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.render-status .dot.bad { background: var(--danger); }
+.render-models { display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--line); padding: 8px; }
+.render-drop { position: relative; min-height: 96px; border: 1px dashed var(--line-strong); display: flex; align-items: center; justify-content: center; text-align: center; padding: 10px; cursor: pointer; flex-shrink: 0; }
+.render-drop.has { padding: 0; border-style: solid; }
+.render-drop.drag, .render-drop:hover { border-color: var(--accent); }
+.render-drop img { display: block; width: 100%; max-height: 220px; object-fit: contain; }
+.render-slider { display: grid; grid-template-columns: 74px 1fr 40px; align-items: center; gap: 8px; }
+.render-slider input { accent-color: var(--accent); width: 100%; }
+.render-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
+.render-thumb { position: relative; aspect-ratio: 1; padding: 0; border: 1px solid var(--line); background: transparent; cursor: pointer; overflow: hidden; }
+.render-thumb:hover { border-color: var(--accent); }
+.render-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.render-thumb.running img, .render-thumb.error img { opacity: 0.35; filter: grayscale(1); }
+.render-badge { position: absolute; left: 4px; bottom: 4px; font-size: 9.5px; color: var(--accent); background: color-mix(in srgb, var(--bg) 80%, transparent); padding: 1px 4px; }
+.render-badge.bad { color: var(--danger); }
+.render-modal { width: min(1100px, 100%); display: flex; flex-direction: column; gap: 8px; }
+.render-modal img { width: 100%; max-height: 72vh; object-fit: contain; background: #000; }
+.render-meta { max-height: 3.6em; overflow: auto; }
+.modal-foot a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+.btn.danger:hover { color: var(--danger); border-color: var(--danger); }
