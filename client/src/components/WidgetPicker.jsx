@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { CATALOG, CATEGORIES } from '../widgets/registry.js';
+import useBackdropClose from './useBackdropClose.js';
 
 export default function WidgetPicker({ onPick, onClose }) {
+  const backdrop = useBackdropClose(onClose);
   const [filter, setFilter] = useState('');
   const [cat, setCat] = useState('all');
 
@@ -18,7 +20,7 @@ export default function WidgetPicker({ onPick, onClose }) {
   );
 
   return (
-    <div className="overlay" onClick={onClose}>
+    <div className="overlay" {...backdrop}>
       <aside className="drawer" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>

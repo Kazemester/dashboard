@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import useBackdropClose from './useBackdropClose.js';
 
 // OpenAI-compatible providers. Model names are suggestions — every provider lists its current models.
 const PRESETS = [
@@ -12,6 +13,7 @@ const PRESETS = [
 const presetOf = (url) => PRESETS.find((p) => p.baseUrl && url?.startsWith(p.baseUrl))?.id ?? 'custom';
 
 export default function AiSettings({ onClose, onSaved }) {
+  const backdrop = useBackdropClose(onClose);
   const [cur, setCur] = useState(null);
   const [preset, setPreset] = useState('xai');
   const [baseUrl, setBaseUrl] = useState('');
@@ -83,7 +85,7 @@ export default function AiSettings({ onClose, onSaved }) {
 
   const p = PRESETS.find((x) => x.id === preset);
   return (
-    <div className="overlay center" onClick={onClose}>
+    <div className="overlay center" {...backdrop}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>

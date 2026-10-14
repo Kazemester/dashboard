@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import useBackdropClose from './useBackdropClose.js';
 
 function Field({ field, value, onChange }) {
   const common = { className: 'input', value: value ?? '', placeholder: field.placeholder };
@@ -63,6 +64,7 @@ function Field({ field, value, onChange }) {
 }
 
 export default function ConfigModal({ widget, def, onSave, onClose }) {
+  const backdrop = useBackdropClose(onClose);
   const [title, setTitle] = useState(widget.title);
   const [config, setConfig] = useState(() => ({ ...(def.defaultConfig ?? {}), ...widget.config }));
   const [saving, setSaving] = useState(false);
@@ -86,7 +88,7 @@ export default function ConfigModal({ widget, def, onSave, onClose }) {
   };
 
   return (
-    <div className="overlay center" onClick={onClose}>
+    <div className="overlay center" {...backdrop}>
       <form className="modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <div className="drawer-head">
           <div>
