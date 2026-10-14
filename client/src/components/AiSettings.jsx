@@ -19,6 +19,18 @@ export default function AiSettings({ onClose, onSaved }) {
   const [key, setKey] = useState('');
   const [busy, setBusy] = useState(null);
   const [msg, setMsg] = useState(null);
+  const [models, setModels] = useState(null); // ids offered by the saved provider
+  const [modelsErr, setModelsErr] = useState(null);
+
+  const loadModels = async () => {
+    setModelsErr(null);
+    try {
+      setModels(await api.get('/settings/ai/models'));
+    } catch (e) {
+      setModels(null);
+      setModelsErr(e.message);
+    }
+  };
 
   useEffect(() => {
     api.get('/settings/ai').then((c) => {
@@ -26,6 +38,7 @@ export default function AiSettings({ onClose, onSaved }) {
       setPreset(presetOf(c.baseUrl));
       setBaseUrl(c.baseUrl);
       setModel(c.model);
+      if (c.configured) loadModels();
     });
     const esc = (e) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', esc);
@@ -47,7 +60,9 @@ export default function AiSettings({ onClose, onSaved }) {
       const saved = await api.put('/settings/ai', body);
       setCur(saved);
       setKey('');
+      setModel(saved.model);
       onSaved?.(saved);
+      if (saved.configured) loadModels();
       if (andTest) {
         const t = await api.post('/settings/ai/test');
         setMsg({ ok: true, text: `Működik ✓ (${t.ms} ms) — válasz: „${t.answer}”` });
@@ -125,8 +140,25 @@ export default function AiSettings({ onClose, onSaved }) {
             </label>
             <label className="form-row">
               <span className="label">Modell</span>
-              <input className="input" value={model} onChange={(e) => setModel(e.target.value)} placeholder="pl. grok-4" />
-              <span className="help">A modellnevek változnak; a szolgáltató oldalán láthatod az aktuális listát.</span>
+              <input className="input" list="ai-models" value={model} onChange={(e) => setModel(e.target.value)} placeholder="pl. grok-4" />
+              <datalist id="ai-models">{(models ?? []).map((m) => <option key={m} value={m} />)}</datalist>
+              {models?.length > 0 ? (
+                <div className="chips ai-models">
+                  {models.slice(0, 24).map((m) => (
+                    <button key={m} type="button" className={`chip ${m === model ? 'chip-on' : ''}`} onClick={() => setModel(m)}>
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <span className="help">
+                {models?.length === 0 && preset === 'ollama' && 'Még nincs letöltött modell: futtasd a terminálban: ollama pull qwen2.5:7b — csak a nevet írd ide (qwen2.5:7b). '}
+                {models?.length > 0 ? 'A szolgáltató által elérhető modellek — kattints egyre. ' : 'Mentés után itt megjelennek a szolgáltató elérhető modelljei. '}
+                {modelsErr && <span className="danger-text">{modelsErr} </span>}
+                <button type="button" className="link-btn" onClick={loadModels}>
+                  Lista frissítése
+                </button>
+              </span>
             </label>
           </div>
         )}

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { q } from '../db.js';
-import { aiConfig, chat, invalidateAiConfig } from '../llm.js';
+import { aiConfig, chat, invalidateAiConfig, listModels } from '../llm.js';
 import { HttpError } from '../util.js';
 
 // AI provider settings edited in the header ("AI" button). The key is write-only from the UI.
@@ -29,7 +29,10 @@ r.put('/settings/ai', async (req, res) => {
     if (baseUrl && !/^https?:\/\/[^\s]+$/i.test(baseUrl)) throw new HttpError(400, 'Az API cím http(s):// kezdetű legyen');
     next.baseUrl = baseUrl || undefined;
   }
-  if (model !== undefined) next.model = String(model).trim().slice(0, 100) || undefined;
+  if (model !== undefined) {
+    // people paste "ollama pull qwen2.5:7b" — keep just the model name
+    next.model = String(model).trim().replace(/^ollama\s+(pull|run)\s+/i, '').replace(/\s+/g, '').slice(0, 100) || undefined;
+  }
   // apiKey: omitted = keep, '' / null = remove, string = replace
   if (apiKey !== undefined) next.apiKey = apiKey ? String(apiKey).trim() : undefined;
   await q(
@@ -39,6 +42,11 @@ r.put('/settings/ai', async (req, res) => {
   );
   invalidateAiConfig();
   res.json(await publicView());
+});
+
+// Models the saved provider offers — for the model picker in the dialog.
+r.get('/settings/ai/models', async (_req, res) => {
+  res.json(await listModels());
 });
 
 // Send a tiny prompt with the saved settings so the user sees right away whether they work.

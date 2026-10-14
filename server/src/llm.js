@@ -55,8 +55,29 @@ export async function chat(messages, { model, temperature = 0.4, json = false, c
     signal: AbortSignal.timeout(120_000),
   });
   if (!res.ok) {
-    throw new HttpError(502, `AI szolgáltató hiba (${res.status}): ${(await res.text()).slice(0, 300)}`);
+    const text = (await res.text()).slice(0, 300);
+    let hint = '';
+    // wrong model name → list what the provider actually offers
+    if (/model/i.test(text) && [400, 404].includes(res.status)) {
+      const available = await listModels(c).catch(() => []);
+      hint = available.length
+        ? ` — A(z) "${body.model}" modell nem elérhető. Elérhető modellek: ${available.slice(0, 15).join(', ')}`
+        : ` — A(z) "${body.model}" modell nem elérhető ennél a szolgáltatónál.`;
+    }
+    throw new HttpError(502, `AI szolgáltató hiba (${res.status}): ${text}${hint}`);
   }
   const data = await res.json();
   return data.choices?.[0]?.message?.content ?? '';
+}
+
+// Model ids offered by the provider (OpenAI-compatible GET /models — Ollama lists the pulled models).
+export async function listModels(config) {
+  const c = config ?? (await aiConfig());
+  const res = await fetch(`${c.baseUrl}/models`, {
+    headers: c.apiKey ? { Authorization: `Bearer ${c.apiKey}` } : {},
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) throw new HttpError(502, `A modell-lista nem kérhető le (${res.status})`);
+  const data = await res.json();
+  return (data.data ?? data.models ?? []).map((m) => m.id ?? m.name).filter(Boolean).sort();
 }
