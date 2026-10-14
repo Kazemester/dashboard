@@ -10,18 +10,46 @@ const r = Router();
 
 // IMAP presets: Gmail → imap.gmail.com, iCloud → imap.mail.me.com, Outlook → outlook.office365.com
 // Use an *app password* (Google / Apple both require it when 2FA is on).
+// Pasted values often carry invisible leading/trailing spaces — "mail.example.hu " does not resolve.
+const clean = (v, fallback) => resolveSecrets(String(v ?? '').trim() || fallback).trim();
+
+// Turn low-level connection errors into something actionable.
+function explain(err, host, port) {
+  const code = err.code || err.cause?.code;
+  if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') {
+    return `Nem található a levelezőszerver: "${host}". Ellenőrizd a nevét (elírás, szóköz). Ha a név jó, a Docker konténer nem éri el a DNS-t.`;
+  }
+  if (code === 'ECONNREFUSED') return `A szerver (${host}:${port}) elutasította a kapcsolatot. Jó a port? IMAP: 993 (SSL) vagy 143 (STARTTLS).`;
+  if (code === 'ETIMEDOUT' || code === 'ECONNRESET' || code === 'ETIMEOUT' || /timeout|timed out|required time/i.test(err.message)) {
+    return `Nem jön válasz innen: ${host}:${port}. Rossz port, tűzfal, vagy a szolgáltató csak a saját hálózatáról engedi az IMAP-ot.`;
+  }
+  if (err.authenticationFailed || /AUTHENTICATIONFAILED|Invalid credentials|LOGIN failed/i.test(`${err.responseText} ${err.message}`)) {
+    return 'A bejelentkezés nem sikerült: hibás felhasználónév vagy jelszó. Gmail / iCloud esetén app jelszó kell, nem a rendes jelszó.';
+  }
+  if (/certificate|self.signed|CERT_/i.test(err.message)) return `A szerver SSL tanúsítványa nem érvényes (${host}): ${err.message}`;
+  return `Levelezés hiba (${host}:${port}): ${err.responseText || err.message}`;
+}
+
 async function fetchMails(cfg) {
+  const host = clean(cfg.imapHost, '{{secret:IMAP_HOST}}');
+  const port = Number(cfg.imapPort) || 993;
   const client = new ImapFlow({
-    host: resolveSecrets(cfg.imapHost || '{{secret:IMAP_HOST}}'),
-    port: Number(cfg.imapPort) || 993,
-    secure: true,
+    host,
+    port,
+    secure: port !== 143, // 993: SSL from the start; 143: plain, upgraded with STARTTLS
     auth: {
-      user: resolveSecrets(cfg.imapUser || '{{secret:IMAP_USER}}'),
-      pass: resolveSecrets(cfg.imapPassword || '{{secret:IMAP_PASSWORD}}'),
+      user: clean(cfg.imapUser, '{{secret:IMAP_USER}}'),
+      pass: clean(cfg.imapPassword, '{{secret:IMAP_PASSWORD}}'),
     },
     logger: false,
+    connectionTimeout: 20_000,
   });
-  await client.connect();
+  client.on('error', () => {}); // socket errors after connect are reported by the awaited calls
+  try {
+    await client.connect();
+  } catch (err) {
+    throw new HttpError(502, explain(err, host, port));
+  }
   const mails = [];
   const lock = await client.getMailboxLock(cfg.mailbox || 'INBOX');
   try {

@@ -195,6 +195,7 @@ export const REGISTRY = {
     defaultConfig: { hours: 24, maxMails: 40, unreadOnly: true, autoMinutes: 0, language: 'Hungarian' },
     fields: [
       { key: 'imapHost', label: 'IMAP szerver', placeholder: '{{secret:IMAP_HOST}}  (pl. imap.gmail.com / imap.mail.me.com)', help: 'Üresen az .env SECRET_IMAP_HOST / SECRET_IMAP_USER / SECRET_IMAP_PASSWORD értékeit használja.' },
+      { key: 'imapPort', label: 'Port', type: 'number', placeholder: '993', help: '993 = SSL (a legtöbb szolgáltató), 143 = STARTTLS.' },
       { key: 'imapUser', label: 'Felhasználó', placeholder: '{{secret:IMAP_USER}}' },
       { key: 'imapPassword', label: 'App jelszó', type: 'password', placeholder: '{{secret:IMAP_PASSWORD}}', help: 'Ajánlott a {{secret:…}} hivatkozás, így a jelszó nem kerül az adatbázisba.' },
       { key: 'mailbox', label: 'Mappa', placeholder: 'INBOX' },
