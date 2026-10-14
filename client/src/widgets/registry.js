@@ -180,7 +180,7 @@ export const REGISTRY = {
     defaultConfig: { systemPrompt: '', model: '' },
     fields: [
       { key: 'systemPrompt', label: 'Rendszer prompt / személyiség', type: 'textarea', placeholder: 'You are NEXUS, a concise sci-fi ship AI…' },
-      { key: 'model', label: 'Modell (üresen: .env LLM_MODEL)', placeholder: 'grok-4' },
+      { key: 'model', label: 'Modell (üresen: a fejléc AI beállításaiban megadott)', placeholder: 'grok-4' },
     ],
   },
   maildigest: {
@@ -204,7 +204,7 @@ export const REGISTRY = {
       { key: 'autoMinutes', label: 'Automatikus futás (perc, 0 = ki)', type: 'number', min: 0 },
       { key: 'instructions', label: 'Extra szabályok a botnak', type: 'textarea', placeholder: 'pl. A banki és NAV levelek mindig fontosak. A LinkedIn értesítéseket hagyd ki.' },
       { key: 'language', label: 'Nyelv', placeholder: 'Hungarian' },
-      { key: 'model', label: 'Modell (üresen: .env LLM_MODEL)', placeholder: 'grok-4' },
+      { key: 'model', label: 'Modell (üresen: a fejléc AI beállításaiban megadott)', placeholder: 'grok-4' },
     ],
   },
   // ---------- Fókusz & feladatok ----------
@@ -544,7 +544,7 @@ export const REGISTRY = {
       { key: 'autoDaily', label: 'Automatikus', type: 'checkbox', default: true, checkLabel: 'Naponta első megnyitáskor frissüljön' },
       { key: 'instructions', label: 'Extra utasítások', type: 'textarea', placeholder: 'pl. Légy tömör. Mindig említsd meg, ha esik.' },
       { key: 'language', label: 'Nyelv', placeholder: 'Hungarian' },
-      { key: 'model', label: 'Modell (üresen: .env LLM_MODEL)' },
+      { key: 'model', label: 'Modell (üresen: a fejléc AI beállításaiban megadott)' },
     ],
   },
   clock: {

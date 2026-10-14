@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../api.js';
 import { useWidgetData } from '../hooks.js';
+import AiError from '../components/AiHint.jsx';
 
 export default function MailDigest({ widget }) {
   const { data, error, setData } = useWidgetData(`/widgets/${widget.id}/mail`, { interval: 60_000 });
@@ -31,7 +32,7 @@ export default function MailDigest({ widget }) {
           {busy ? '◌' : '▶ Futtatás'}
         </button>
       </div>
-      {(err || error) && <div className="w-error sm">{err || error}</div>}
+      <AiError error={err || error} />
 
       {r && (
         <div className="mail-body">

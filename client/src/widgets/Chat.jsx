@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useWidgetData } from '../hooks.js';
+import AiError from '../components/AiHint.jsx';
 
 export default function Chat({ widget }) {
   const { data, error, setData } = useWidgetData(`/widgets/${widget.id}/chat`);
@@ -63,7 +64,7 @@ export default function Chat({ widget }) {
         )}
         <div ref={endRef} />
       </div>
-      {err && <div className="w-error sm">{err}</div>}
+      <AiError error={err} />
       <form onSubmit={send} className="row gap">
         <input className="input sm grow" placeholder="Üzenet…" value={text} onChange={(e) => setText(e.target.value)} />
         <button className="btn btn-primary sm" disabled={busy}>

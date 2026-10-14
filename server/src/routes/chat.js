@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { q } from '../db.js';
-import { chat, llmConfigured } from '../llm.js';
+import { chat, llmConfigured, NOT_CONFIGURED } from '../llm.js';
 import { getWidget, HttpError } from '../util.js';
 
 const r = Router();
@@ -18,7 +18,7 @@ r.post('/widgets/:id/chat', async (req, res) => {
   const w = await getWidget(req.params.id, 'chat');
   const text = req.body?.content?.trim();
   if (!text) throw new HttpError(400, 'content is required');
-  if (!llmConfigured()) throw new HttpError(400, 'LLM_API_KEY is not set in .env');
+  if (!(await llmConfigured())) throw new HttpError(400, NOT_CONFIGURED);
 
   const { rows: [userMsg] } = await q(
     "INSERT INTO chat_messages (widget_id, role, content) VALUES ($1, 'user', $2) RETURNING id",
@@ -37,7 +37,7 @@ r.post('/widgets/:id/chat', async (req, res) => {
   } catch (err) {
     // Don't leave an unanswered question in the history.
     await q('DELETE FROM chat_messages WHERE id = $1', [userMsg.id]);
-    throw new HttpError(502, err.message);
+    throw new HttpError(err.status || 502, err.message);
   }
   const { rows } = await q(
     "INSERT INTO chat_messages (widget_id, role, content) VALUES ($1, 'assistant', $2) RETURNING id, role, content, created_at",

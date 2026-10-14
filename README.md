@@ -7,7 +7,7 @@ Saját hosztolású, minimalista, JARVIS-szerű személyes dashboard csempékbő
 ## Gyors indítás
 
 ```bash
-cp .env.example .env        # opcionális: AI kulcs, IMAP, titkok
+cp .env.example .env        # opcionális: IMAP, titkok (az AI kulcs a felületen is megadható)
 docker compose up -d --build
 ```
 
@@ -142,20 +142,14 @@ A titkos linkeket nem kell a DB-be menteni. Tedd be őket a `.env`-be (`SECRET_G
 
 ### AI: Grok vagy bármi más
 
-Az AI modulok **OpenAI-kompatibilis** API-t használnak, ezért több szolgáltatóval is működnek:
+Az AI-t a fejléc **AI** gombjával állíthatod be (vagy az AI-csempék „AI beállítása” gombjával):
+1. válassz szolgáltatót: **xAI Grok**, **OpenAI**, **OpenRouter**, **Ollama** (helyi, ingyenes) vagy **Egyéni** (bármilyen OpenAI-kompatibilis API),
+2. írd be az **API kulcsot** (xAI: [console.x.ai](https://console.x.ai)) és a **modellt**,
+3. **Mentés és kipróbálás**: egy rövid próbakérés azonnal megmutatja, működik-e.
 
-```env
-# xAI Grok (alapértelmezett), kulcs: https://console.x.ai
-LLM_BASE_URL=https://api.x.ai/v1
-LLM_API_KEY=xai-...
-LLM_MODEL=grok-4
+Ezt használja az AI Chat, a Mail bot és a JARVIS napi brief. A kulcs csak a saját szervered adatbázisában tárolódik, a böngésző soha nem kapja vissza (csak az utolsó 4 karakterét látod). A fejlécben a pötty jelzi, be van-e állítva AI. A modellt csempénként is felülírhatod.
 
-# vagy teljesen lokálisan, Ollamával (a leveleid nem hagyják el a gépet):
-# LLM_BASE_URL=http://host.docker.internal:11434/v1
-# LLM_MODEL=llama3.1
-```
-
-A modellt widgetenként is felülírhatod.
+Haladóknak: a `.env`-ben megadott `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` tartalékként továbbra is működik. A felületen megadott érték felülírja.
 
 ### Mail bot (a „grokbot”)
 

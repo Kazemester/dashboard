@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useWidgetData, isoDay } from '../hooks.js';
+import AiError, { openAiSettings } from '../components/AiHint.jsx';
 
 export default function Brief({ widget }) {
   const { data, error, loading, setData } = useWidgetData(`/widgets/${widget.id}/brief`);
@@ -44,9 +45,17 @@ export default function Brief({ widget }) {
           {busy ? '◌' : '⟳ Frissítés'}
         </button>
       </div>
-      {err && <div className="w-error sm">{err}</div>}
+      <AiError error={err} />
       {data?.text && <div className="brief-text">{data.text}</div>}
-      {data && !data.ai && <div className="muted sm">Tipp: LLM_API_KEY megadásával a JARVIS személyre szabott, beszélt stílusú briefet ír.</div>}
+      {data && !data.ai && (
+        <div className="muted sm">
+          Ez AI nélküli összefoglaló.{' '}
+          <button className="link-btn" onClick={openAiSettings}>
+            Állíts be AI-t
+          </button>{' '}
+          a személyre szabott, beszélt stílusú briefhez.
+        </div>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import { q } from '../db.js';
-import { chat, llmConfigured } from '../llm.js';
+import { chat, llmConfigured, NOT_CONFIGURED } from '../llm.js';
 import { getWidget, HttpError } from '../util.js';
 import { resolveSecrets } from '../secrets.js';
 
@@ -58,7 +58,7 @@ Return ONLY a JSON object with this shape:
 Be terse. Ignore obvious marketing in "important". Respond in the language: `;
 
 export async function runDigest(widget) {
-  if (!llmConfigured()) throw new HttpError(400, 'LLM_API_KEY is not set in .env');
+  if (!(await llmConfigured())) throw new HttpError(400, NOT_CONFIGURED);
   const cfg = widget.config;
   const mails = await fetchMails(cfg);
   let result;

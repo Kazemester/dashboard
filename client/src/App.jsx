@@ -6,6 +6,7 @@ import Tile from './components/Tile.jsx';
 import WidgetPicker from './components/WidgetPicker.jsx';
 import ConfigModal from './components/ConfigModal.jsx';
 import TopBar from './components/TopBar.jsx';
+import AiSettings from './components/AiSettings.jsx';
 import { applyAppearance, cachedAppearance } from './theme.js';
 import Canvas, { findFreeSpot } from './components/Canvas.jsx';
 
@@ -57,6 +58,8 @@ export default function App() {
   const canvasTimer = useRef(null);
   const canvasApi = useRef(null);
   const isDesktop = useIsDesktop();
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiVersion, setAiVersion] = useState(0); // bump to refresh AI status in the header
   const [undo, setUndo] = useState(null); // previous canvas after "Rendezés"
   const undoTimer = useRef(null);
 
@@ -120,6 +123,13 @@ export default function App() {
     }
     return items;
   }, [canvas, widgets]);
+
+  // Tiles (chat, mail bot, brief) can ask for the AI settings: window.dispatchEvent(new Event('nexus:ai-settings'))
+  useEffect(() => {
+    const open = () => setAiOpen(true);
+    window.addEventListener('nexus:ai-settings', open);
+    return () => window.removeEventListener('nexus:ai-settings', open);
+  }, []);
 
   const arrangeCanvas = () => {
     const before = safeCanvas;
@@ -228,6 +238,8 @@ export default function App() {
         onToggleEdit={() => setEditing((e) => !e)}
         onAdd={() => setPicker(true)}
         onArrange={isDesktop && widgets.length > 1 ? arrangeCanvas : null}
+        onAi={() => setAiOpen(true)}
+        aiVersion={aiVersion}
         count={widgets.length}
         appearance={appearance}
         onAppearance={changeAppearance}
@@ -280,6 +292,7 @@ export default function App() {
       )}
 
       {picker && <WidgetPicker onPick={addWidget} onClose={() => setPicker(false)} />}
+      {aiOpen && <AiSettings onClose={() => setAiOpen(false)} onSaved={() => setAiVersion((v) => v + 1)} />}
       {configuring && (
         <ConfigModal
           widget={configuring}

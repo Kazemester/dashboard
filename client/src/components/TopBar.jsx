@@ -3,12 +3,12 @@ import { useNow } from '../hooks.js';
 import { api } from '../api.js';
 import ThemePicker from './ThemePicker.jsx';
 
-export default function TopBar({ editing, onToggleEdit, onAdd, onArrange, count, appearance, onAppearance }) {
+export default function TopBar({ editing, onToggleEdit, onAdd, onArrange, onAi, aiVersion, count, appearance, onAppearance }) {
   const now = useNow(1000);
   const [status, setStatus] = useState(null);
   useEffect(() => {
     api.get('/status').then(setStatus).catch(() => setStatus(null));
-  }, []);
+  }, [aiVersion]);
 
   return (
     <header className="topbar">
@@ -24,9 +24,9 @@ export default function TopBar({ editing, onToggleEdit, onAdd, onArrange, count,
         <span className="tele">
           <i className="dot ok" /> ONLINE
         </span>
-        <span className="tele">
+        <button className="tele tele-btn" onClick={onAi}>
           <i className={`dot ${status?.llm ? 'ok' : 'off'}`} /> AI {status?.llm ? status.model.toUpperCase() : 'OFFLINE'}
-        </span>
+        </button>
         <span className="tele">{String(count).padStart(2, '0')} MODUL</span>
       </div>
 
@@ -37,6 +37,9 @@ export default function TopBar({ editing, onToggleEdit, onAdd, onArrange, count,
             {now.toLocaleDateString('hu-HU', { weekday: 'short', month: 'short', day: 'numeric' })}
           </span>
         </div>
+        <button className="btn btn-ghost ai-btn" onClick={onAi} title={status?.llm ? `AI: ${status.model}` : 'AI nincs beállítva — kattints a beállításhoz'}>
+          <i className={`dot ${status?.llm ? 'ok' : 'off'}`} /> AI
+        </button>
         <ThemePicker appearance={appearance} onChange={onAppearance} />
         {onArrange && (
           <button className="btn btn-ghost" onClick={onArrange} title="Csempék rendezése hézag nélküli rácsba">

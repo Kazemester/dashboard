@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { timingSafeEqual } from 'node:crypto';
 import { migrate } from './db.js';
-import { llmConfigured } from './llm.js';
+import { aiConfig } from './llm.js';
 import dashboard from './routes/dashboard.js';
 import habits from './routes/habits.js';
 import progress from './routes/progress.js';
@@ -19,6 +19,7 @@ import env from './routes/env.js';
 import homeassistant from './routes/homeassistant.js';
 import brief from './routes/brief.js';
 import stocks from './routes/stocks.js';
+import ai from './routes/ai.js';
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -38,9 +39,12 @@ if (PASSWORD) {
 }
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
-app.get('/api/status', (_req, res) => res.json({ llm: llmConfigured(), model: process.env.LLM_MODEL || 'grok-4' }));
+app.get('/api/status', async (_req, res) => {
+  const ai = await aiConfig();
+  res.json({ llm: ai.configured, model: ai.model });
+});
 
-for (const router of [dashboard, habits, progress, pomodoro, calendar, feeds, chatRoutes, mail, items, system, markets, env, homeassistant, brief, stocks]) {
+for (const router of [dashboard, habits, progress, pomodoro, calendar, feeds, chatRoutes, mail, items, system, markets, env, homeassistant, brief, stocks, ai]) {
   app.use('/api', router);
 }
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));

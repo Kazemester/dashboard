@@ -120,7 +120,7 @@ r.post('/widgets/:id/brief/run', async (req, res) => {
   const ctx = await gather(cfg);
   let text;
   let ai = false;
-  if (llmConfigured()) {
+  if (await llmConfigured()) {
     const persona =
       `You are J.A.R.V.I.S., a calm, dry-witted personal assistant. Address the user as "${cfg.address || 'Uram'}". ` +
       `Write a short spoken-style daily briefing in ${cfg.language || 'Hungarian'} from the JSON context: ` +
