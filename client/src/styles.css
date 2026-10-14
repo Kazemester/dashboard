@@ -734,3 +734,19 @@ select.input option { background: var(--surface); color: var(--text); }
 .ai-error { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .link-btn { background: none; border: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .ai-models { max-height: 110px; overflow: auto; }
+
+/* mail bot tabs */
+.mail { height: 100%; }
+.mail .seg { justify-content: flex-start; }
+.mail-tab { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.mail-list { list-style: none; margin: 0; padding: 0; }
+.mail-list li { border-bottom: 1px solid var(--line); }
+.mail-row { width: 100%; display: grid; grid-template-columns: 30px 1fr auto; gap: 8px; align-items: baseline; padding: 7px 0; background: none; border: none; text-align: left; cursor: pointer; color: var(--text); }
+.mail-row:hover .mail-row-subj, .mail-list li.open .mail-row-subj { color: var(--accent); }
+.mail-row-main { display: flex; flex-direction: column; min-width: 0; }
+.mail-row-subj { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mail-when { font-size: 10px; white-space: nowrap; }
+.mail-preview { padding: 0 0 10px 38px; display: flex; flex-direction: column; gap: 8px; }
+.mail-preview p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+.mail-ask { flex: 1; min-height: 160px; }
+.mail-suggest { display: flex; flex-direction: column; gap: 8px; }

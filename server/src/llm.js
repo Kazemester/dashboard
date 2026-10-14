@@ -17,7 +17,7 @@ async function saved() {
 }
 
 // Local servers (Ollama, LM Studio) don't need a key.
-const isLocal = (url) => /\/\/(localhost|127\.0\.0\.1|host\.docker\.internal|ollama)(:|\/)/i.test(url);
+export const isLocal = (url) => /\/\/(localhost|127\.0\.0\.1|host\.docker\.internal|ollama)(:|\/)/i.test(url);
 
 export async function aiConfig() {
   const s = await saved();
@@ -52,7 +52,8 @@ export async function chat(messages, { model, temperature = 0.4, json = false, c
       ...(c.apiKey ? { Authorization: `Bearer ${c.apiKey}` } : {}),
     },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(120_000),
+    // local models on a laptop can need a few minutes for a long prompt
+    signal: AbortSignal.timeout(isLocal(c.baseUrl) ? 600_000 : 120_000),
   });
   if (!res.ok) {
     const text = (await res.text()).slice(0, 300);

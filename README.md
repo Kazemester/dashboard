@@ -151,19 +151,25 @@ Ezt használja az AI Chat, a Mail bot és a JARVIS napi brief. A kulcs csak a sa
 
 Haladóknak: a `.env`-ben megadott `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` tartalékként továbbra is működik. A felületen megadott érték felülírja.
 
-### Mail bot (a „grokbot”)
+### Mail bot
 
-1. Csinálj **app jelszót** (Gmail: Google fiók → Biztonság → Alkalmazásjelszavak; iCloud: appleid.apple.com → Alkalmazásspecifikus jelszó).
-2. Töltsd ki a `.env`-ben: `SECRET_IMAP_HOST`, `SECRET_IMAP_USER`, `SECRET_IMAP_PASSWORD`.
-   - Gmail: `imap.gmail.com` · iCloud: `imap.mail.me.com` · Outlook: `outlook.office365.com`
-3. Tedd fel a **Mail bot** modult. A beállításoknál megadhatod:
-   - hány órára visszamenőleg nézzen leveleket, és csak az olvasatlanokat-e,
-   - **saját szabályokat** (pl. *„A banki és NAV levelek mindig fontosak, a LinkedIn értesítéseket hagyd ki.”*),
-   - **automatikus futást** X percenként. Ilyenkor a szerver a háttérben akkor is lefuttatja, ha a böngésző zárva van.
+![Mail bot](docs/mail-bot.png)
 
-A bot csak olvas (`BODY.PEEK`), ezért a levelek nem lesznek olvasottnak jelölve. Több postafiókhoz tegyél fel több Mail bot csempét, mindegyiknek saját IMAP adatokkal (pl. `{{secret:WORK_IMAP_PASSWORD}}`).
+A Mail bot IMAP-on letölti az olvasatlan leveleidet, és három fülön mutatja őket:
+- **Összefoglaló:** rövid összegzés, a fontos levelek (számla, határidő, valódi emberektől jött levél), teendők és kategóriák. A spamet nem sorolja a fontosak közé.
+- **Levelek:** a letöltött levelek listája (feladó, tárgy, időpont). Egy levélre kattintva látod az elejét, és egy kattintással kérhetsz róla összefoglalót vagy válasz-piszkozatot.
+- **Kérdezz:** chat a leveleidről, például „Van fizetendő számlám?”, „Kinek kell válaszolnom?”, „Írj választ a 3. levélre”.
 
-> ⚠️ **Adatvédelem:** felhős LLM esetén (Grok, OpenAI) a levelek tárgya, feladója és szövegének eleje a szolgáltatóhoz kerül. Ha ezt nem szeretnéd, használj lokális modellt (Ollama).
+Beállítás:
+1. Állíts be AI-t a fejléc **AI** gombjával (lásd fent).
+2. A Mail bot csempe ⚙ beállításainál add meg az **IMAP szervert**, a **portot** (993, vagy 143 STARTTLS-sel), a **felhasználót** és a **jelszót**. Gmailnél és iCloudnál ez **app jelszó**, nem a rendes jelszó (Gmail: `imap.gmail.com`, iCloud: `imap.mail.me.com`, Outlook: `outlook.office365.com`). A jelszó helyett `{{secret:IMAP_PASSWORD}}` is írható; ekkor a `.env` `SECRET_IMAP_PASSWORD` értékét használja.
+3. **▶ Futtatás**. Ha beállítasz automatikus futást (X percenként), a szerver a háttérben akkor is lefuttatja, ha a böngésző zárva van.
+
+A bot csak olvas (`BODY.PEEK`), ezért a levelek nem lesznek olvasottnak jelölve. Az utolsó futás leveleinek eleje (levelenként max. 1200 karakter) a saját adatbázisodban tárolódik, hogy kérdezni lehessen róluk.
+
+**Helyi modell (Ollama):** a kis modellek egyszerre csak kevés szöveget látnak (alapból ~4000 token), ezért a bot ilyenkor rövidebben adja át a leveleket. Egy 7B-s modell már használható összefoglalót ad, de a felhős modellek (Grok, GPT) érezhetően jobbak. Egy helyi modell egy-két percig is dolgozhat egy futáson.
+
+> ⚠️ **Adatvédelem:** felhős AI esetén a levelek tárgya, feladója és szövegének eleje a szolgáltatóhoz kerül. Ollamával minden a gépeden marad.
 
 ### API connector példák
 
