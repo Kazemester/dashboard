@@ -30,6 +30,20 @@ function explain(err, host, port) {
   return `Levelezés hiba (${host}:${port}): ${err.responseText || err.message}`;
 }
 
+// Newsletters turn into walls of tracking links and invisible padding characters when
+// converted to plain text. Keep only what a human would read.
+export function readable(text) {
+  return String(text ?? '')
+    .replace(/[\u00ad\u034f\u061c\u115f\u1160\u17b4\u17b5\u180e\u200b-\u200f\u202a-\u202e\u2060-\u206f\u3164\ufeff\uffa0]/g, '')
+    .replace(/\[\s*(https?:|mailto:|cid:)[^\]]*\]/gi, ' ') // [https://…] link targets
+    .replace(/<\s*(https?:|mailto:)[^>]*>/gi, ' ') // <https://…>
+    .replace(/\b(https?:\/\/|www\.)\S+/gi, ' ') // bare links
+    .replace(/\(\s*\)|\[\s*\]/g, ' ')
+    .replace(/([-_=*~#.|])\1{3,}/g, ' ') // separator lines
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 async function fetchMails(cfg) {
   const host = clean(cfg.imapHost, '{{secret:IMAP_HOST}}');
   const port = Number(cfg.imapPort) || 993;
@@ -64,7 +78,7 @@ async function fetchMails(cfg) {
           from: msg.envelope.from?.map((a) => `${a.name || ''} <${a.address}>`).join(', '),
           subject: msg.envelope.subject || '(no subject)',
           date: msg.envelope.date,
-          text: (parsed?.text || '').replace(/\s+/g, ' ').slice(0, 1200),
+          text: readable(parsed?.text).slice(0, 1200),
         });
       }
     }
@@ -201,7 +215,10 @@ r.get('/widgets/:id/mail', async (req, res) => {
     'SELECT result, created_at FROM mail_digests WHERE widget_id = $1 ORDER BY id DESC LIMIT 1',
     [req.params.id],
   );
-  res.json(rows[0] ?? null);
+  const d = rows[0];
+  // older runs were stored before readable() existed
+  if (d?.result?.mails) d.result.mails = d.result.mails.map((m) => ({ ...m, text: readable(m.text) }));
+  res.json(d ?? null);
 });
 
 // ---------- ask the bot about the fetched emails ----------
@@ -227,7 +244,7 @@ r.post('/widgets/:id/mail/ask', async (req, res) => {
   if (!question) throw new HttpError(400, 'Írj be egy kérdést.');
   if (!(await aiConfig()).configured) throw new HttpError(400, NOT_CONFIGURED);
   const { rows: d } = await q('SELECT result FROM mail_digests WHERE widget_id = $1 ORDER BY id DESC LIMIT 1', [w.id]);
-  const mails = d[0]?.result?.mails;
+  const mails = d[0]?.result?.mails?.map((m) => ({ ...m, text: readable(m.text) }));
   if (!mails?.length) throw new HttpError(400, 'Még nincsenek letöltött levelek: nyomd meg a Futtatás gombot.');
   const { rows: history } = await q('SELECT role, content FROM chat_messages WHERE widget_id = $1 ORDER BY id DESC LIMIT 8', [w.id]);
   const system = `${ASK_PROMPT}${w.config.language || 'Hungarian'}\n\nEMAILS:\n${compact(mails, await budgetFor())}`;
