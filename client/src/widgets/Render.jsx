@@ -205,7 +205,7 @@ export default function Render({ widget, onUpdateConfig }) {
       <div className="row gap between">
         <button className="render-status mono sm" onClick={() => setShowModels((s) => !s)} title="Modellek">
           <span className={`dot ${m ? 'ok' : models.error ? 'bad' : ''}`} />
-          {m ? `${short(m.checkpoint)}${m.controlnet ? ' + vonalvezetés' : ''}` : models.error ? 'ComfyUI nem elérhető' : 'ComfyUI…'}
+          {m ? `${short(m.checkpoint)}${m.controlnet ? ' + vonalvezetés' : ''}` : models.error ? (/^Nem érem el|nem válaszolt/.test(models.error) ? 'ComfyUI nem elérhető' : /nincs egy modell/i.test(models.error) ? 'ComfyUI fut · nincs modell' : 'ComfyUI hiba') : 'ComfyUI…'}
         </button>
         {models.error && (
           <button className="btn btn-ghost sm" onClick={models.reload}>
