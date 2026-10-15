@@ -29,6 +29,7 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-nexus}:${POSTGRES_PASSWORD:-nexus}@db:5432/${POSTGRES_DB:-nexus}
       TZ: ${TZ:-Europe/Budapest}
       PORT: 3000
+      DOMAIN: ${DOMAIN:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"  # lets the app reach e.g. Ollama running on the host
     ports:
@@ -36,5 +37,28 @@ services:
       # or change to "3000:3000" together with DASHBOARD_PASSWORD.
       - "${BIND_ADDR:-127.0.0.1}:${APP_PORT:-3000}:3000"
 
+  # Public HTTPS entry point for a VM: `docker compose --profile public up -d` (needs DOMAIN in .env).
+  # Caddy gets and renews the Let's Encrypt certificate by itself.
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["public"]
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      DOMAIN: ${DOMAIN:-}
+    # interpolation runs even when the profile is off, so check DOMAIN here instead of with ${DOMAIN:?}
+    command: sh -c 'test -n "$$DOMAIN" || { echo "Set DOMAIN in .env, e.g. dash.example.com"; exit 1; }; exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile'
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
 volumes:
   nexus-db:
+  caddy-data:
+  caddy-config:

@@ -217,17 +217,52 @@ cd client && npm install && npm run dev      # http://localhost:5173 (a /api-t a
 2. Regisztráld a `client/src/widgets/registry.js`-ben (név, ikon, méret, `fields` a beállító űrlaphoz). Az űrlap automatikusan generálódik.
 3. Ha szerveroldali adat kell: új route a `server/src/routes/` alatt, és táblák a `server/src/db.js` sémájában.
 
-## Felrakás VM-re
+## Felrakás VM-re, elérés bárhonnan
 
-1. Másold fel a repót, és hozd létre a `.env`-et **erős** `POSTGRES_PASSWORD`-del és `DASHBOARD_PASSWORD`-del (HTTP Basic auth).
-2. `docker compose up -d --build`
-3. Az app alapból csak `127.0.0.1:3000`-n figyel. Tegyél elé reverse proxyt HTTPS-sel, pl. **Caddy**:
+Egy kis VM (2 vCPU, 4 GB RAM, pl. Hetzner, DigitalOcean, Oracle Free Tier) bőven elég a dashboardhoz és az adatbázishoz. Két mód van arra, hogy bárhonnan elérd.
+
+### A) Nyilvános cím HTTPS-sel (bármilyen eszközről, böngészőből)
+
+Kell hozzá egy domain vagy aldomain (pl. `dash.sajatdomain.hu`), aminek az **A rekordja a VM IP-címére** mutat.
+
+1. Telepíts Dockert a VM-re, és klónozd le a repót.
+2. Hozd létre a `.env`-et (`cp .env.example .env`), és állítsd be:
    ```
-   dash.sajatdomain.hu {
-       reverse_proxy 127.0.0.1:3000
-   }
+   DOMAIN=dash.sajatdomain.hu
+   DASHBOARD_PASSWORD=<legalább 12 karakteres, egyedi jelszó>
+   POSTGRES_PASSWORD=<hosszú véletlen jelszó>
    ```
-   (Vagy `BIND_ADDR=0.0.0.0` a `.env`-ben, ha belső hálón vagy Tailscale-en éred el.)
+   Jelszót így generálhatsz: `openssl rand -base64 24`.
+3. Indítás:
+   ```
+   docker compose --profile public up -d --build
+   ```
+   A **Caddy** magától szerez és újít Let's Encrypt tanúsítványt, és HTTPS-en továbbítja a forgalmat a dashboardhoz.
+4. A VM tűzfalán csak a **22** (SSH), **80** és **443** port legyen nyitva. A dashboard 3000-es portja és az adatbázis kívülről nem érhető el.
+
+Böngészőben a `https://dash.sajatdomain.hu` címen a böngésző kéri a jelszót (a felhasználónév bármi lehet), és megjegyzi. Telefonon a Megosztás → **Hozzáadás a Főképernyőhöz** paranccsal appként is kiteheted.
+
+Védelem:
+- `DOMAIN` mellett a szerver el sem indul 12 karakternél rövidebb jelszóval.
+- 10 rossz jelszó után az adott IP-cím 15 percre ki van zárva.
+- A forgalom végig HTTPS.
+
+### B) Privát hálón, Tailscale-lel (a legbiztonságosabb)
+
+Ha csak a saját eszközeidről (telefon, laptop, tablet) akarod elérni, a [Tailscale](https://tailscale.com) ingyenes privát hálót csinál köztük és a VM között. Így a dashboard **egyáltalán nem látszik a nyilvános interneten**, domain sem kell.
+
+1. Telepítsd a Tailscale-t a VM-re és az eszközeidre, ugyanazzal a fiókkal.
+2. A `.env`-ben: `BIND_ADDR=0.0.0.0` és egy `DASHBOARD_PASSWORD`, majd `docker compose up -d --build`. A VM tűzfalán a 3000-es portot **ne** nyisd ki a nyilvános internet felé.
+3. Elérés: `http://<vm-neve>:3000` (a VM Tailscale-neve vagy 100.x.x.x címe).
+
+Hátránya: csak olyan eszközről működik, amin fut a Tailscale.
+
+### AI a VM-en
+
+Egy átlagos VM-nek nincs videokártyája, ezért a helyi modellek (Ollama, ComfyUI) ott nagyon lassúak. Lehetőségek:
+- **Felhős AI** (Grok, OpenAI, OpenRouter): a chathez és a Mail bothoz a legegyszerűbb, a fejléc AI gombjával állíthatod be.
+- **A Maced marad az AI-gép:** a Macen futó Ollama és ComfyUI Tailscale-en elérhető a VM-ről. A címük `http://<mac-neve>:11434/v1` és `http://<mac-neve>:8000` lesz, a Macen pedig engedni kell, hogy ne csak a saját gépről fogadjanak kapcsolatot (Ollama: `OLLAMA_HOST=0.0.0.0`; ComfyUI Desktop: a szerver beállításaiban a listen cím `0.0.0.0`). Csak akkor működik, ha a Mac be van kapcsolva.
+- **GPU-s VM:** gyors, de drága (óradíjas, havonta akár több száz dollár).
 
 **Mentés / visszaállítás:**
 ```bash
