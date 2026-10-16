@@ -14,7 +14,13 @@ function catalog() {
       description: d.description,
       size: d.size,
       defaultConfig: d.defaultConfig,
-      fields: (d.fields ?? []).map((f) => ({ key: f.key, label: f.label, type: f.type ?? 'text', ...(f.options ? { options: f.options.map(([v]) => v) } : {}) })),
+      fields: (d.fields ?? []).map((f) => ({
+        key: f.key,
+        label: f.label,
+        type: f.type ?? 'text',
+        ...(f.options ? { options: f.options.map(([v]) => v) } : {}),
+        ...(f.fields ? { fields: f.fields.map((x) => ({ key: x.key, type: x.type ?? 'text' })) } : {}),
+      })),
     };
   }
   return out;

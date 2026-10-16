@@ -51,16 +51,27 @@ export async function complete(messages, { model, temperature = 0.4, json = fals
   if (json) body.response_format = { type: 'json_object' };
   if (tools?.length) body.tools = tools;
 
-  const res = await fetch(`${c.baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(c.apiKey ? { Authorization: `Bearer ${c.apiKey}` } : {}),
-    },
-    body: JSON.stringify(body),
-    // local models on a laptop can need a few minutes for a long prompt
-    signal: AbortSignal.timeout(isLocal(c.baseUrl) ? 600_000 : 120_000),
-  });
+  let res;
+  try {
+    res = await fetch(`${c.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(c.apiKey ? { Authorization: `Bearer ${c.apiKey}` } : {}),
+      },
+      body: JSON.stringify(body),
+      // local models on a laptop can need a few minutes for a long prompt
+      signal: AbortSignal.timeout(isLocal(c.baseUrl) ? 600_000 : 120_000),
+    });
+  } catch (err) {
+    // Node's fetch also gives up after 5 min without response headers (slow local models)
+    if (err.name === 'TimeoutError' || err.cause?.code === 'UND_ERR_HEADERS_TIMEOUT') throw new HttpError(504, `Az AI nem válaszolt időben (${c.baseUrl}). Helyi modellnél próbálj kisebb modellt, vagy várj, amíg betölt.`);
+    const local = isLocal(c.baseUrl);
+    throw new HttpError(
+      502,
+      `Nem érem el az AI szolgáltatót: ${c.baseUrl}.${local ? ' Fut az Ollama? (Indítsd el az Ollama alkalmazást, vagy: ollama serve)' : ' Ellenőrizd a címet a fejléc AI beállításaiban.'}`,
+    );
+  }
   if (!res.ok) {
     const text = (await res.text()).slice(0, 300);
     let hint = '';
