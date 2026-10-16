@@ -777,3 +777,5 @@ select.input option { background: var(--surface); color: var(--text); }
 .render-meta { max-height: 3.6em; overflow: auto; }
 .modal-foot a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .btn.danger:hover { color: var(--danger); border-color: var(--danger); }
+.msg-meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.msg-meta .chip-static { font-size: 9.5px; color: var(--accent); }

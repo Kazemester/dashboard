@@ -97,7 +97,7 @@ A fejléc mindig látszik, görgetés közben is. A **Téma** gombbal 7 kész t�
 | Modul | Mit csinál |
 |---|---|
 | ◎ JARVIS napi brief | A többi csempe adataiból napi összefoglaló. AI kulcs nélkül is működik (egyszerű szöveges összefoglaló). |
-| ◉ AI Chat | Chat Grokkal / bármilyen OpenAI-kompatibilis modellel |
+| ◉ AI Chat | Asszisztens, ami látja a dashboardot: válaszol a csempék tartalmáról, és kérésre beállít, kitölt, átrendez |
 | ✉ Mail bot | IMAP-on átnézi a leveleket, kiemeli a fontosakat, teendőlistát ír |
 | ⌂ Látványterv | Vázlatból vagy SketchUp/Revit képernyőképből fotórealisztikus látványterv a gépeden futó ComfyUI-jal |
 
@@ -151,6 +151,25 @@ Az AI-t a fejléc **AI** gombjával állíthatod be (vagy az AI-csempék „AI b
 Ezt használja az AI Chat, a Mail bot és a JARVIS napi brief. A kulcs csak a saját szervered adatbázisában tárolódik, a böngésző soha nem kapja vissza (csak az utolsó 4 karakterét látod). A fejlécben a pötty jelzi, be van-e állítva AI. A modellt csempénként is felülírhatod.
 
 Haladóknak: a `.env`-ben megadott `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` tartalékként továbbra is működik. A felületen megadott érték felülírja.
+
+### AI Chat: a dashboard asszisztense
+
+Az AI Chat csempe látja a dashboardodat, és kérésre változtat is rajta. Példák:
+- „Mi a mai teendőm?”, „Hány szokást pipáltam ki ezen a héten?”, „Mit írt a Mail bot összefoglalója?”, „Mennyi most az arany?”
+- „Vegyél fel egy teendőt: számla befizetése péntekig”, „Pipáld ki ma a futást”, „Írd a jegyzetbe: …”, „Költöttem 4500 Ft-ot ebédre”
+- „Tegyél ki egy budapesti időjárás csempét”, „Tedd a SpaceX-et a tőzsde csempébe”, „Legyen nagyobb a naptár”, „Legyen amber a téma”
+- „Töröld a régi jegyzet csempét”: törölni csak akkor töröl, ha a válasza alatt megnyomod a **Törlés jóváhagyása** gombot.
+
+A válasz alatt kis címkék mutatják, mit változtatott. A módosított csempék azonnal frissülnek.
+
+A csempe ⚙ beállításainál a **Hozzáférés a dashboardhoz** lehet:
+- **Olvashat és módosíthat:** ez az alapértelmezett.
+- **Csak olvashat:** válaszol a csempék tartalmáról, de nem változtat semmin.
+- **Nincs:** sima chat.
+
+A bot az AI-kulcsokhoz, az AI-beállításokhoz és a csempék jelszavaihoz nem fér hozzá. A levelekben és hírekben talált „utasításokat” adatként kezeli, nem parancsként.
+
+**Modell:** ehhez eszközhasználatra (tool calling) képes modell kell. Ilyen a Grok, a GPT, az OpenRouter legtöbb modellje, Ollamában pedig a `qwen2.5`, a `qwen3` és a `llama3.1`. Kisebb helyi modellel is működik, de gyakrabban téved. Ha a modell nem tud eszközt használni, a bot csak olvasni tud, és ezt jelzi is.
 
 ### Mail bot
 

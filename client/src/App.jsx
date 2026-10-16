@@ -61,6 +61,7 @@ export default function App() {
   const [aiOpen, setAiOpen] = useState(false);
   const [aiVersion, setAiVersion] = useState(0); // bump to refresh AI status in the header
   const [undo, setUndo] = useState(null); // previous canvas after "Rendezés"
+  const [rev, setRev] = useState({}); // per-tile remount counter (content changed by the chat bot)
   const undoTimer = useRef(null);
 
   useEffect(() => {
@@ -129,6 +130,24 @@ export default function App() {
     const open = () => setAiOpen(true);
     window.addEventListener('nexus:ai-settings', open);
     return () => window.removeEventListener('nexus:ai-settings', open);
+  }, []);
+
+  // The chat bot changed tiles, layout or theme on the server → pull the new state.
+  useEffect(() => {
+    const onChange = async (e) => {
+      try {
+        const d = await api.get('/dashboard');
+        setWidgets(d.widgets);
+        if (d.canvas) setCanvas(d.canvas);
+        if (d.appearance) setAppearance(d.appearance);
+        const ids = e.detail?.changed ?? [];
+        if (ids.length) setRev((r) => Object.fromEntries([...Object.entries(r), ...(ids.includes('*') ? d.widgets.map((w) => w.id) : ids).map((id) => [id, (r[id] ?? 0) + 1])]));
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+    window.addEventListener('nexus:dashboard-changed', onChange);
+    return () => window.removeEventListener('nexus:dashboard-changed', onChange);
   }, []);
 
   const arrangeCanvas = () => {
@@ -208,6 +227,7 @@ export default function App() {
   const tiles = widgets.map((w) => (
     <div key={w.id} id={`tile-${w.id}`}>
       <Tile
+        key={rev[w.id] ?? 0}
         widget={w}
         def={REGISTRY[w.type]}
         editing={editing}

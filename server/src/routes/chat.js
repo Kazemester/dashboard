@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { q } from '../db.js';
 import { chat, llmConfigured, NOT_CONFIGURED } from '../llm.js';
+import { agentTurn } from '../agent.js';
 import { getWidget, HttpError } from '../util.js';
 
 const r = Router();
@@ -8,7 +9,7 @@ const r = Router();
 r.get('/widgets/:id/chat', async (req, res) => {
   await getWidget(req.params.id, 'chat');
   const { rows } = await q(
-    'SELECT id, role, content, created_at FROM chat_messages WHERE widget_id = $1 ORDER BY id',
+    'SELECT id, role, content, meta, created_at FROM chat_messages WHERE widget_id = $1 ORDER BY id',
     [req.params.id],
   );
   res.json(rows);
@@ -28,20 +29,27 @@ r.post('/widgets/:id/chat', async (req, res) => {
     'SELECT role, content FROM chat_messages WHERE widget_id = $1 ORDER BY id DESC LIMIT 30',
     [w.id],
   );
-  const system = w.config.systemPrompt || 'You are NEXUS, a concise, helpful assistant living in a sci-fi dashboard.';
+  // Dashboard access: 'full' (read + change), 'read' or 'off' (plain chat). Older tiles have no setting → full.
+  const access = ['off', 'read', 'full'].includes(w.config.access) ? w.config.access : 'full';
   let answer;
+  let meta = null;
   try {
-    answer = await chat([{ role: 'system', content: system }, ...history.reverse()], {
-      model: w.config.model || undefined,
-    });
+    if (access === 'off') {
+      const system = w.config.systemPrompt || 'You are NEXUS, a concise, helpful assistant living in a sci-fi dashboard.';
+      answer = await chat([{ role: 'system', content: system }, ...history.reverse()], { model: w.config.model || undefined });
+    } else {
+      // the client sends the tile catalog (names, settings fields), which lives in the frontend registry
+      const catalog = req.body?.catalog && typeof req.body.catalog === 'object' ? req.body.catalog : null;
+      ({ answer, meta } = await agentTurn({ history: history.reverse(), persona: w.config.systemPrompt, model: w.config.model || undefined, catalog, mode: access }));
+    }
   } catch (err) {
     // Don't leave an unanswered question in the history.
     await q('DELETE FROM chat_messages WHERE id = $1', [userMsg.id]);
     throw new HttpError(err.status || 502, err.message);
   }
   const { rows } = await q(
-    "INSERT INTO chat_messages (widget_id, role, content) VALUES ($1, 'assistant', $2) RETURNING id, role, content, created_at",
-    [w.id, answer],
+    "INSERT INTO chat_messages (widget_id, role, content, meta) VALUES ($1, 'assistant', $2, $3) RETURNING id, role, content, meta, created_at",
+    [w.id, answer, meta],
   );
   res.json(rows[0]);
 });

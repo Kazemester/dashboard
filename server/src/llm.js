@@ -39,11 +39,17 @@ export async function llmConfigured() {
 
 export const NOT_CONFIGURED = 'Nincs AI kulcs beállítva. Fejléc → AI gomb → add meg a szolgáltatót és az API kulcsot.';
 
-export async function chat(messages, { model, temperature = 0.4, json = false, config } = {}) {
+export async function chat(messages, opts = {}) {
+  return (await complete(messages, opts)).content ?? '';
+}
+
+// Full assistant message, including tool_calls when `tools` (OpenAI function-calling format) are given.
+export async function complete(messages, { model, temperature = 0.4, json = false, config, tools } = {}) {
   const c = config ?? (await aiConfig());
   if (!c.configured) throw new HttpError(400, NOT_CONFIGURED);
   const body = { model: model || c.model, messages, temperature };
   if (json) body.response_format = { type: 'json_object' };
+  if (tools?.length) body.tools = tools;
 
   const res = await fetch(`${c.baseUrl}/chat/completions`, {
     method: 'POST',
@@ -59,6 +65,9 @@ export async function chat(messages, { model, temperature = 0.4, json = false, c
     const text = (await res.text()).slice(0, 300);
     let hint = '';
     // wrong model name → list what the provider actually offers
+    if (tools?.length && /tool|function/i.test(text) && [400, 404, 422, 500].includes(res.status)) {
+      throw Object.assign(new HttpError(502, `AI szolgáltató hiba (${res.status}): ${text}`), { toolsUnsupported: true });
+    }
     if (/model/i.test(text) && [400, 404].includes(res.status)) {
       const available = await listModels(c).catch(() => []);
       hint = available.length
@@ -68,7 +77,7 @@ export async function chat(messages, { model, temperature = 0.4, json = false, c
     throw new HttpError(502, `AI szolgáltató hiba (${res.status}): ${text}${hint}`);
   }
   const data = await res.json();
-  return data.choices?.[0]?.message?.content ?? '';
+  return data.choices?.[0]?.message ?? { role: 'assistant', content: '' };
 }
 
 // Model ids offered by the provider (OpenAI-compatible GET /models — Ollama lists the pulled models).

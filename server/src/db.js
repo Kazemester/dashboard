@@ -100,6 +100,8 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS meta JSONB;
+
 CREATE TABLE IF NOT EXISTS mail_digests (
   id         SERIAL PRIMARY KEY,
   widget_id  TEXT NOT NULL REFERENCES widgets(id) ON DELETE CASCADE,

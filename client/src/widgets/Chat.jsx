@@ -2,6 +2,53 @@ import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useWidgetData } from '../hooks.js';
 import AiError from '../components/AiHint.jsx';
+import { REGISTRY } from './registry.js';
+
+// What the bot needs to know about tile types (names, settings fields) — the registry lives in the frontend.
+function catalog() {
+  const out = {};
+  for (const [type, d] of Object.entries(REGISTRY)) {
+    if (d.hidden) continue;
+    out[type] = {
+      name: d.name,
+      description: d.description,
+      size: d.size,
+      defaultConfig: d.defaultConfig,
+      fields: (d.fields ?? []).map((f) => ({ key: f.key, label: f.label, type: f.type ?? 'text', ...(f.options ? { options: f.options.map(([v]) => v) } : {}) })),
+    };
+  }
+  return out;
+}
+
+// Tell the app to reload tiles / layout the bot changed.
+const announce = (meta) => {
+  if (meta?.changed?.length || meta?.layoutChanged) window.dispatchEvent(new CustomEvent('nexus:dashboard-changed', { detail: meta }));
+};
+
+function Meta({ meta, onConfirm }) {
+  if (!meta) return null;
+  return (
+    <div className="msg-meta">
+      {meta.readOnly && <span className="chip chip-static">csak olvasás: ez a modell nem tud eszközöket használni</span>}
+      {meta.actions?.map((a, i) => (
+        <span key={i} className="chip chip-static">
+          ✓ {a}
+        </span>
+      ))}
+      {meta.pending?.map((p) =>
+        p.done ? (
+          <span key={p.id} className="chip chip-static">
+            ✓ Törölve: {p.title}
+          </span>
+        ) : (
+          <button key={p.id} className="btn btn-ghost sm danger" onClick={() => onConfirm(p)}>
+            Törlés jóváhagyása: {p.title}
+          </button>
+        ),
+      )}
+    </div>
+  );
+}
 
 export default function Chat({ widget }) {
   const { data, error, setData } = useWidgetData(`/widgets/${widget.id}/chat`);
@@ -24,8 +71,9 @@ export default function Chat({ widget }) {
     const tmpId = `tmp-${Date.now()}`;
     setData((m) => [...(m ?? []), { id: tmpId, role: 'user', content }]);
     try {
-      const reply = await api.post(`/widgets/${widget.id}/chat`, { content });
+      const reply = await api.post(`/widgets/${widget.id}/chat`, { content, catalog: widget.config.access === 'off' ? undefined : catalog() });
       setData((m) => [...m, reply]);
+      announce(reply.meta);
     } catch (e2) {
       setErr(e2.message);
       setData((m) => m.filter((x) => x.id !== tmpId));
@@ -33,6 +81,14 @@ export default function Chat({ widget }) {
     } finally {
       setBusy(false);
     }
+  };
+
+  // A removal the bot proposed: only happens when the user presses the button.
+  const confirmRemove = async (msg, p) => {
+    if (!confirm(`Biztosan törlöd: "${p.title}"? A modul adatai is törlődnek.`)) return;
+    await api.del(`/widgets/${p.id}`);
+    setData((m) => m.map((x) => (x.id === msg.id ? { ...x, meta: { ...x.meta, pending: x.meta.pending.map((y) => (y.id === p.id ? { ...y, done: true } : y)) } } : x)));
+    announce({ layoutChanged: true, changed: [] });
   };
 
   const clear = async () => {
@@ -45,11 +101,20 @@ export default function Chat({ widget }) {
   return (
     <div className="chat">
       <div className="chat-log">
-        {!data?.length && <div className="muted center-text">Csatorna nyitva. Kérdezz bármit.</div>}
+        {!data?.length && (
+          <div className="muted center-text">
+            {widget.config.access === 'off'
+              ? 'Csatorna nyitva. Kérdezz bármit.'
+              : 'Kérdezz a dashboardról, vagy kérd meg, hogy állítson be valamit. Pl. „Mi a mai teendőm?”, „Vegyél fel egy teendőt: számla befizetése péntekig”, „Tegyél ki egy budapesti időjárás csempét”, „Legyen amber a téma”.'}
+          </div>
+        )}
         {data?.map((m) => (
           <div key={m.id} className={`msg msg-${m.role}`}>
             <span className="msg-who">{m.role === 'user' ? 'TE' : 'AI'}</span>
-            <div className="msg-body">{m.content}</div>
+            <div className="msg-body">
+              {m.content}
+              <Meta meta={m.meta} onConfirm={(p) => confirmRemove(m, p)} />
+            </div>
           </div>
         ))}
         {busy && (
