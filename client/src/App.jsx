@@ -151,6 +151,7 @@ export default function App() {
   }, []);
 
   const arrangeCanvas = () => {
+    if (!confirm('Biztosan rendezed a csempéket? Minden csempe új helyre kerül egy rácsba. (Utána 12 másodpercig visszavonható.)')) return;
     const before = safeCanvas;
     canvasApi.current?.arrange();
     setUndo(before);
