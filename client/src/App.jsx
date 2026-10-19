@@ -148,7 +148,12 @@ export default function App() {
       if (isDesktopRef.current) {
         const item = (list ?? canvasRef.current).find((c) => c.i === id);
         if (item) canvasApi.current?.reveal(item);
-      } else document.getElementById(`tile-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        const el = document.getElementById(`tile-${id}`);
+        const r = el?.getBoundingClientRect();
+        // only scroll when the tile is not already on screen (below the sticky header)
+        if (el && (r.top < 70 || r.bottom > innerHeight)) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     }, 200);
   }, []);
 
@@ -166,8 +171,8 @@ export default function App() {
         setWidgets(d.widgets);
         if (d.canvas) setCanvas(d.canvas);
         if (d.appearance) setAppearance(d.appearance);
-        const created = e.detail?.created ?? [];
-        if (created.length) revealTile(created[created.length - 1].id, d.canvas ?? []);
+        const shown = e.detail?.shown ?? (e.detail?.created ?? []).map((c) => c.id);
+        if (shown.length) revealTile(shown[shown.length - 1], d.canvas ?? []);
         const ids = e.detail?.changed ?? [];
         if (ids.length) setRev((r) => Object.fromEntries([...Object.entries(r), ...(ids.includes('*') ? d.widgets.map((w) => w.id) : ids).map((id) => [id, (r[id] ?? 0) + 1])]));
       } catch (err) {

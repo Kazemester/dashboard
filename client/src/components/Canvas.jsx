@@ -192,11 +192,16 @@ export default function Canvas({ items, onItemsChange, editing, children, onApi 
         onItemsChange(next);
         setTimeout(() => fitRef.current?.(next), 0);
       },
-      // centre on a tile, zooming in if it would otherwise be a speck
+      // bring a tile into view: leave the view alone when it is already fully visible, otherwise centre on it
+      // (zooming in if it would be a speck)
       reveal: (l) => {
         const p = toPx(l);
         setView((c) => {
-          const z = Math.max((c ?? v).zoom, 0.55);
+          const cur = c ?? v;
+          const left = p.x * cur.zoom + cur.x;
+          const top = p.y * cur.zoom + cur.y;
+          if (cur.zoom >= 0.4 && left >= 0 && top >= 0 && left + p.w * cur.zoom <= size.w && top + p.h * cur.zoom <= size.h) return cur;
+          const z = Math.max(cur.zoom, 0.55);
           return { zoom: z, x: size.w / 2 - (p.x + p.w / 2) * z, y: size.h / 2 - (p.y + p.h / 2) * z };
         });
       },
