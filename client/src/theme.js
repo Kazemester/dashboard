@@ -10,6 +10,10 @@ export const THEMES = {
 };
 export const DEFAULT_APPEARANCE = { theme: 'jarvis', bg: null, accent: null };
 
+// Decorative animations: the saved choice wins; with none saved they follow the OS "reduce motion" setting.
+export const animEnabled = (a = DEFAULT_APPEARANCE) =>
+  typeof a.anim === 'boolean' ? a.anim : !(typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches);
+
 const HEX = /^#[0-9a-f]{6}$/i;
 const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 export const hexToRgba = (hex, a = 1) => (HEX.test(hex) ? `rgba(${rgb(hex).join(', ')}, ${a})` : hex);
@@ -48,6 +52,7 @@ export function applyAppearance(a) {
   s.setProperty('--danger', r.danger);
   s.setProperty('color-scheme', r.scheme);
   document.documentElement.dataset.scheme = r.scheme;
+  document.documentElement.dataset.anim = animEnabled(a) ? 'on' : 'off';
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', r.bg);
   try {
     localStorage.setItem(STORE, JSON.stringify(a)); // lets the next page load start in the right colours

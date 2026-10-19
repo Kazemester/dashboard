@@ -35,6 +35,14 @@ A fejléc mindig látszik, görgetés közben is. A **Téma** gombbal 7 kész t�
 
 ![Témaválasztó](docs/theme-picker.png)
 
+**Animációk:** a fejléc **Anim** kapcsolójával be- és kikapcsolhatod a finom, díszítő mozgásokat. A kapcsoló állása is az adatbázisba mentődik. Amit bekapcsolva látsz:
+- a vonaldiagramokon (Tőzsde, Kripto, Levegő, Mérésnapló) időnként végigfut egy fény, minden grafikon a saját ütemében;
+- a csempék lépcsőzetesen úsznak be, és a felső szélükön időnként átsuhan egy vékony pásztázó vonal;
+- a célok sávjain időnként átfut egy fény, a megváltozott árfolyam egyet villan, az állapotjelző pontok lassan „lélegeznek";
+- a háttér halvány fénye és a logó lassan pulzál.
+
+Csak halvány, ritka mozgások, amelyek a processzort alig terhelik. 30%-nál kisebb nagyításnál magukat kikapcsolják. Ha az operációs rendszeren a „mozgás csökkentése" be van kapcsolva, alapból ki vannak kapcsolva, de a kapcsolóval bármikor bekapcsolhatod őket. A chat-botnak is mondhatod: „Kapcsold ki az animációkat."
+
 ## Modulok
 
 33 modultípus és több kész preset, kategóriánként. A legtöbbhöz **nem kell fiók vagy API-kulcs**.

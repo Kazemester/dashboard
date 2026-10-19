@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useWidgetData, fmtNum } from '../hooks.js';
-import { Sparkline, LineChart } from '../components/Charts.jsx';
+import { Sparkline, LineChart, Tick } from '../components/Charts.jsx';
 import { currentAppearance, hexToRgba } from '../theme.js';
 
 const TYPE_LABEL = { stock: 'részvény', etf: 'ETF', index: 'index', commodity: 'nyersanyag', fx: 'deviza', crypto: 'kripto', other: '' };
@@ -276,7 +276,7 @@ export default function Stocks({ widget, onUpdateConfig }) {
               {!i.error && (i.spark?.length > 1 ? <Sparkline values={i.spark} height={22} className={up ? 'up' : 'down'} /> : <DayRange range={i.range} price={i.price} />)}
               {!i.error && (
                 <div className="stk-price">
-                  <span>{money(i.price, i.currency)}</span>
+                  <Tick value={i.price}>{money(i.price, i.currency)}</Tick>
                   <span className={`stk-chg ${up ? 'up' : 'down'}`}>{pct(i.changePct)}</span>
                 </div>
               )}

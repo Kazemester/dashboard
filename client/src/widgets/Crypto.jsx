@@ -1,6 +1,6 @@
 import React from 'react';
 import { useWidgetData, fmtNum } from '../hooks.js';
-import { Sparkline } from '../components/Charts.jsx';
+import { Sparkline, Tick } from '../components/Charts.jsx';
 
 const SYM = { usd: '$', eur: '€', huf: 'Ft', gbp: '£' };
 
@@ -23,11 +23,11 @@ export default function Crypto({ widget }) {
             </div>
             <Sparkline values={c.spark} height={24} className={up ? 'up' : 'down'} />
             <div className="crypto-price">
-              <span>
+              <Tick value={c.price}>
                 {pre && sym}
                 {fmtNum(c.price, digits)}
                 {!pre && ` ${sym}`}
-              </span>
+              </Tick>
               <span className={`crypto-chg ${up ? 'up' : 'down'}`}>
                 {up ? '▲' : '▼'} {Math.abs(c.change24h ?? 0).toFixed(2)}%
               </span>

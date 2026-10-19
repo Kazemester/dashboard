@@ -179,8 +179,9 @@ const TOOLS = {
       h: { type: 'integer', description: 'height in cells (typically 4-14)' },
     }, ['id']),
     fn('remove_tile', 'Propose removing a tile. It is NOT removed until the user presses the confirm button shown under your answer.', { id: { type: 'string' } }, ['id']),
-    fn('set_appearance', `Change the dashboard theme and/or colours. Themes: ${THEMES.join(', ')}.`, {
+    fn('set_appearance', `Change the dashboard theme, colours and/or turn the decorative animations on or off. Themes: ${THEMES.join(', ')}.`, {
       theme: { type: 'string', enum: THEMES },
+      animations: { type: 'boolean', description: 'true = animations on, false = off' },
       bg: { type: 'string', description: 'background colour #rrggbb, or "" to reset' },
       accent: { type: 'string', description: 'highlight colour #rrggbb, or "" to reset' },
     }),
@@ -415,12 +416,18 @@ function makeExecutor({ catalog, mode, tools }) {
       pending.push({ kind: 'remove_tile', id, title: w.title });
       return { ok: true, note: 'A confirm button is shown to the user; tell them to press it.' };
     },
-    async set_appearance({ theme, bg, accent }) {
+    async set_appearance({ theme, bg, accent, animations }) {
       const { appearance } = await loadState();
-      const next = { theme: theme || appearance.theme || 'jarvis', bg: bg === undefined ? appearance.bg ?? null : bg || null, accent: accent === undefined ? appearance.accent ?? null : accent || null };
+      const anim = typeof animations === 'boolean' ? animations : appearance.anim;
+      const next = {
+        theme: theme || appearance.theme || 'jarvis',
+        bg: bg === undefined ? appearance.bg ?? null : bg || null,
+        accent: accent === undefined ? appearance.accent ?? null : accent || null,
+        ...(typeof anim === 'boolean' ? { anim } : {}),
+      };
       await selfApi('PUT', '/settings/appearance', next);
       layoutChanged = true;
-      actions.push(`Téma: ${next.theme}`);
+      actions.push(typeof animations === 'boolean' && !theme ? `Animációk: ${animations ? 'be' : 'ki'}` : `Téma: ${next.theme}`);
       return { ok: true, ...next };
     },
     async tile_api({ method, path, body }) {

@@ -32,7 +32,7 @@ export default function ThemePicker({ appearance, onChange }) {
               <button
                 key={k}
                 className={`theme-opt ${appearance.theme === k ? 'on' : ''}`}
-                onClick={() => onChange({ theme: k, bg: null, accent: null })}
+                onClick={() => onChange({ ...appearance, theme: k, bg: null, accent: null })}
                 title={t.name}
               >
                 <span className="theme-swatch" style={{ background: t.bg, borderColor: t.accent }}>

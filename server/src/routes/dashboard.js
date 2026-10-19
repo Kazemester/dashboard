@@ -36,10 +36,11 @@ r.put('/settings/canvas', async (req, res) => {
 // Theme + custom colours chosen in the header.
 const HEX = /^#[0-9a-f]{6}$/i;
 r.put('/settings/appearance', async (req, res) => {
-  const { theme, bg = null, accent = null } = req.body ?? {};
+  const { theme, bg = null, accent = null, anim } = req.body ?? {};
   if (typeof theme !== 'string' || !/^[a-z]{1,30}$/.test(theme)) throw new HttpError(400, 'invalid theme');
   for (const c of [bg, accent]) if (c !== null && !HEX.test(c)) throw new HttpError(400, 'colours must be #rrggbb');
-  const value = { theme, bg, accent };
+  if (anim !== undefined && typeof anim !== 'boolean') throw new HttpError(400, 'anim must be true or false');
+  const value = { theme, bg, accent, ...(anim === undefined ? {} : { anim }) };
   await q(
     `INSERT INTO settings (key, value) VALUES ('appearance', $1)
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,

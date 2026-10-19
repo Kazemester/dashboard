@@ -1,6 +1,46 @@
-import React from 'react';
+import React, { useId, useRef } from 'react';
 
 // Tiny dependency-free SVG charts in the HUD style.
+
+// A soft highlight that now and then runs along a chart line (decorative; hidden when animations are off).
+// The line is drawn again on top, masked by a gradient band that CSS moves across; each chart gets its own
+// phase and period so they do not pulse in unison. `w` is the chart's viewBox width.
+function Glint({ d, w }) {
+  const uid = useId().replace(/:/g, '');
+  const phase = useRef(Math.random());
+  const band = w * 0.3;
+  return (
+    <g
+      className="spark-glint"
+      style={{ '--g-delay': `${(-phase.current * 12).toFixed(2)}s`, '--g-dur': `${(9 + phase.current * 6).toFixed(2)}s`, '--g-span': w + band }}
+      aria-hidden
+    >
+      <defs>
+        <linearGradient id={`${uid}g`} x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" stopColor="#fff" stopOpacity="0" />
+          <stop offset="0.7" stopColor="#fff" stopOpacity="1" />
+          <stop offset="1" stopColor="#fff" stopOpacity="0" />
+        </linearGradient>
+        <mask id={`${uid}m`} maskUnits="userSpaceOnUse" x={-band} y="-20" width={w + band * 2} height="400">
+          <rect className="spark-sweep" x={-band} y="-20" width={band} height="400" fill={`url(#${uid}g)`} />
+        </mask>
+      </defs>
+      <g mask={`url(#${uid}m)`}>
+        <path d={d} className="spark-halo" />
+        <path d={d} className="spark-core" />
+      </g>
+    </g>
+  );
+}
+
+// A value that flashes briefly when it changes (the element is re-created for a new value).
+export function Tick({ value, className = '', children }) {
+  return (
+    <span key={String(value)} className={`tick ${className}`}>
+      {children}
+    </span>
+  );
+}
 export function Sparkline({ values, height = 28, className = '', fill = false }) {
   const v = values.filter((x) => x != null && !isNaN(x));
   if (v.length < 2) return <svg className={`spark-line ${className}`} viewBox="0 0 100 20" />;
@@ -12,6 +52,7 @@ export function Sparkline({ values, height = 28, className = '', fill = false })
     <svg className={`spark-line ${className}`} viewBox="0 0 100 20" preserveAspectRatio="none" style={{ height }}>
       {fill && <path d={`${d} L100,20 L0,20 Z`} className="spark-area" />}
       <path d={d} className="spark-path" />
+      <Glint d={d} w={100} />
     </svg>
   );
 }
@@ -41,6 +82,8 @@ export function LineChart({ points, goal, unit = '', height = 120, digits = 1 })
         {goal != null && goal !== '' && <line x1="0" x2={W} y1={Y(Number(goal))} y2={Y(Number(goal))} className="lc-goal" />}
         <path d={`${d} L${W},${H} L0,${H} Z`} className="spark-area" />
         <path d={d} className="spark-path" />
+        <Glint d={d} w={W} />
+        <circle cx={X(points.length - 1)} cy={Y(last.y)} r="2.5" className="lc-pulse" />
         <circle cx={X(points.length - 1)} cy={Y(last.y)} r="2.5" className="lc-dot" />
       </svg>
       <span className="lc-label lc-max">{fmt(max)}{unit}</span>

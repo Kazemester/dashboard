@@ -225,8 +225,8 @@ export default function App() {
     return l;
   }, [layouts, widgets]);
 
-  const tiles = widgets.map((w) => (
-    <div key={w.id} id={`tile-${w.id}`}>
+  const tiles = widgets.map((w, idx) => (
+    <div key={w.id} id={`tile-${w.id}`} style={{ '--i': idx }}>
       <Tile
         key={rev[w.id] ?? 0}
         widget={w}

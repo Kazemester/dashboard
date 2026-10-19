@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useNow } from '../hooks.js';
 import { api } from '../api.js';
 import ThemePicker from './ThemePicker.jsx';
+import { animEnabled } from '../theme.js';
 
 export default function TopBar({ editing, onToggleEdit, onAdd, onArrange, onAi, aiVersion, count, appearance, onAppearance }) {
   const now = useNow(1000);
+  const animOn = animEnabled(appearance);
   const [status, setStatus] = useState(null);
   useEffect(() => {
     api.get('/status').then(setStatus).catch(() => setStatus(null));
@@ -39,6 +41,19 @@ export default function TopBar({ editing, onToggleEdit, onAdd, onArrange, onAi, 
         </div>
         <button className="btn btn-ghost ai-btn" onClick={onAi} title={status?.llm ? `AI: ${status.model}` : 'AI nincs beállítva — kattints a beállításhoz'}>
           <i className={`dot ${status?.llm ? 'ok' : 'off'}`} /> AI
+        </button>
+        <button
+          className="btn btn-ghost anim-switch"
+          role="switch"
+          aria-label="Animációk"
+          aria-checked={animOn}
+          onClick={() => onAppearance({ ...appearance, anim: !animOn })}
+          title={animOn ? 'Animációk kikapcsolása' : 'Animációk bekapcsolása'}
+        >
+          <span className={`sw ${animOn ? 'on' : ''}`} aria-hidden>
+            <i />
+          </span>
+          <span className="sw-label">Anim</span>
         </button>
         <ThemePicker appearance={appearance} onChange={onAppearance} />
         {onArrange && (
