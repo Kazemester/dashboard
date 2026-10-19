@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useItems, isoDay } from '../hooks.js';
+import { locale } from '../i18n.js';
 
 const LEVELS = [
   [1, 'Pocsék'],
@@ -38,7 +39,7 @@ export default function Mood({ widget }) {
         <button className="icon-btn" onClick={() => shift(-1)}>
           ‹
         </button>
-        <span className="habit-month">{new Date(y, m - 1, 1).toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' })}</span>
+        <span className="habit-month">{new Date(y, m - 1, 1).toLocaleDateString(locale(), { year: 'numeric', month: 'long' })}</span>
         <button className="icon-btn" onClick={() => shift(1)}>
           ›
         </button>

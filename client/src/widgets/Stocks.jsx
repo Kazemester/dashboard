@@ -3,6 +3,7 @@ import { api } from '../api.js';
 import { useWidgetData, fmtNum } from '../hooks.js';
 import { Sparkline, LineChart, Tick } from '../components/Charts.jsx';
 import { currentAppearance, hexToRgba } from '../theme.js';
+import { locale } from '../i18n.js';
 
 const TYPE_LABEL = { stock: 'részvény', etf: 'ETF', index: 'index', commodity: 'nyersanyag', fx: 'deviza', crypto: 'kripto', other: '' };
 const digitsFor = (p) => (p == null ? 2 : Number.isInteger(p) ? 0 : Math.abs(p) >= 1 ? 2 : 4);
@@ -288,7 +289,7 @@ export default function Stocks({ widget, onUpdateConfig }) {
         <button className="btn btn-ghost sm" onClick={() => setMode('search')}>
           + Hozzáadás
         </button>
-        <span className="eyebrow">{data ? `${PROVIDER_LABEL[data.provider] ?? data.provider} · ${new Date(items[0]?.fetchedAt ?? Date.now()).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}` : ''}</span>
+        <span className="eyebrow">{data ? `${PROVIDER_LABEL[data.provider] ?? data.provider} · ${new Date(items[0]?.fetchedAt ?? Date.now()).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}` : ''}</span>
       </div>
     </div>
   );

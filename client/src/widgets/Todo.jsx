@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../api.js';
 import { useItems, isoDay } from '../hooks.js';
+import { locale } from '../i18n.js';
 
 export default function Todo({ widget, editing }) {
   const { items, error, add, update, remove, setItems } = useItems(widget.id, 'kind=todo');
@@ -35,7 +36,7 @@ export default function Todo({ widget, editing }) {
   const dueLabel = (d) => {
     if (!d) return null;
     const diff = Math.round((new Date(d) - new Date(today)) / 86400_000);
-    const txt = diff === 0 ? 'ma' : diff === 1 ? 'holnap' : diff === -1 ? 'tegnap' : diff < 0 ? `${-diff} napja` : new Date(d).toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' });
+    const txt = diff === 0 ? 'ma' : diff === 1 ? 'holnap' : diff === -1 ? 'tegnap' : diff < 0 ? `${-diff} napja` : new Date(d).toLocaleDateString(locale(), { month: 'short', day: 'numeric' });
     return <span className={`todo-due ${diff < 0 ? 'late' : diff === 0 ? 'now' : ''}`}>{txt}</span>;
   };
 

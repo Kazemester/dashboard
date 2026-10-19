@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useWidgetData, isoDay } from '../hooks.js';
+import { locale } from '../i18n.js';
 
 const pad = (n) => String(n).padStart(2, '0');
 const monthKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
@@ -32,7 +33,7 @@ export default function Habits({ widget, editing }) {
   const isFuture = month > thisMonth;
   // Days that can already be ticked in this month (everything up to today).
   const elapsed = isFuture ? 0 : isCurrent ? new Date().getDate() : daysInMonth;
-  const title = new Date(y, m - 1, 1).toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' });
+  const title = new Date(y, m - 1, 1).toLocaleDateString(locale(), { year: 'numeric', month: 'long' });
 
   const setHabits = (fn) => setData((d) => ({ ...d, habits: fn(d.habits) }));
 

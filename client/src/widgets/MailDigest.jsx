@@ -2,10 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useWidgetData } from '../hooks.js';
 import AiError from '../components/AiHint.jsx';
+import { locale } from '../i18n.js';
 
 const SUGGESTIONS = ['Mi a legfontosabb?', 'Van fizetendő számlám vagy határidőm?', 'Kinek kell válaszolnom?', 'Melyik levél reklám vagy spam?'];
 
-const when = (d) => (d ? new Date(d).toLocaleString('hu-HU', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
+const when = (d) => (d ? new Date(d).toLocaleString(locale(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
 const sender = (from) => (from || '').replace(/<[^>]*>/g, '').trim() || from;
 
 function Summary({ r, onAsk }) {

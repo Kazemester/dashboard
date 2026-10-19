@@ -1,5 +1,6 @@
 import React from 'react';
 import { useWidgetData } from '../hooks.js';
+import { locale } from '../i18n.js';
 
 const get = (obj, path) =>
   !path ? obj : path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean).reduce((o, k) => (o == null ? undefined : o[k]), obj);
@@ -56,7 +57,7 @@ export default function ApiWidget({ widget, onConfigure }) {
     <div className="api-widget">
       {body}
       <button className={`api-refresh muted sm ${loading ? 'spin' : ''}`} onClick={reload} title="Frissítés">
-        ⟳ {new Date(data.fetchedAt).toLocaleTimeString('hu-HU')}
+        ⟳ {new Date(data.fetchedAt).toLocaleTimeString(locale())}
       </button>
     </div>
   );

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { api } from './api.js';
+import { locale } from './i18n.js';
 
 // A tile is "live" while something inside it really reloads data on a timer. Tile.jsx provides the registry,
 // tiles that load on their own (not through useWidgetData) call useLive(active) themselves.
@@ -94,4 +95,4 @@ export function useItems(widgetId, query = '') {
 }
 
 export const fmtNum = (n, digits = 0) =>
-  n == null || isNaN(n) ? '–' : Number(n).toLocaleString('hu-HU', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  n == null || isNaN(n) ? '–' : Number(n).toLocaleString(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits });

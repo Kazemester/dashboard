@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useItems, isoDay, fmtNum } from '../hooks.js';
+import { locale } from '../i18n.js';
 
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -46,7 +47,7 @@ export default function Expenses({ widget, editing }) {
         <button className="icon-btn" onClick={() => shift(-1)}>
           ‹
         </button>
-        <span className="habit-month">{new Date(y, m - 1, 1).toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' })}</span>
+        <span className="habit-month">{new Date(y, m - 1, 1).toLocaleDateString(locale(), { year: 'numeric', month: 'long' })}</span>
         <button className="icon-btn" onClick={() => shift(1)}>
           ›
         </button>

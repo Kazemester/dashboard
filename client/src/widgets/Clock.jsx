@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNow } from '../hooks.js';
+import { locale } from '../i18n.js';
 
 export default function Clock({ widget }) {
   const now = useNow(1000);
@@ -27,7 +28,7 @@ export default function Clock({ widget }) {
           {zones.map((z) => {
             let t;
             try {
-              t = now.toLocaleTimeString('hu-HU', { timeZone: z, hour: '2-digit', minute: '2-digit' });
+              t = now.toLocaleTimeString(locale(), { timeZone: z, hour: '2-digit', minute: '2-digit' });
             } catch {
               t = '??';
             }

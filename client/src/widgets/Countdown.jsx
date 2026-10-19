@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNow } from '../hooks.js';
+import { locale } from '../i18n.js';
 
 export default function Countdown({ widget, onConfigure }) {
   const now = useNow(60_000);
@@ -40,7 +41,7 @@ export default function Countdown({ widget, onConfigure }) {
         <span className="big-num">{first.days === 0 ? 'MA' : first.days}</span>
         {first.days !== 0 && <span className="cd-unit">nap</span>}
         <div className="cd-name">{first.name}</div>
-        <div className="eyebrow">{first.at.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}</div>
+        <div className="eyebrow">{first.at.toLocaleDateString(locale(), { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}</div>
       </div>
       {rest.length > 0 && (
         <ul className="cd-list">

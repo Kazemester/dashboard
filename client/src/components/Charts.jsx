@@ -1,4 +1,5 @@
 import React, { useId, useRef } from 'react';
+import { locale } from '../i18n.js';
 
 // Tiny dependency-free SVG charts in the HUD style.
 
@@ -72,7 +73,7 @@ export function LineChart({ points, goal, unit = '', height = 120, digits = 1 })
   const Y = (y) => H - ((y - lo) / (hi - lo)) * H;
   const d = points.map((p, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(p.y).toFixed(1)}`).join(' ');
   const last = points[points.length - 1];
-  const fmt = (v) => v.toLocaleString('hu-HU', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  const fmt = (v) => v.toLocaleString(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits });
   return (
     <div className="line-chart" style={{ height }}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">

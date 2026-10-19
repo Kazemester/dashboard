@@ -1,5 +1,6 @@
 import React from 'react';
 import { useWidgetData, isoDay } from '../hooks.js';
+import { locale } from '../i18n.js';
 
 export default function Calendar({ widget, onConfigure }) {
   const { data, error } = useWidgetData(`/widgets/${widget.id}/calendar`, { interval: 5 * 60_000 });
@@ -20,8 +21,8 @@ export default function Calendar({ widget, onConfigure }) {
   const groups = {};
   for (const e of data.events) (groups[isoDay(e.start)] ??= []).push(e);
   const label = (d) =>
-    d === today ? 'MA' : d === tomorrow ? 'HOLNAP' : new Date(d).toLocaleDateString('hu-HU', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase();
-  const time = (e) => (e.allDay ? 'egész nap' : new Date(e.start).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }));
+    d === today ? 'MA' : d === tomorrow ? 'HOLNAP' : new Date(d).toLocaleDateString(locale(), { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase();
+  const time = (e) => (e.allDay ? 'egész nap' : new Date(e.start).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }));
   const now = Date.now();
 
   return (

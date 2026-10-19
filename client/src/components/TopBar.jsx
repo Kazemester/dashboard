@@ -3,6 +3,7 @@ import { useNow } from '../hooks.js';
 import { api } from '../api.js';
 import ThemePicker from './ThemePicker.jsx';
 import { animEnabled } from '../theme.js';
+import { getLang, locale, setLang, t } from '../i18n.js';
 
 export default function TopBar({ editing, onToggleEdit, onAdd, onArrange, onAi, aiVersion, count, appearance, onAppearance }) {
   const now = useNow(1000);
@@ -34,9 +35,9 @@ export default function TopBar({ editing, onToggleEdit, onAdd, onArrange, onAi, 
 
       <div className="topbar-right">
         <div className="clock">
-          <span className="clock-time">{now.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}</span>
+          <span className="clock-time">{now.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}</span>
           <span className="clock-date">
-            {now.toLocaleDateString('hu-HU', { weekday: 'short', month: 'short', day: 'numeric' })}
+            {now.toLocaleDateString(locale(), { weekday: 'short', month: 'short', day: 'numeric' })}
           </span>
         </div>
         <button className="btn btn-ghost ai-btn" onClick={onAi} title={status?.llm ? `AI: ${status.model}` : 'AI nincs beállítva — kattints a beállításhoz'}>
@@ -55,6 +56,13 @@ export default function TopBar({ editing, onToggleEdit, onAdd, onArrange, onAi, 
           </span>
           <span className="anim-sw-label">Anim</span>
         </button>
+        <div className="lang-switch" role="group" aria-label={t('Nyelv')}>
+          {['hu', 'en'].map((l) => (
+            <button key={l} className={getLang() === l ? 'on' : ''} aria-pressed={getLang() === l} onClick={() => setLang(l)} title={l === 'hu' ? 'Magyar' : 'English'}>
+              {l.toUpperCase()}
+            </button>
+          ))}
+        </div>
         <ThemePicker appearance={appearance} onChange={onAppearance} />
         {onArrange && (
           <button className="btn btn-ghost" onClick={onArrange} title="Csempék rendezése hézag nélküli rácsba">

@@ -866,3 +866,9 @@ select.input option { background: var(--surface); color: var(--text); }
 
 /* a tile the chat bot just added: highlighted for a few seconds so it is easy to spot */
 .react-grid-item.tile-flash .tile { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 28px color-mix(in srgb, var(--accent) 45%, transparent); }
+
+/* language switch (HU | EN) */
+.lang-switch { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--radius); overflow: hidden; flex: none; }
+.lang-switch button { background: transparent; border: 0; color: var(--muted); font: inherit; font-size: 11px; letter-spacing: .12em; padding: 6px 8px; cursor: pointer; }
+.lang-switch button.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.lang-switch button:hover:not(.on) { color: var(--text); }

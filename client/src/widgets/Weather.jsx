@@ -1,5 +1,6 @@
 import React from 'react';
 import { useWidgetData } from '../hooks.js';
+import { locale } from '../i18n.js';
 
 // WMO weather codes → monochrome glyph + label
 const T = '\uFE0E';
@@ -39,7 +40,7 @@ export default function Weather({ widget }) {
       <div className="weather-days">
         {data.daily.time.map((d, i) => (
           <div key={d} className="wday">
-            <span className="eyebrow">{i === 0 ? 'MA' : new Date(d).toLocaleDateString('hu-HU', { weekday: 'short' }).toUpperCase()}</span>
+            <span className="eyebrow">{i === 0 ? 'MA' : new Date(d).toLocaleDateString(locale(), { weekday: 'short' }).toUpperCase()}</span>
             <span className="wday-icon">{wmo(data.daily.weather_code[i])[0]}</span>
             <span>
               {Math.round(data.daily.temperature_2m_max[i])}° <span className="muted">{Math.round(data.daily.temperature_2m_min[i])}°</span>

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useWidgetData, isoDay } from '../hooks.js';
 import AiError, { openAiSettings } from '../components/AiHint.jsx';
+import { locale } from '../i18n.js';
 
 export default function Brief({ widget }) {
   const { data, error, loading, setData } = useWidgetData(`/widgets/${widget.id}/brief`);
@@ -38,7 +39,7 @@ export default function Brief({ widget }) {
         <div className="mail-bot">
           <span className={`bot-eye ${busy ? 'scanning' : ''}`} />
           <span className="eyebrow">
-            {busy ? 'ADATOK ÖSSZEGYŰJTÉSE…' : data ? `${data.ai ? 'AI BRIEF' : 'ÖSSZEFOGLALÓ'} · ${new Date(data.generatedAt).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}` : 'KÉSZENLÉTBEN'}
+            {busy ? 'ADATOK ÖSSZEGYŰJTÉSE…' : data ? `${data.ai ? 'AI BRIEF' : 'ÖSSZEFOGLALÓ'} · ${new Date(data.generatedAt).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}` : 'KÉSZENLÉTBEN'}
           </span>
         </div>
         <button className="btn btn-primary sm" onClick={run} disabled={busy}>
