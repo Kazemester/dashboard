@@ -48,7 +48,7 @@ function Meta({ meta, onConfirm }) {
           </span>
         ) : (
           <button key={p.id} className="btn btn-ghost sm danger" onClick={() => onConfirm(p)}>
-            Törlés jóváhagyása: {p.title}
+            {p.replacedBy ? 'Régi csempe törlése' : 'Törlés jóváhagyása'}: {p.title}
           </button>
         ),
       )}

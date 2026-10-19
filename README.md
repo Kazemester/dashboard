@@ -166,9 +166,10 @@ Az AI Chat csempe látja a dashboardodat, és kérésre változtat is rajta. Pé
 - „Mi a mai teendőm?”, „Hány szokást pipáltam ki ezen a héten?”, „Mit írt a Mail bot összefoglalója?”, „Mennyi most az arany?”
 - „Vegyél fel egy teendőt: számla befizetése péntekig”, „Pipáld ki ma a futást”, „Írd a jegyzetbe: …”, „Költöttem 4500 Ft-ot ebédre”, „Tedd be a Gyorslinkekhez a google.com-ot”, „Vegyél fel egy visszaszámlálót: nyaralás, július 1.”
 - „Tegyél ki egy budapesti időjárás csempét”, „Tedd a SpaceX-et a tőzsde csempébe”, „Legyen nagyobb a naptár”, „Legyen amber a téma”
+- „Állítsd át a bitcoin csempét USD-HUF árfolyamra”: egy csempe fajtája nem változtatható, ezért a bot kitesz egy új csempét (itt Valutaváltót USD → HUF beállítással) a régi mellé, és a régi csempe törlését jóváhagyásra felajánlja (**Régi csempe törlése** gomb).
 - „Töröld a régi jegyzet csempét”: törölni csak akkor töröl, ha a válasza alatt megnyomod a **Törlés jóváhagyása** gombot.
 
-A válasz alatt kis címkék mutatják, mit változtatott. A módosított csempék azonnal frissülnek.
+A bot csak olyan beállítást fogad el egy csempéhez, amilyen annak a csempének tényleg van (a kitalált beállítást visszautasítja, és megmondja, mi a helyes). A válasz alatt kis címkék mutatják, mit változtatott. A módosított csempék azonnal frissülnek.
 
 A csempe ⚙ beállításainál a **Hozzáférés a dashboardhoz** lehet:
 - **Olvashat és módosíthat:** ez az alapértelmezett.
