@@ -313,6 +313,7 @@ async function ownerOf(path) {
 function makeExecutor({ catalog, mode, tools }) {
   const actions = []; // human-readable log shown under the answer
   const pending = []; // removals waiting for the user's confirmation
+  const created = []; // tiles added in this turn ({ id, title }): the client scrolls to them and offers a 'show' button
   const changed = new Set(); // tile ids whose content changed (the client remounts them)
   let layoutChanged = false;
   const typeName = (t) => catalog?.[t]?.name ?? t;
@@ -448,6 +449,7 @@ function makeExecutor({ catalog, mode, tools }) {
       await saveCanvas(canvas);
       layoutChanged = true;
       actions.push(`Új csempe: ${w.title}`);
+      created.push({ id: w.id, title: w.title });
       const fields = (def?.fields ?? []).map((f) => `${f.key} (${f.label})`);
       return {
         ok: true,
@@ -485,6 +487,7 @@ function makeExecutor({ catalog, mode, tools }) {
       layoutChanged = true;
       pending.push({ kind: 'remove_tile', id: old.id, title: old.title, replacedBy: w.title });
       actions.push(`Új csempe: ${w.title}`);
+      created.push({ id: w.id, title: w.title });
       return { ok: true, new_tile: w.title, note: `The new tile was added. The old tile "${old.title}" is NOT removed yet: the user must press the confirm button shown under your answer. Tell them that.` };
     },
     async move_resize_tile({ id, x, y, w, h }) {
@@ -540,6 +543,7 @@ function makeExecutor({ catalog, mode, tools }) {
   return {
     actions,
     pending,
+    created,
     changed,
     get layoutChanged() {
       return layoutChanged;
@@ -605,6 +609,11 @@ function toolsFor(mode, local) {
   return [...TOOLS.read, ...write];
 }
 
+// Past-tense "I did it" phrases (Hungarian / English). Small models sometimes claim a change without making it.
+const CLAIM = /hozzáadtam|hozzá lett adva|hozzáadva|felvettem|létrehoztam|kitettem|beállítottam|átállítottam|módosítottam|megváltoztattam|töröltem|átrendeztem|átméreteztem|bekapcsoltam|kikapcsoltam|megcsináltam|lett\s+\S+\s*(adva|állítva|módosítva|törölve|beállítva|létrehozva)|\b(added|created|updated|changed|removed|deleted|switched|turned)\b/i;
+const NO_CHANGE = '⚠ Nem történt változás a dashboardon: a bot nem hajtott végre módosítást.';
+const metaOf = (exec, extra = {}) => ({ actions: exec.actions, pending: exec.pending, created: exec.created, changed: [...exec.changed], layoutChanged: exec.layoutChanged, ...extra });
+
 /**
  * Run one chat turn with dashboard access.
  * @returns {{ answer, meta: { actions, pending, changed, layoutChanged, readOnly? } }}
@@ -617,6 +626,7 @@ export async function agentTurn({ history, persona, model, catalog, mode }) {
   const exec = makeExecutor({ catalog, mode, tools });
   const messages = [{ role: 'system', content: systemPrompt({ persona, state, catalog, mode, local }) }, ...history.slice(-12)];
   const resultLimit = local ? 3000 : 9000;
+  let nudged = false;
 
   try {
     for (let step = 0; step < MAX_STEPS; step++) {
@@ -629,8 +639,19 @@ export async function agentTurn({ history, persona, model, catalog, mode }) {
           messages.push({ role: 'assistant', content: '' }, { role: 'user', content: 'Please answer my previous message (use your tools if needed).' });
           continue;
         }
+        // "Done!" without any tool call: ask once to really do it, otherwise say plainly that nothing changed
+        const claims = mode === 'full' && answer && CLAIM.test(answer) && !exec.actions.length && !exec.pending.length;
+        if (claims && step === 0 && !nudged) {
+          nudged = true;
+          messages.push(
+            { role: 'assistant', content: answer },
+            { role: 'user', content: 'You said it is done, but you called no tool, so nothing changed. Call the right tool now (add_tile, update_tile, replace_tile, add_todo …), or tell me honestly that you cannot do it.' },
+          );
+          continue;
+        }
         if (!answer) answer = exec.actions.length ? `Kész: ${exec.actions.join(', ')}.` : '(nincs válasz)';
-        return { answer, meta: { actions: exec.actions, pending: exec.pending, changed: [...exec.changed], layoutChanged: exec.layoutChanged } };
+        if (claims) answer = `${answer}\n\n${NO_CHANGE}`;
+        return { answer, meta: metaOf(exec) };
       }
       messages.push({ role: 'assistant', content: msg.content ?? '', tool_calls: calls });
       for (const call of calls) {
@@ -644,13 +665,15 @@ export async function agentTurn({ history, persona, model, catalog, mode }) {
         messages.push({ role: 'tool', tool_call_id: call.id, name: call.function?.name, content: clip(output, resultLimit) });
       }
     }
-    return { answer: 'Túl sok lépés kellett volna ehhez; próbáld kisebb részekre bontani a kérést.', meta: { actions: exec.actions, pending: exec.pending, changed: [...exec.changed], layoutChanged: exec.layoutChanged } };
+    return { answer: 'Túl sok lépés kellett volna ehhez; próbáld kisebb részekre bontani a kérést.', meta: metaOf(exec) };
   } catch (err) {
     if (!err.toolsUnsupported) throw err;
     // the model can't call tools: answer from a snapshot instead, without changing anything
     const snap = await snapshot(local ? 5000 : 20000);
     const sys = `${systemPrompt({ persona, state, catalog, mode: 'read', local })}\n\nThis model cannot use tools. Current tile contents:\n${snap}\n\nYou cannot change anything; if asked to, say that this model can't do it and suggest a model with tool support (e.g. qwen2.5 / qwen3 / llama3.1 in Ollama, or a cloud model).`;
     const msg = await complete([{ role: 'system', content: sys }, ...history.slice(-12)], { model, temperature: 0.3 });
-    return { answer: msg.content || '(nincs válasz)', meta: { actions: [], pending: [], changed: [], layoutChanged: false, readOnly: true } };
+    let answer = msg.content || '(nincs válasz)';
+    if (CLAIM.test(answer)) answer = `${answer}\n\n⚠ Ez a modell nem tud eszközt használni, ezért semmit nem változtatott a dashboardon.`;
+    return { answer, meta: { actions: [], pending: [], created: [], changed: [], layoutChanged: false, readOnly: true } };
   }
 }

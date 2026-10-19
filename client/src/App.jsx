@@ -62,6 +62,11 @@ export default function App() {
   const [aiVersion, setAiVersion] = useState(0); // bump to refresh AI status in the header
   const [undo, setUndo] = useState(null); // previous canvas after "Rendezés"
   const [rev, setRev] = useState({}); // per-tile remount counter (content changed by the chat bot)
+  const [flashId, setFlashId] = useState(null); // tile that is briefly highlighted after the bot added it
+  const flashTimer = useRef(null);
+  const isDesktopRef = useRef(isDesktop);
+  isDesktopRef.current = isDesktop;
+  const canvasRef = useRef([]);
   const undoTimer = useRef(null);
 
   useEffect(() => {
@@ -125,12 +130,33 @@ export default function App() {
     return items;
   }, [canvas, widgets]);
 
+  canvasRef.current = safeCanvas;
+
   // Tiles (chat, mail bot, brief) can ask for the AI settings: window.dispatchEvent(new Event('nexus:ai-settings'))
   useEffect(() => {
     const open = () => setAiOpen(true);
     window.addEventListener('nexus:ai-settings', open);
     return () => window.removeEventListener('nexus:ai-settings', open);
   }, []);
+
+  // Bring a tile into view and highlight it (tiles the chat bot added may sit outside the current view).
+  const revealTile = useCallback((id, list) => {
+    setFlashId(id);
+    clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setFlashId(null), 3200);
+    setTimeout(() => {
+      if (isDesktopRef.current) {
+        const item = (list ?? canvasRef.current).find((c) => c.i === id);
+        if (item) canvasApi.current?.reveal(item);
+      } else document.getElementById(`tile-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 200);
+  }, []);
+
+  useEffect(() => {
+    const onReveal = (e) => e.detail?.id && revealTile(e.detail.id);
+    window.addEventListener('nexus:reveal', onReveal);
+    return () => window.removeEventListener('nexus:reveal', onReveal);
+  }, [revealTile]);
 
   // The chat bot changed tiles, layout or theme on the server → pull the new state.
   useEffect(() => {
@@ -140,6 +166,8 @@ export default function App() {
         setWidgets(d.widgets);
         if (d.canvas) setCanvas(d.canvas);
         if (d.appearance) setAppearance(d.appearance);
+        const created = e.detail?.created ?? [];
+        if (created.length) revealTile(created[created.length - 1].id, d.canvas ?? []);
         const ids = e.detail?.changed ?? [];
         if (ids.length) setRev((r) => Object.fromEntries([...Object.entries(r), ...(ids.includes('*') ? d.widgets.map((w) => w.id) : ids).map((id) => [id, (r[id] ?? 0) + 1])]));
       } catch (err) {
@@ -148,7 +176,7 @@ export default function App() {
     };
     window.addEventListener('nexus:dashboard-changed', onChange);
     return () => window.removeEventListener('nexus:dashboard-changed', onChange);
-  }, []);
+  }, [revealTile]);
 
   const arrangeCanvas = () => {
     if (!confirm('Biztosan rendezed a csempéket? Minden csempe új helyre kerül egy rácsba. (Utána 12 másodpercig visszavonható.)')) return;
@@ -226,7 +254,7 @@ export default function App() {
   }, [layouts, widgets]);
 
   const tiles = widgets.map((w, idx) => (
-    <div key={w.id} id={`tile-${w.id}`} style={{ '--i': idx }}>
+    <div key={w.id} id={`tile-${w.id}`} style={{ '--i': idx }} className={flashId === w.id ? 'tile-flash' : undefined}>
       <Tile
         key={rev[w.id] ?? 0}
         widget={w}

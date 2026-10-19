@@ -41,6 +41,11 @@ function Meta({ meta, onConfirm }) {
           ✓ {a}
         </span>
       ))}
+      {meta.created?.map((t) => (
+        <button key={t.id} className="btn btn-ghost sm" onClick={() => window.dispatchEvent(new CustomEvent('nexus:reveal', { detail: { id: t.id } }))} title="Odaugrik a csempéhez">
+          ↗ Megmutat: {t.title}
+        </button>
+      ))}
       {meta.pending?.map((p) =>
         p.done ? (
           <span key={p.id} className="chip chip-static">

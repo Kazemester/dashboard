@@ -192,9 +192,13 @@ export default function Canvas({ items, onItemsChange, editing, children, onApi 
         onItemsChange(next);
         setTimeout(() => fitRef.current?.(next), 0);
       },
+      // centre on a tile, zooming in if it would otherwise be a speck
       reveal: (l) => {
         const p = toPx(l);
-        centerOn(p.x + p.w / 2, p.y + p.h / 2);
+        setView((c) => {
+          const z = Math.max((c ?? v).zoom, 0.55);
+          return { zoom: z, x: size.w / 2 - (p.x + p.w / 2) * z, y: size.h / 2 - (p.y + p.h / 2) * z };
+        });
       },
     });
   }, [onApi, centerCell, centerOn, items, size, onItemsChange]);
