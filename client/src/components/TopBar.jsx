@@ -50,10 +50,10 @@ export default function TopBar({ editing, onToggleEdit, onAdd, onArrange, onAi, 
           onClick={() => onAppearance({ ...appearance, anim: !animOn })}
           title={animOn ? 'Animációk kikapcsolása' : 'Animációk bekapcsolása'}
         >
-          <span className={`sw ${animOn ? 'on' : ''}`} aria-hidden>
+          <span className={`anim-sw ${animOn ? 'on' : ''}`} aria-hidden>
             <i />
           </span>
-          <span className="sw-label">Anim</span>
+          <span className="anim-sw-label">Anim</span>
         </button>
         <ThemePicker appearance={appearance} onChange={onAppearance} />
         {onArrange && (

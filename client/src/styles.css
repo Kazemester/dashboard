@@ -792,11 +792,11 @@ select.input option { background: var(--surface); color: var(--text); }
 
 /* header switch */
 .anim-switch { display: inline-flex; align-items: center; gap: 8px; }
-.sw { position: relative; width: 24px; height: 12px; border: 1px solid var(--line-strong); border-radius: 999px; flex-shrink: 0; transition: border-color 0.2s; }
-.sw i { position: absolute; top: 1px; left: 1px; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: transform 0.2s, background 0.2s; }
-.sw.on { border-color: var(--accent-dim); }
-.sw.on i { transform: translateX(12px); background: var(--accent); }
-@media (max-width: 640px) { .sw-label { display: none; } }
+.anim-sw { position: relative; width: 24px; height: 12px; border: 1px solid var(--line-strong); border-radius: 999px; flex-shrink: 0; transition: border-color 0.2s; }
+.anim-sw i { position: absolute; top: 1px; left: 1px; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: transform 0.2s, background 0.2s; }
+.anim-sw.on { border-color: var(--accent-dim); }
+.anim-sw.on i { transform: translateX(12px); background: var(--accent); }
+@media (max-width: 640px) { .anim-sw-label { display: none; } }
 
 /* a highlight that runs along chart lines (Charts.jsx draws the line again on top, masked by a moving band) */
 .spark-glint, .lc-pulse { display: none; }
@@ -855,3 +855,11 @@ select.input option { background: var(--surface); color: var(--text); }
 
 /* zoomed far out the tiles are specks: save the work */
 .canvas-viewport.far .tile-live::after, .canvas-viewport.far .spark-sweep, .canvas-viewport.far .bar-fill::after, .canvas-viewport.far .lc-pulse { animation: none !important; }
+
+/* ---- header on narrower windows: keep every button on one line, drop the least useful parts first ---- */
+@media (min-width: 641px) { .topbar .btn, .anim-switch, .theme-picker, .clock { white-space: nowrap; flex-shrink: 0; } } /* phones: the buttons must be able to shrink */
+.telemetry { min-width: 0; overflow: hidden; }
+@media (max-width: 1360px) { .telemetry { display: none; } .topbar-right { margin-left: auto; } }
+@media (max-width: 1100px) { .clock { display: none; } }
+@media (max-width: 1100px) and (min-width: 641px) { .topbar { gap: 20px; } }
+@media (max-width: 900px) and (min-width: 641px) { .brand-name { display: none; } .anim-sw-label { display: none; } .topbar { padding: 14px 18px; } }
