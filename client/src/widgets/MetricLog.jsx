@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useItems, isoDay, fmtNum } from '../hooks.js';
 import { LineChart } from '../components/Charts.jsx';
+import { t } from '../i18n.js';
 
 export default function MetricLog({ widget, editing }) {
   const cfg = widget.config;
@@ -11,7 +12,7 @@ export default function MetricLog({ widget, editing }) {
   const [day, setDayInput] = useState(isoDay(new Date()));
 
   if (error) return <div className="w-error">{error}</div>;
-  if (!items) return <div className="loading">BETÖLTÉS…</div>;
+  if (!items) return <div className="loading">{t('BETÖLTÉS…')}</div>;
   const sorted = [...items].sort((a, b) => a.day.localeCompare(b.day));
   const last = sorted[sorted.length - 1];
   const prev = sorted[sorted.length - 2];
@@ -37,18 +38,18 @@ export default function MetricLog({ widget, editing }) {
         <div className="metric-deltas">
           {delta != null && (
             <span className={delta > 0 ? 'up' : delta < 0 ? 'down' : ''}>
-              {delta > 0 ? '▲' : delta < 0 ? '▼' : '■'} {fmtNum(Math.abs(delta), digits)} előzőhöz
+              {delta > 0 ? '▲' : delta < 0 ? '▼' : '■'} {fmtNum(Math.abs(delta), digits)} {t('előzőhöz')}
             </span>
           )}
           {total != null && (
             <span className="muted">
               {total > 0 ? '+' : ''}
-              {fmtNum(total, digits)} / {range} nap
+              {fmtNum(total, digits)} / {t('{n} nap', { n: range })}
             </span>
           )}
           {cfg.goal !== undefined && cfg.goal !== '' && last && (
             <span className="muted">
-              cél: {cfg.goal} ({fmtNum(Math.abs(last.value - cfg.goal), digits)} van hátra)
+              {t('cél: {goal} ({left} van hátra)', { goal: cfg.goal, left: fmtNum(Math.abs(last.value - cfg.goal), digits) })}
             </span>
           )}
         </div>
@@ -57,14 +58,14 @@ export default function MetricLog({ widget, editing }) {
       {editing && sorted.length > 0 && (
         <div className="chips">
           {sorted.slice(-8).map((i) => (
-            <button key={i.id} className="chip" onClick={() => remove(i.id)} title="Törlés">
+            <button key={i.id} className="chip" onClick={() => remove(i.id)} title={t('Törlés')}>
               {i.day.slice(5)} {i.value} ✕
             </button>
           ))}
         </div>
       )}
       <form className="row gap" onSubmit={submit}>
-        <input className="input sm grow" inputMode="decimal" placeholder={`Új mérés (${cfg.unit || 'érték'})`} value={val} onChange={(e) => setVal(e.target.value)} />
+        <input className="input sm grow" inputMode="decimal" placeholder={t('Új mérés ({unit})', { unit: cfg.unit || t('érték') })} value={val} onChange={(e) => setVal(e.target.value)} />
         <input className="input sm w-date" type="date" value={day} max={isoDay(new Date())} onChange={(e) => setDayInput(e.target.value)} />
         <button className="btn btn-ghost sm">+</button>
       </form>

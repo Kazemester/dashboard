@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLive } from '../hooks.js';
+import { t } from '../i18n.js';
 
 export default function ImageFrame({ widget, onConfigure }) {
   const urls = String(widget.config.urls || '')
@@ -22,9 +23,9 @@ export default function ImageFrame({ widget, onConfigure }) {
   if (!urls.length)
     return (
       <div className="setup">
-        <p>Képek URL-ből (pl. saját fotók, webkamera kép, NASA kép).</p>
+        <p>{t('Képek URL-ből (pl. saját fotók, webkamera kép, NASA kép).')}</p>
         <button className="btn btn-primary sm" onClick={onConfigure}>
-          ⚙ Beállítás
+          ⚙ {t('Beállítás')}
         </button>
       </div>
     );

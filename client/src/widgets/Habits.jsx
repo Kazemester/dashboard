@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useWidgetData, isoDay } from '../hooks.js';
-import { locale } from '../i18n.js';
+import { t, locale } from '../i18n.js';
 
 const pad = (n) => String(n).padStart(2, '0');
 const monthKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
@@ -55,8 +55,8 @@ export default function Habits({ widget, editing }) {
   const remove = async (h) => {
     const msg =
       h.startMonth === month
-        ? `Törlöd a(z) "${h.name}" sort? Az összes előzménye is törlődik.`
-        : `Eltávolítod a(z) "${h.name}" sort ettől a hónaptól kezdve? A korábbi hónapok megmaradnak.`;
+        ? t('Törlöd a(z) "{name}" sort? Az összes előzménye is törlődik.', { name: h.name })
+        : t('Eltávolítod a(z) "{name}" sort ettől a hónaptól kezdve? A korábbi hónapok megmaradnak.', { name: h.name });
     if (!confirm(msg)) return;
     await api.del(`/habits/${h.id}?month=${month}`);
     setHabits((hs) => hs.filter((x) => x.id !== h.id));
@@ -64,16 +64,16 @@ export default function Habits({ widget, editing }) {
 
   const nav = (
     <div className="habit-nav">
-      <button className="icon-btn" onClick={() => setMonth((k) => shiftMonth(k, -1))} title="Előző hónap">
+      <button className="icon-btn" onClick={() => setMonth((k) => shiftMonth(k, -1))} title={t('Előző hónap')}>
         ‹
       </button>
       <span className="habit-month">{title}</span>
-      <button className="icon-btn" onClick={() => setMonth((k) => shiftMonth(k, 1))} title="Következő hónap">
+      <button className="icon-btn" onClick={() => setMonth((k) => shiftMonth(k, 1))} title={t('Következő hónap')}>
         ›
       </button>
       {!isCurrent && (
         <button className="btn btn-ghost sm" onClick={() => setMonth(thisMonth)}>
-          Ma
+          {t('Ma')}
         </button>
       )}
     </div>
@@ -84,7 +84,7 @@ export default function Habits({ widget, editing }) {
     return (
       <div className="habits">
         {nav}
-        <div className="loading">SZINKRONIZÁLÁS…</div>
+        <div className="loading">{t('SZINKRONIZÁLÁS…')}</div>
       </div>
     );
 
@@ -100,11 +100,11 @@ export default function Habits({ widget, editing }) {
         <div className="habits-summary">
           {isCurrent && (
             <span>
-              MA <b>{doneToday}</b>/{habits.length}
+              {t('MA')} <b>{doneToday}</b>/{habits.length}
             </span>
           )}
           <span>
-            HÓNAP <b>{possible ? Math.round((totalDone / possible) * 100) : 0}%</b>
+            {t('HÓNAP')} <b>{possible ? Math.round((totalDone / possible) * 100) : 0}%</b>
           </span>
         </div>
       </div>
@@ -125,7 +125,7 @@ export default function Habits({ widget, editing }) {
             const set = new Set(h.days);
             return (
               <React.Fragment key={h.id}>
-                <div className="habit-name" title={isCurrent && h.streak ? `Sorozat: ${h.streak} nap` : h.name}>
+                <div className="habit-name" title={isCurrent && h.streak ? t('Sorozat: {n} nap', { n: h.streak }) : h.name}>
                   <span>{h.name}</span>
                 </div>
                 {days.map((d) => (
@@ -139,11 +139,11 @@ export default function Habits({ widget, editing }) {
                 ))}
                 <div className="habit-streak">
                   {editing ? (
-                    <button className="icon-btn danger sm" onClick={() => remove(h)} title="Sor eltávolítása">
+                    <button className="icon-btn danger sm" onClick={() => remove(h)} title={t('Sor eltávolítása')}>
                       ✕
                     </button>
                   ) : (
-                    <span title="Teljesített napok ebben a hónapban">
+                    <span title={t('Teljesített napok ebben a hónapban')}>
                       {h.days.length}
                       <span className="muted">/{elapsed || daysInMonth}</span>
                     </span>
@@ -153,11 +153,11 @@ export default function Habits({ widget, editing }) {
             );
           })}
         </div>
-        {!habits.length && <div className="muted center-text sm">Ebben a hónapban még nincs sor. Adj hozzá egyet lent.</div>}
+        {!habits.length && <div className="muted center-text sm">{t('Ebben a hónapban még nincs sor. Adj hozzá egyet lent.')}</div>}
       </div>
 
       <form onSubmit={add} className="row gap">
-        <input className="input sm" placeholder={`Új sor (${title})…`} value={name} onChange={(e) => setName(e.target.value)} />
+        <input className="input sm" placeholder={t('Új sor ({title})…', { title })} value={name} onChange={(e) => setName(e.target.value)} />
         <button className="btn btn-ghost sm">+</button>
       </form>
     </div>

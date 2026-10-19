@@ -1,13 +1,14 @@
 import React from 'react';
+import { t } from '../i18n.js';
 
 export default function Embed({ widget, onConfigure }) {
   const url = widget.config.url;
   if (!url)
     return (
       <div className="setup">
-        <p>Bármilyen beágyazható oldal: Grafana, Home Assistant, YouTube, Spotify, Google Sheets…</p>
+        <p>{t('Bármilyen beágyazható oldal: Grafana, Home Assistant, YouTube, Spotify, Google Sheets…')}</p>
         <button className="btn btn-primary sm" onClick={onConfigure}>
-          ⚙ Beállítás
+          ⚙ {t('Beállítás')}
         </button>
       </div>
     );

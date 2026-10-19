@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useWidgetData, isoDay } from '../hooks.js';
 import AiError, { openAiSettings } from '../components/AiHint.jsx';
-import { locale } from '../i18n.js';
+import { t, locale } from '../i18n.js';
 
 export default function Brief({ widget }) {
   const { data, error, loading, setData } = useWidgetData(`/widgets/${widget.id}/brief`);
@@ -39,22 +39,22 @@ export default function Brief({ widget }) {
         <div className="mail-bot">
           <span className={`bot-eye ${busy ? 'scanning' : ''}`} />
           <span className="eyebrow">
-            {busy ? 'ADATOK ÖSSZEGYŰJTÉSE…' : data ? `${data.ai ? 'AI BRIEF' : 'ÖSSZEFOGLALÓ'} · ${new Date(data.generatedAt).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}` : 'KÉSZENLÉTBEN'}
+            {busy ? t('ADATOK ÖSSZEGYŰJTÉSE…') : data ? `${data.ai ? 'AI BRIEF' : t('ÖSSZEFOGLALÓ')} · ${new Date(data.generatedAt).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}` : t('KÉSZENLÉTBEN')}
           </span>
         </div>
         <button className="btn btn-primary sm" onClick={run} disabled={busy}>
-          {busy ? '◌' : '⟳ Frissítés'}
+          {busy ? '◌' : t('⟳ Frissítés')}
         </button>
       </div>
       <AiError error={err} />
       {data?.text && <div className="brief-text">{data.text}</div>}
       {data && !data.ai && (
         <div className="muted sm">
-          Ez AI nélküli összefoglaló.{' '}
+          {t('Ez AI nélküli összefoglaló.')}{' '}
           <button className="link-btn" onClick={openAiSettings}>
-            Állíts be AI-t
+            {t('Állíts be AI-t')}
           </button>{' '}
-          a személyre szabott, beszélt stílusú briefhez.
+          {t('a személyre szabott, beszélt stílusú briefhez.')}
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import GridLayout from 'react-grid-layout';
+import { t } from '../i18n.js';
 
 // Infinite canvas: tiles live on a free (non-compacting) grid inside a pannable / zoomable world.
 export const CELL_W = 96;
@@ -447,7 +448,7 @@ export default function Canvas({ items, onItemsChange, editing, children, onApi 
       </div>
 
       {mmArea && (
-        <div className="canvas-ui minimap" style={{ width: MM_W, height: MM_H }} onPointerDown={onMinimap} onPointerMove={onMinimap} title="Minitérkép: kattints vagy húzd">
+        <div className="canvas-ui minimap" style={{ width: MM_W, height: MM_H }} onPointerDown={onMinimap} onPointerMove={onMinimap} title={t('Minitérkép: kattints vagy húzd')}>
           {items.map((l) => (
             <i key={l.i} style={mm(toPx(l))} />
           ))}
@@ -456,20 +457,20 @@ export default function Canvas({ items, onItemsChange, editing, children, onApi 
       )}
 
       <div className="canvas-ui zoom-ctrl">
-        <button className="icon-btn" title="Kicsinyítés (Ctrl + görgő)" onClick={() => zoomAt(1 / 1.2, size.w / 2, size.h / 2)}>
+        <button className="icon-btn" title={t('Kicsinyítés (Ctrl + görgő)')} onClick={() => zoomAt(1 / 1.2, size.w / 2, size.h / 2)}>
           −
         </button>
         <button className="zoom-pct" title="100%" onClick={() => zoomAt(1 / v.zoom, size.w / 2, size.h / 2)}>
           {Math.round(v.zoom * 100)}%
         </button>
-        <button className="icon-btn" title="Nagyítás (Ctrl + görgő)" onClick={() => zoomAt(1.2, size.w / 2, size.h / 2)}>
+        <button className="icon-btn" title={t('Nagyítás (Ctrl + görgő)')} onClick={() => zoomAt(1.2, size.w / 2, size.h / 2)}>
           +
         </button>
-        <button className="icon-btn" title="Mindent mutat" onClick={() => fit()}>
+        <button className="icon-btn" title={t('Mindent mutat')} onClick={() => fit()}>
           ⤢
         </button>
       </div>
-      <div className="canvas-ui canvas-hint">Húzd a hátteret · görgő: mozgatás · Ctrl + görgő: nagyítás</div>
+      <div className="canvas-ui canvas-hint">{t('Húzd a hátteret · görgő: mozgatás · Ctrl + görgő: nagyítás')}</div>
     </div>
   );
 }

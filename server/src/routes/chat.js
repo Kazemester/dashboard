@@ -40,7 +40,7 @@ r.post('/widgets/:id/chat', async (req, res) => {
     } else {
       // the client sends the tile catalog (names, settings fields), which lives in the frontend registry
       const catalog = req.body?.catalog && typeof req.body.catalog === 'object' ? req.body.catalog : null;
-      ({ answer, meta } = await agentTurn({ history: history.reverse(), persona: w.config.systemPrompt, model: w.config.model || undefined, catalog, mode: access }));
+      ({ answer, meta } = await agentTurn({ lang: req.body?.lang, history: history.reverse(), persona: w.config.systemPrompt, model: w.config.model || undefined, catalog, mode: access }));
     }
   } catch (err) {
     // Don't leave an unanswered question in the history.

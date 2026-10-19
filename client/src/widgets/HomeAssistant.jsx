@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../api.js';
 import { useWidgetData } from '../hooks.js';
+import { t } from '../i18n.js';
 
 const TOGGLE = ['light', 'switch', 'fan', 'input_boolean', 'automation', 'cover', 'media_player', 'script', 'scene', 'button'];
 const ICON = { light: '◐', switch: '⏻', fan: '✲', input_boolean: '◉', automation: '⟳', cover: '▤', media_player: '▶', script: '›_', scene: '✦', button: '●', sensor: '∿', binary_sensor: '◌', climate: '°', lock: '⊡' };
@@ -13,14 +14,14 @@ export default function HomeAssistant({ widget, onConfigure }) {
   if (!has)
     return (
       <div className="setup">
-        <p>Home Assistant vezérlő, mint a Control Center: lámpák, kapcsolók, jelenetek, szenzorok.</p>
+        <p>{t('Home Assistant vezérlő, mint a Control Center: lámpák, kapcsolók, jelenetek, szenzorok.')}</p>
         <button className="btn btn-primary sm" onClick={onConfigure}>
-          ⚙ Beállítás
+          ⚙ {t('Beállítás')}
         </button>
       </div>
     );
   if (error) return <div className="w-error">{error}</div>;
-  if (!data) return <div className="loading">OTTHON…</div>;
+  if (!data) return <div className="loading">{t('OTTHON…')}</div>;
 
   const toggle = async (e) => {
     setBusy(e.entity_id);
@@ -45,7 +46,7 @@ export default function HomeAssistant({ widget, onConfigure }) {
           <button key={e.entity_id} className={`ha-btn ${e.state === 'on' || e.state === 'open' || e.state === 'playing' ? 'on' : ''} ${busy === e.entity_id ? 'busy' : ''}`} onClick={() => toggle(e)} disabled={e.state === 'unavailable'} title={e.error || e.entity_id}>
             <span className="ha-icon">{ICON[e.domain] ?? '•'}</span>
             <span className="ha-name">{e.name}</span>
-            <span className="ha-state">{['script', 'scene', 'button'].includes(e.domain) ? 'futtat' : e.state}</span>
+            <span className="ha-state">{['script', 'scene', 'button'].includes(e.domain) ? t('futtat') : e.state}</span>
           </button>
         ))}
       </div>

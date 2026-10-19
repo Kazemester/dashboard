@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import useBackdropClose from './useBackdropClose.js';
+import { t } from '../i18n.js';
 
 // OpenAI-compatible providers. Model names are suggestions — every provider lists its current models.
 const PRESETS = [
@@ -66,9 +67,9 @@ export default function AiSettings({ onClose, onSaved }) {
       onSaved?.(saved);
       if (saved.configured) loadModels();
       if (andTest) {
-        const t = await api.post('/settings/ai/test');
-        setMsg({ ok: true, text: `Működik ✓ (${t.ms} ms) — válasz: „${t.answer}”` });
-      } else setMsg({ ok: true, text: 'Mentve.' });
+        const res = await api.post('/settings/ai/test');
+        setMsg({ ok: true, text: t('Működik ✓ ({ms} ms) — válasz: „{answer}”', { ms: res.ms, answer: res.answer }) });
+      } else setMsg({ ok: true, text: t('Mentve.') });
     } catch (e) {
       setMsg({ ok: false, text: e.message });
     } finally {
@@ -80,7 +81,7 @@ export default function AiSettings({ onClose, onSaved }) {
     const saved = await api.put('/settings/ai', { apiKey: null });
     setCur(saved);
     onSaved?.(saved);
-    setMsg({ ok: true, text: 'A kulcs törölve.' });
+    setMsg({ ok: true, text: t('A kulcs törölve.') });
   };
 
   const p = PRESETS.find((x) => x.id === preset);
@@ -89,60 +90,60 @@ export default function AiSettings({ onClose, onSaved }) {
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>
-            <div className="eyebrow">AI // BEÁLLÍTÁSOK</div>
-            <h2>AI szolgáltató</h2>
+            <div className="eyebrow">{t('AI // BEÁLLÍTÁSOK')}</div>
+            <h2>{t('AI szolgáltató')}</h2>
           </div>
           <button className="icon-btn" onClick={onClose}>
             ✕
           </button>
         </div>
         <p className="help" style={{ margin: 0 }}>
-          Ezt használja az <b>AI Chat</b>, a <b>Mail bot</b> és a <b>JARVIS napi brief</b>. A kulcs csak a saját szervereden, az adatbázisban tárolódik, és a böngésző soha nem kapja vissza.
+          {t('Ezt használja:')} <b>{t('AI Chat')}</b>, <b>{t('Mail bot')}</b> {t('és')} <b>{t('JARVIS napi brief')}</b>. {t('A kulcs csak a saját szervereden, az adatbázisban tárolódik, és a böngésző soha nem kapja vissza.')}
         </p>
         {!cur ? (
-          <div className="loading">BETÖLTÉS…</div>
+          <div className="loading">{t('BETÖLTÉS…')}</div>
         ) : (
           <div className="form">
             <div className="form-row">
-              <span className="label">Szolgáltató</span>
+              <span className="label">{t('Szolgáltató')}</span>
               <div className="chips">
                 {PRESETS.map((x) => (
                   <button key={x.id} className={`chip ${preset === x.id ? 'chip-on' : ''}`} onClick={() => pick(x.id)}>
-                    {x.name}
+                    {t(x.name)}
                   </button>
                 ))}
               </div>
             </div>
             <label className="form-row">
-              <span className="label">API cím</span>
+              <span className="label">{t('API cím')}</span>
               <input className="input" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://…/v1" />
             </label>
             <label className="form-row">
-              <span className="label">API kulcs</span>
+              <span className="label">{t('API kulcs')}</span>
               <input
                 className="input"
                 type="password"
                 autoComplete="off"
                 value={key}
                 onChange={(e) => setKey(e.target.value)}
-                placeholder={cur.hasKey ? `elmentve (${cur.keyHint}) — írd be az újat a cseréhez` : p?.needsKey === false ? 'ehhez nem kell kulcs' : 'pl. xai-…'}
+                placeholder={cur.hasKey ? t('elmentve ({hint}) — írd be az újat a cseréhez', { hint: cur.keyHint }) : p?.needsKey === false ? t('ehhez nem kell kulcs') : t('pl. xai-…')}
               />
               <span className="help">
-                {cur.keySource === 'env' && 'Jelenleg a .env-ben megadott kulcs (LLM_API_KEY) van használatban; az itt megadott felülírja. '}
+                {cur.keySource === 'env' && t('Jelenleg a .env-ben megadott kulcs (LLM_API_KEY) van használatban; az itt megadott felülírja. ')}
                 {p?.keyUrl && (
                   <>
-                    Kulcs létrehozása:{' '}
+                    {t('Kulcs létrehozása:')}{' '}
                     <a href={p.keyUrl} target="_blank" rel="noreferrer" className="accent-text">
                       {p.keyUrl.replace('https://', '')} ↗
                     </a>
                   </>
                 )}
-                {preset === 'ollama' && 'Telepítsd az Ollamát a gépedre, majd: ollama pull llama3.1 — a levelek így nem hagyják el a gépet.'}
+                {preset === 'ollama' && t('Telepítsd az Ollamát a gépedre, majd: ollama pull llama3.1 — a levelek így nem hagyják el a gépet.')}
               </span>
             </label>
             <label className="form-row">
-              <span className="label">Modell</span>
-              <input className="input" list="ai-models" value={model} onChange={(e) => setModel(e.target.value)} placeholder="pl. grok-4" />
+              <span className="label">{t('Modell')}</span>
+              <input className="input" list="ai-models" value={model} onChange={(e) => setModel(e.target.value)} placeholder={t('pl. grok-4')} />
               <datalist id="ai-models">{(models ?? []).map((m) => <option key={m} value={m} />)}</datalist>
               {models?.length > 0 ? (
                 <div className="chips ai-models">
@@ -154,11 +155,11 @@ export default function AiSettings({ onClose, onSaved }) {
                 </div>
               ) : null}
               <span className="help">
-                {models?.length === 0 && preset === 'ollama' && 'Még nincs letöltött modell: futtasd a terminálban: ollama pull qwen2.5:7b — csak a nevet írd ide (qwen2.5:7b). '}
-                {models?.length > 0 ? 'A szolgáltató által elérhető modellek — kattints egyre. ' : 'Mentés után itt megjelennek a szolgáltató elérhető modelljei. '}
+                {models?.length === 0 && preset === 'ollama' && t('Még nincs letöltött modell: futtasd a terminálban: ollama pull qwen2.5:7b — csak a nevet írd ide (qwen2.5:7b). ')}
+                {models?.length > 0 ? t('A szolgáltató által elérhető modellek — kattints egyre. ') : t('Mentés után itt megjelennek a szolgáltató elérhető modelljei. ')}
                 {modelsErr && <span className="danger-text">{modelsErr} </span>}
                 <button type="button" className="link-btn" onClick={loadModels}>
-                  Lista frissítése
+                  {t('Lista frissítése')}
                 </button>
               </span>
             </label>
@@ -168,14 +169,14 @@ export default function AiSettings({ onClose, onSaved }) {
         <div className="modal-foot">
           {cur?.keySource === 'db' && (
             <button className="btn btn-ghost" onClick={removeKey} style={{ marginRight: 'auto' }}>
-              Kulcs törlése
+              {t('Kulcs törlése')}
             </button>
           )}
           <button className="btn btn-ghost" onClick={() => save(false)} disabled={!!busy}>
-            {busy === 'save' ? 'Mentés…' : 'Mentés'}
+            {busy === 'save' ? t('Mentés…') : t('Mentés')}
           </button>
           <button className="btn btn-primary" onClick={() => save(true)} disabled={!!busy}>
-            {busy === 'test' ? 'Kipróbálás…' : 'Mentés és kipróbálás'}
+            {busy === 'test' ? t('Kipróbálás…') : t('Mentés és kipróbálás')}
           </button>
         </div>
       </div>

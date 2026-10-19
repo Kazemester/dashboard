@@ -1,5 +1,6 @@
 import React, { Component, useCallback, useState } from 'react';
 import { TileLiveContext } from '../hooks.js';
+import { t } from '../i18n.js';
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -7,7 +8,7 @@ class ErrorBoundary extends Component {
     return { error };
   }
   render() {
-    if (this.state.error) return <div className="w-error">Modul hiba: {this.state.error.message}</div>;
+    if (this.state.error) return <div className="w-error">{t('Modul hiba:')} {this.state.error.message}</div>;
     return this.props.children;
   }
 }
@@ -24,15 +25,15 @@ export default function Tile({ widget, def, editing, onConfigure, onUpdateConfig
     <TileLiveContext.Provider value={register}>
       <section className={`tile accent-${def?.accent ?? 'cyan'} ${liveCount > 0 ? 'tile-live' : ''}`}>
         <header className="tile-head">
-          <h3 className="tile-title">{widget.title}</h3>
+          <h3 className="tile-title">{t(widget.title)}</h3>
           <div className="tile-actions no-drag">
             {def?.fields?.length > 0 && (
-              <button className="icon-btn" title="Beállítások" onClick={onConfigure}>
+              <button className="icon-btn" title={t('Beállítások')} onClick={onConfigure}>
                 ⚙
               </button>
             )}
             {editing && (
-              <button className="icon-btn danger" title="Eltávolítás" onClick={onRemove}>
+              <button className="icon-btn danger" title={t('Eltávolítás')} onClick={onRemove}>
                 ✕
               </button>
             )}
@@ -40,7 +41,7 @@ export default function Tile({ widget, def, editing, onConfigure, onUpdateConfig
         </header>
         <div className="tile-body no-drag">
           <ErrorBoundary>
-            {Body ? <Body widget={widget} editing={editing} onConfigure={onConfigure} onUpdateConfig={onUpdateConfig} /> : <div className="w-error">Ismeretlen modul: {widget.type}</div>}
+            {Body ? <Body widget={widget} editing={editing} onConfigure={onConfigure} onUpdateConfig={onUpdateConfig} /> : <div className="w-error">{t('Ismeretlen modul:')} {widget.type}</div>}
           </ErrorBoundary>
         </div>
       </section>

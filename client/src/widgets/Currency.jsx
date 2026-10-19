@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useWidgetData, fmtNum } from '../hooks.js';
+import { t } from '../i18n.js';
 
 export default function Currency({ widget }) {
   const cfg = widget.config;
@@ -10,7 +11,7 @@ export default function Currency({ widget }) {
   const watch = String(cfg.watch || 'USD, GBP, CHF, HUF').split(',').map((c) => c.trim().toUpperCase()).filter((c) => c && c !== from);
 
   if (error) return <div className="w-error">{error}</div>;
-  if (!data) return <div className="loading">ÁRFOLYAMOK…</div>;
+  if (!data) return <div className="loading">{t('ÁRFOLYAMOK…')}</div>;
   const codes = [data.base, ...Object.keys(data.rates)].sort();
   const rate = to === from ? 1 : data.rates[to];
   const n = Number(String(amount).replace(/\s/g, '').replace(',', '.')) || 0;
@@ -27,7 +28,7 @@ export default function Currency({ widget }) {
         </select>
         <button
           className="icon-btn"
-          title="Csere"
+          title={t('Csere')}
           onClick={() => {
             setFrom(to);
             setTo(from);
@@ -46,7 +47,7 @@ export default function Currency({ widget }) {
         <span className="muted"> {to}</span>
       </div>
       <div className="eyebrow">
-        1 {from} = {rate ? fmtNum(rate, digits(rate)) : '–'} {to} · EKB {data.date}
+        1 {from} = {rate ? fmtNum(rate, digits(rate)) : '–'} {to} · {t('EKB')} {data.date}
       </div>
       <ul className="fx-watch">
         {watch

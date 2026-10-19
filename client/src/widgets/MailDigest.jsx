@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useWidgetData } from '../hooks.js';
 import AiError from '../components/AiHint.jsx';
-import { locale } from '../i18n.js';
+import { t, locale } from '../i18n.js';
 
 const SUGGESTIONS = ['Mi a legfontosabb?', 'Van fizetendő számlám vagy határidőm?', 'Kinek kell válaszolnom?', 'Melyik levél reklám vagy spam?'];
 
@@ -17,7 +17,7 @@ function Summary({ r, onAsk }) {
       {r.headline && <p className="mail-headline">{r.headline}</p>}
       {r.important?.length > 0 && (
         <>
-          <div className="eyebrow accent">FONTOS</div>
+          <div className="eyebrow accent">{t('FONTOS')}</div>
           {r.important.map((m, i) => (
             <div key={i} className="mail-item">
               <div className="mail-subj">
@@ -36,10 +36,10 @@ function Summary({ r, onAsk }) {
       )}
       {r.todos?.length > 0 && (
         <>
-          <div className="eyebrow accent">TEENDŐK</div>
+          <div className="eyebrow accent">{t('TEENDŐK')}</div>
           <ul className="todo">
-            {r.todos.map((t, i) => (
-              <li key={i}>{t}</li>
+            {r.todos.map((todo, i) => (
+              <li key={i}>{todo}</li>
             ))}
           </ul>
         </>
@@ -53,10 +53,10 @@ function Summary({ r, onAsk }) {
           ))}
         </div>
       )}
-      {empty && !r.aiError && r.mailCount > 0 && <div className="muted sm">Nincs összefoglaló. A Levelek fülön látod a leveleket, a Kérdezz fülön kérdezhetsz róluk.</div>}
+      {empty && !r.aiError && r.mailCount > 0 && <div className="muted sm">{t('Nincs összefoglaló. A Levelek fülön látod a leveleket, a Kérdezz fülön kérdezhetsz róluk.')}</div>}
       {r.mailCount > 0 && (
-        <button className="btn btn-ghost sm" onClick={() => onAsk('Foglald össze röviden, mi történt a postafiókomban, és mi a teendőm.')}>
-          Kérdezd meg a botot →
+        <button className="btn btn-ghost sm" onClick={() => onAsk(t('Foglald össze röviden, mi történt a postafiókomban, és mi a teendőm.'))}>
+          {t('Kérdezd meg a botot →')}
         </button>
       )}
     </div>
@@ -79,13 +79,13 @@ function MailList({ mails, onAsk }) {
           </button>
           {open === i && (
             <div className="mail-preview">
-              <p>{m.text || <span className="muted">(nincs szöveges tartalom)</span>}</p>
+              <p>{m.text || <span className="muted">{t('(nincs szöveges tartalom)')}</span>}</p>
               <div className="row gap">
-                <button className="btn btn-ghost sm" onClick={() => onAsk(`Foglald össze a #${i + 1} levelet, és mondd meg, kell-e vele valamit tennem.`)}>
-                  Összefoglaló
+                <button className="btn btn-ghost sm" onClick={() => onAsk(t('Foglald össze a #{n} levelet, és mondd meg, kell-e vele valamit tennem.', { n: i + 1 }))}>
+                  {t('Összefoglaló')}
                 </button>
-                <button className="btn btn-ghost sm" onClick={() => onAsk(`Írj egy rövid, udvarias választ a #${i + 1} levélre.`)}>
-                  Válasz piszkozat
+                <button className="btn btn-ghost sm" onClick={() => onAsk(t('Írj egy rövid, udvarias választ a #{n} levélre.', { n: i + 1 }))}>
+                  {t('Válasz piszkozat')}
                 </button>
               </div>
             </div>
@@ -148,12 +148,12 @@ function Ask({ widget, hasMails, pending, onPendingDone }) {
       <div className="chat-log">
         {!thread?.length && (
           <div className="mail-suggest">
-            <div className="muted sm">{hasMails ? 'Kérdezz a letöltött leveleidről:' : 'Előbb nyomd meg a Futtatás gombot, hogy a bot letöltse a leveleket.'}</div>
+            <div className="muted sm">{hasMails ? t('Kérdezz a letöltött leveleidről:') : t('Előbb nyomd meg a Futtatás gombot, hogy a bot letöltse a leveleket.')}</div>
             {hasMails && (
               <div className="chips">
                 {SUGGESTIONS.map((s) => (
-                  <button key={s} className="chip" onClick={() => ask(s)}>
-                    {s}
+                  <button key={s} className="chip" onClick={() => ask(t(s))}>
+                    {t(s)}
                   </button>
                 ))}
               </div>
@@ -162,12 +162,12 @@ function Ask({ widget, hasMails, pending, onPendingDone }) {
         )}
         {thread?.map((m) => (
           <div key={m.id} className={`msg msg-${m.role}`}>
-            <span className="msg-who">{m.role === 'user' ? 'TE' : 'BOT'}</span>
+            <span className="msg-who">{m.role === 'user' ? t('TE') : 'BOT'}</span>
             <div className="msg-body">{m.content}</div>
           </div>
         ))}
         {busy && (
-          <div className="msg msg-assistant" title="Helyi modellel a válasz eltarthat egy ideig">
+          <div className="msg msg-assistant" title={t('Helyi modellel a válasz eltarthat egy ideig')}>
             <span className="msg-who">BOT</span>
             <div className="msg-body typing">
               <i />
@@ -186,12 +186,12 @@ function Ask({ widget, hasMails, pending, onPendingDone }) {
           ask(text);
         }}
       >
-        <input className="input sm grow" placeholder="pl. Mit írt a bankom? / Írj választ a 2. levélre" value={text} onChange={(e) => setText(e.target.value)} disabled={!hasMails} />
+        <input className="input sm grow" placeholder={t('pl. Mit írt a bankom? / Írj választ a 2. levélre')} value={text} onChange={(e) => setText(e.target.value)} disabled={!hasMails} />
         <button className="btn btn-primary sm" disabled={busy || !hasMails}>
           ➤
         </button>
         {thread?.length > 0 && (
-          <button type="button" className="btn btn-ghost sm" onClick={clear} title="Beszélgetés törlése">
+          <button type="button" className="btn btn-ghost sm" onClick={clear} title={t('Beszélgetés törlése')}>
             ⌫
           </button>
         )}
@@ -231,21 +231,21 @@ export default function MailDigest({ widget }) {
         <div className="mail-bot">
           <span className={`bot-eye ${busy ? 'scanning' : ''}`} />
           <span className="eyebrow">
-            {busy ? 'POSTAFIÓK ELEMZÉSE…' : data ? `${r?.mailCount ?? 0} LEVÉL · ${when(data.created_at)}` : 'MÉG NEM FUTOTT'}
+            {busy ? t('POSTAFIÓK ELEMZÉSE…') : data ? t('{n} LEVÉL · {when}', { n: r?.mailCount ?? 0, when: when(data.created_at) }) : t('MÉG NEM FUTOTT')}
           </span>
         </div>
         <button className="btn btn-primary sm" onClick={run} disabled={busy}>
-          {busy ? '◌' : '▶ Futtatás'}
+          {busy ? '◌' : t('▶ Futtatás')}
         </button>
       </div>
       <AiError error={err || error} />
-      {busy && <div className="muted sm">Levelek letöltése és elemzése… helyi modellel (Ollama) ez 1–2 percig is eltarthat.</div>}
+      {busy && <div className="muted sm">{t('Levelek letöltése és elemzése… helyi modellel (Ollama) ez 1–2 percig is eltarthat.')}</div>}
 
       <div className="seg">
         {[
-          ['summary', 'ÖSSZEFOGLALÓ'],
-          ['mails', `LEVELEK${mails.length ? ` (${mails.length})` : ''}`],
-          ['ask', 'KÉRDEZZ'],
+          ['summary', t('ÖSSZEFOGLALÓ')],
+          ['mails', `${t('LEVELEK')}${mails.length ? ` (${mails.length})` : ''}`],
+          ['ask', t('KÉRDEZZ')],
         ].map(([k, label]) => (
           <button key={k} className={`seg-btn ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>
             {label}
@@ -255,8 +255,8 @@ export default function MailDigest({ widget }) {
 
       <div className="mail-tab">
         {tab === 'summary' &&
-          (r ? <Summary r={r} onAsk={askFromTab} /> : <div className="muted sm">Nyomd meg a Futtatás gombot: a bot letölti az olvasatlan leveleket, és összefoglalja őket.</div>)}
-        {tab === 'mails' && (mails.length ? <MailList mails={mails} onAsk={askFromTab} /> : <div className="muted sm">Nincs letöltött levél.</div>)}
+          (r ? <Summary r={r} onAsk={askFromTab} /> : <div className="muted sm">{t('Nyomd meg a Futtatás gombot: a bot letölti az olvasatlan leveleket, és összefoglalja őket.')}</div>)}
+        {tab === 'mails' && (mails.length ? <MailList mails={mails} onAsk={askFromTab} /> : <div className="muted sm">{t('Nincs letöltött levél.')}</div>)}
         {tab === 'ask' && <Ask widget={widget} hasMails={mails.length > 0} pending={pending} onPendingDone={() => setPending(null)} />}
       </div>
     </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useWidgetData } from '../hooks.js';
-import { locale } from '../i18n.js';
+import { locale, t } from '../i18n.js';
 
 const get = (obj, path) =>
   !path ? obj : path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean).reduce((o, k) => (o == null ? undefined : o[k]), obj);
@@ -13,14 +13,14 @@ export default function ApiWidget({ widget, onConfigure }) {
   if (!cfg.url)
     return (
       <div className="setup">
-        <p>Köss be bármilyen JSON API-t (kripto árfolyam, GitHub, Home Assistant, saját szolgáltatás…).</p>
+        <p>{t('Köss be bármilyen JSON API-t (kripto árfolyam, GitHub, Home Assistant, saját szolgáltatás…).')}</p>
         <button className="btn btn-primary sm" onClick={onConfigure}>
-          ⚙ Beállítás
+          ⚙ {t('Beállítás')}
         </button>
       </div>
     );
   if (error) return <div className="w-error">{error}</div>;
-  if (!data) return <div className="loading">KAPCSOLÓDÁS…</div>;
+  if (!data) return <div className="loading">{t('KAPCSOLÓDÁS…')}</div>;
 
   const value = data.data;
   const display = cfg.display || 'auto';
@@ -56,7 +56,7 @@ export default function ApiWidget({ widget, onConfigure }) {
   return (
     <div className="api-widget">
       {body}
-      <button className={`api-refresh muted sm ${loading ? 'spin' : ''}`} onClick={reload} title="Frissítés">
+      <button className={`api-refresh muted sm ${loading ? 'spin' : ''}`} onClick={reload} title={t('Frissítés')}>
         ⟳ {new Date(data.fetchedAt).toLocaleTimeString(locale())}
       </button>
     </div>

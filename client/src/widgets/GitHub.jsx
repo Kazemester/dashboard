@@ -1,9 +1,10 @@
 import React from 'react';
 import { useWidgetData, fmtNum } from '../hooks.js';
+import { t } from '../i18n.js';
 
 const ago = (iso) => {
   const h = Math.round((Date.now() - new Date(iso)) / 3600_000);
-  return h < 24 ? `${h} órája` : `${Math.round(h / 24)} napja`;
+  return h < 24 ? t('{n} órája', { n: h }) : t('{n} napja', { n: Math.round(h / 24) });
 };
 
 export default function GitHub({ widget, onConfigure }) {
@@ -12,14 +13,14 @@ export default function GitHub({ widget, onConfigure }) {
   if (!hasRepos)
     return (
       <div className="setup">
-        <p>Kövesd a repóidat: csillagok, nyitott issue-k és PR-ek.</p>
+        <p>{t('Kövesd a repóidat: csillagok, nyitott issue-k és PR-ek.')}</p>
         <button className="btn btn-primary sm" onClick={onConfigure}>
-          ⚙ Beállítás
+          ⚙ {t('Beállítás')}
         </button>
       </div>
     );
   if (error) return <div className="w-error">{error}</div>;
-  if (!data) return <div className="loading">REPÓK…</div>;
+  if (!data) return <div className="loading">{t('REPÓK…')}</div>;
   return (
     <div className="gh">
       {data.map((r) =>
@@ -38,7 +39,7 @@ export default function GitHub({ widget, onConfigure }) {
             <div className="gh-stats">
               <span>★ {fmtNum(r.stars)}</span>
               <span>⑂ {fmtNum(r.forks)}</span>
-              <span>◎ {fmtNum(r.openTotal)} nyitott</span>
+              <span>◎ {t('{n} nyitott', { n: fmtNum(r.openTotal) })}</span>
               {r.language && <span className="muted">{r.language}</span>}
             </div>
             {r.pulls.length > 0 && (

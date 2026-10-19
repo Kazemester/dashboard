@@ -161,9 +161,9 @@ const TOOLS = {
       item_id: { type: 'integer' },
       value: { type: 'number' },
     }, ['item_id', 'value']),
-    fn('add_stock', 'Show the PRICE / exchange RATE of a currency pair (USDHUF, EUR/HUF), share, index, gold or crypto: finds the symbol and adds it to the Tőzsde (stocks) tile, creating that tile if there is none. Use this for rates and prices; the Valutaváltó tile is only a converter calculator.', {
+    fn('add_stock', 'Show the PRICE / exchange RATE of a currency pair (USDHUF, EUR/HUF), share, index, gold or crypto: finds the symbol and puts it in a NEW Tőzsde (stocks) tile (or into a named existing one). Use this for rates and prices; the Valutaváltó tile is only a converter calculator.', {
       query: { type: 'string', description: 'name or ticker, e.g. "USDHUF", "EUR/HUF", "SpaceX", "arany", "bitcoin", "OTP"' },
-      tile: { type: 'string', description: 'title of the Tőzsde tile; only needed when there are several' },
+      tile: { type: 'string', description: 'title of an EXISTING Tőzsde tile to add the symbol to; leave out to get a new tile of its own' },
     }, ['query']),
     fn('add_tile', 'Add a NEW TILE (widget) to the dashboard, e.g. a weather or stocks tile. Not for adding items (to-dos, notes…) to an existing tile.', {
       type: { type: 'string', description: 'type id exactly as in the tile types list (e.g. "weather", "currency", "stocks")' },
@@ -321,6 +321,10 @@ async function ownerOf(path) {
   return rows[0]?.widget_id ?? null;
 }
 
+// Language of the current chat turn (the UI language): texts shown to the user come in Hungarian or English.
+let curLang = 'hu';
+const L = (hu, en) => (curLang === 'en' ? en : hu);
+
 function makeExecutor({ catalog, mode, tools }) {
   const actions = []; // human-readable log shown under the answer
   const pending = []; // removals waiting for the user's confirmation
@@ -358,14 +362,14 @@ function makeExecutor({ catalog, mode, tools }) {
     async add_todo({ text, due, tile, tile_id }) {
       const w = await tileOf('todo', tile ?? tile_id);
       const item = await selfApi('POST', `/widgets/${w.id}/items`, { kind: 'todo', data: { text: String(text).trim(), done: false, ...(/^\d{4}-\d{2}-\d{2}$/.test(due ?? '') ? { due } : {}) } });
-      content(w.id, `Teendő felvéve: ${text}`);
+      content(w.id, L(`Teendő felvéve: ${text}`, `To-do added: ${text}`));
       return { ok: true, item_id: item.id, tile: w.title };
     },
     async complete_todo({ item, item_id, done = true }) {
       const { rows } = await q("SELECT i.id, i.data, i.widget_id FROM widget_items i JOIN widgets w ON w.id = i.widget_id WHERE w.type = 'todo' AND i.kind = 'todo'");
       const hit = pick(rows, item ?? item_id, (r) => r.data?.text);
       await selfApi('PATCH', `/items/${hit.id}`, { data: { done: Boolean(done) } });
-      content(hit.widget_id, `${done ? 'Kész' : 'Visszanyitva'}: ${hit.data?.text}`);
+      content(hit.widget_id, `${done ? L('Kész', 'Done') : L('Visszanyitva', 'Reopened')}: ${hit.data?.text}`);
       return { ok: true, item: hit.data?.text, done: Boolean(done) };
     },
     async check_habit({ habit, habit_id, day }) {
@@ -375,7 +379,7 @@ function makeExecutor({ catalog, mode, tools }) {
       const { rows: done } = await q('SELECT 1 FROM habit_checks WHERE habit_id = $1 AND day = $2', [h.id, d]);
       if (done.length) return { ok: true, habit: h.name, day: d, note: 'Already ticked for this day; nothing changed.' };
       await selfApi('POST', `/habits/${h.id}/toggle`, { day: d });
-      content(h.widget_id, `Szokás pipálva: ${h.name} (${d})`);
+      content(h.widget_id, L(`Szokás pipálva: ${h.name} (${d})`, `Habit ticked: ${h.name} (${d})`));
       return { ok: true, habit: h.name, day: d, checked: true };
     },
     async write_note({ text, mode = 'append', tile, tile_id }) {
@@ -383,14 +387,14 @@ function makeExecutor({ catalog, mode, tools }) {
       const cur = (await selfApi('GET', `/widgets/${w.id}/state`)).value?.text ?? '';
       const next = mode === 'replace' || !cur ? String(text) : `${cur.replace(/\s+$/, '')}\n${text}`;
       await selfApi('PUT', `/widgets/${w.id}/state`, { text: next });
-      content(w.id, 'Jegyzet frissítve');
+      content(w.id, L('Jegyzet frissítve', 'Note updated'));
       return { ok: true };
     },
     async log_expense({ amount, category = '', note = '', day, tile, tile_id }) {
       const w = await tileOf('expenses', tile ?? tile_id);
       const d = /^\d{4}-\d{2}-\d{2}$/.test(day ?? '') ? day : isoDay();
       await selfApi('POST', `/widgets/${w.id}/items`, { kind: 'expense', day: d, value: Number(amount), data: { cat: category, note } });
-      content(w.id, `Kiadás: ${amount}${category ? ` (${category})` : ''}`);
+      content(w.id, `${L('Kiadás', 'Expense')}: ${amount}${category ? ` (${category})` : ''}`);
       return { ok: true };
     },
     async add_list_item({ tile, item }) {
@@ -403,7 +407,7 @@ function makeExecutor({ catalog, mode, tools }) {
       if (typeof entry.url === 'string' && !/^[a-z]+:\/\//i.test(entry.url)) entry.url = `https://${entry.url}`;
       const list = Array.isArray(w.config[field.key]) ? w.config[field.key] : [];
       await selfApi('PATCH', `/widgets/${w.id}`, { config: { ...w.config, [field.key]: [...list, entry] } });
-      content(w.id, `${w.title}: + ${entry.name ?? entry.url ?? 'új elem'}`);
+      content(w.id, `${w.title}: + ${entry.name ?? entry.url ?? L('új elem', 'new item')}`);
       return { ok: true, tile: w.title, added: entry, count: list.length + 1 };
     },
     async remove_list_item({ tile, match }) {
@@ -470,13 +474,12 @@ function makeExecutor({ catalog, mode, tools }) {
       const alternatives = hits.slice(1, 4).map((h) => `${h.symbol} (${h.name})`);
       const { widgets } = await loadState();
       const all = widgets.filter((x) => x.type === 'stocks');
-      let w = tile ? tileBy(widgets, tile, 'stocks') : all.length === 1 ? all[0] : null;
+      // Only a named Tőzsde tile is extended; otherwise the symbol gets a tile of its own (the user asked for a tile).
+      const w = tile ? tileBy(widgets, tile, 'stocks') : null;
       if (tile && (!w || w.type !== 'stocks')) throw new Error(`"${tile}" is not a Tőzsde tile. Tőzsde tiles: ${all.map((x) => x.title).join(', ') || '(none yet)'}.`);
-      if (!w && all.length > 1) w = all[0]; // several: the first one is fine, the user can move the symbol later
       if (!w) {
-        // no Tőzsde tile yet: create one that already holds the symbol
-        const made = await handlers.add_tile({ type: 'stocks', title: 'Tőzsde', config: { symbols: [entry] } });
-        return { ok: true, added: label, tile: 'Tőzsde (new)', alternatives, note: made.next };
+        const made = await handlers.add_tile({ type: 'stocks', title: /^[A-Z]{6}$/.test(best.symbol) ? `${best.symbol.slice(0, 3)}/${best.symbol.slice(3)}` : best.name && best.name.length <= 24 ? best.name : best.symbol, config: { symbols: [entry] } });
+        return { ok: true, added: label, tile: 'new tile', alternatives, note: made.next };
       }
       const symbols = Array.isArray(w.config.symbols) ? w.config.symbols : [];
       if (symbols.some((x) => x.provider === entry.provider && x.id === entry.id)) return { ok: true, note: `${label} is already in "${w.title}"; nothing changed.` };
@@ -494,7 +497,7 @@ function makeExecutor({ catalog, mode, tools }) {
       canvas.push({ i: w.id, ...freeSpot(canvas, size.w, size.h), w: size.w, h: size.h, minW: size.minW ?? 2, minH: size.minH ?? 2 });
       await saveCanvas(canvas);
       layoutChanged = true;
-      actions.push(`Új csempe: ${w.title}`);
+      actions.push(`${L('Új csempe', 'New tile')}: ${w.title}`);
       created.push({ id: w.id, title: w.title });
       const fields = (def?.fields ?? []).map((f) => `${f.key} (${f.label})`);
       return {
@@ -512,7 +515,7 @@ function makeExecutor({ catalog, mode, tools }) {
       const patch = cleanConfig(w.type, Object.fromEntries(Object.entries(config ?? {}).filter(([, v]) => v !== '•••')), catalog);
       const u = await selfApi('PATCH', `/widgets/${id}`, { title, config: { ...w.config, ...patch } });
       changed.add(id);
-      actions.push(`Beállítva: ${u.title}`);
+      actions.push(`${L('Beállítva', 'Updated')}: ${u.title}`);
       return { ok: true, title: u.title, kind: typeName(w.type), applied: Object.keys(patch), config: redact(u.config), note: `The tile is still a ${typeName(w.type)} tile (the kind cannot change with update_tile).` };
     },
     async replace_tile({ id, type, title, config = {} }) {
@@ -532,7 +535,7 @@ function makeExecutor({ catalog, mode, tools }) {
       await saveCanvas(canvas);
       layoutChanged = true;
       pending.push({ kind: 'remove_tile', id: old.id, title: old.title, replacedBy: w.title });
-      actions.push(`Új csempe: ${w.title}`);
+      actions.push(`${L('Új csempe', 'New tile')}: ${w.title}`);
       created.push({ id: w.id, title: w.title });
       return { ok: true, new_tile: w.title, note: `The new tile was added. The old tile "${old.title}" is NOT removed yet: the user must press the confirm button shown under your answer. Tell them that.` };
     },
@@ -547,7 +550,7 @@ function makeExecutor({ catalog, mode, tools }) {
       await saveCanvas(canvas);
       layoutChanged = true;
       const overlap = canvas.some((o) => o.i !== id && overlaps(c, o));
-      actions.push(`Áthelyezve / átméretezve: ${widgets.find((t) => t.id === id)?.title ?? id}`);
+      actions.push(`${L('Áthelyezve / átméretezve', 'Moved / resized')}: ${widgets.find((t) => t.id === id)?.title ?? id}`);
       return { ok: true, ...c, ...(overlap ? { warning: 'The tile now overlaps another one; the user can press "Rendezés" to tidy up.' } : {}) };
     },
     async remove_tile({ id }) {
@@ -568,7 +571,7 @@ function makeExecutor({ catalog, mode, tools }) {
       };
       await selfApi('PUT', '/settings/appearance', next);
       layoutChanged = true;
-      actions.push(typeof animations === 'boolean' && !theme ? `Animációk: ${animations ? 'be' : 'ki'}` : `Téma: ${next.theme}`);
+      actions.push(typeof animations === 'boolean' && !theme ? `${L('Animációk', 'Animations')}: ${animations ? L('be', 'on') : L('ki', 'off')}` : `${L('Téma', 'Theme')}: ${next.theme}`);
       return { ok: true, ...next };
     },
     async tile_api({ method, path, body }) {
@@ -603,17 +606,17 @@ function makeExecutor({ catalog, mode, tools }) {
 
 function describe(method, path, body) {
   const text = body?.data?.text || body?.name || body?.label || body?.question || body?.text;
-  if (/\/items$/.test(path) && body?.kind === 'todo') return `Teendő felvéve: ${text}`;
-  if (/\/items$/.test(path) && body?.kind === 'expense') return `Kiadás rögzítve: ${body.value}`;
-  if (/\/toggle$/.test(path)) return `Szokás pipálva: ${body?.day ?? ''}`;
-  if (/\/habits$/.test(path)) return `Új szokás: ${text}`;
-  if (/\/state$/.test(path)) return 'Jegyzet frissítve';
-  if (/\/progress$/.test(path)) return `Új cél: ${text}`;
-  if (/^\/progress\//.test(path)) return method === 'DELETE' ? 'Cél törölve' : 'Cél frissítve';
-  if (/^\/items\//.test(path)) return method === 'DELETE' ? 'Elem törölve' : 'Elem frissítve';
-  if (/\/items\/day\//.test(path)) return `Napi érték: ${body?.value}`;
-  if (/mail\/run$/.test(path)) return 'Mail bot lefuttatva';
-  if (/brief\/run$/.test(path)) return 'Napi brief frissítve';
+  if (/\/items$/.test(path) && body?.kind === 'todo') return L(`Teendő felvéve: ${text}`, `To-do added: ${text}`);
+  if (/\/items$/.test(path) && body?.kind === 'expense') return L(`Kiadás rögzítve: ${body.value}`, `Expense logged: ${body.value}`);
+  if (/\/toggle$/.test(path)) return L(`Szokás pipálva: ${body?.day ?? ''}`, `Habit ticked: ${body?.day ?? ''}`);
+  if (/\/habits$/.test(path)) return L(`Új szokás: ${text}`, `New habit: ${text}`);
+  if (/\/state$/.test(path)) return L('Jegyzet frissítve', 'Note updated');
+  if (/\/progress$/.test(path)) return L(`Új cél: ${text}`, `New goal: ${text}`);
+  if (/^\/progress\//.test(path)) return method === 'DELETE' ? L('Cél törölve', 'Goal deleted') : L('Cél frissítve', 'Goal updated');
+  if (/^\/items\//.test(path)) return method === 'DELETE' ? L('Elem törölve', 'Item deleted') : L('Elem frissítve', 'Item updated');
+  if (/\/items\/day\//.test(path)) return L(`Napi érték: ${body?.value}`, `Daily value: ${body?.value}`);
+  if (/mail\/run$/.test(path)) return L('Mail bot lefuttatva', 'Mail bot ran');
+  if (/brief\/run$/.test(path)) return L('Napi brief frissítve', 'Daily brief refreshed');
   return `${method} ${path}`;
 }
 
@@ -632,7 +635,7 @@ function systemPrompt({ persona, state, catalog, mode, local, hu }) {
     mode === 'full' && !local ? API_GUIDE : '',
     catalog ? `Tile type ids (use exactly these for add_tile / replace_tile): ${Object.entries(catalog).map(([t, d]) => `${t}=${d.name}`).join(', ')}.` : '',
     'Answer in the language of the user\'s message, briefly. Never show tile or item ids to the user; refer to tiles by their title.',
-    hu ? HU_HINT : '',
+    hu ? HU_HINT : curLang === 'en' ? EN_HINT : '',
   ]
     .filter(Boolean)
     .join('\n\n');
@@ -657,8 +660,8 @@ function toolsFor(mode, local) {
 }
 
 // Past-tense "I did it" phrases (Hungarian / English). Small models sometimes claim a change without making it.
-const CLAIM = /hozzáadtam|hozzá lett adva|hozzáadva|felvettem|létrehoztam|kitettem|beállítottam|átállítottam|módosítottam|megváltoztattam|töröltem|átrendeztem|átméreteztem|bekapcsoltam|kikapcsoltam|megcsináltam|lett\s+\S+\s*(adva|állítva|módosítva|törölve|beállítva|létrehozva)|\b(added|created|updated|changed|removed|deleted|switched|turned)\b/i;
-const NO_CHANGE = '⚠ Nem történt változás a dashboardon: a bot nem hajtott végre módosítást.';
+const CLAIM = /hozzáadtam|hozzá lett adva|hozzáadva|felvettem|létrehoztam|kitettem|beállítottam|átállítottam|módosítottam|megváltoztattam|töröltem|átrendeztem|átméreteztem|bekapcsoltam|kikapcsoltam|megcsináltam|lett\s+\S+\s*(adva|állítva|módosítva|törölve|beállítva|létrehozva)|\b(added|created|updated|changed|removed|deleted|switched|turned|placed|put|made|set up|done)\b/i;
+const noChange = () => L('⚠ Nem történt változás a dashboardon: a bot nem hajtott végre módosítást.', '⚠ Nothing changed on the dashboard: the bot did not make any change.');
 const metaOf = (exec, extra = {}) => ({
   actions: exec.actions,
   pending: exec.pending,
@@ -676,6 +679,7 @@ const lastUserText = (history) => [...history].reverse().find((m) => m.role === 
 const COMMAND = /(^|[\s,.;:!?(])(adj|add|tegy|rakj|rak\b|vegy|vedd|kapcsol|állít|írj|pipál|mozg|nagyít|kicsiny|cser|módosít|hozz létre|készít|töröl|távolít|helyez|nyiss)|\b(add|create|put|set|turn|switch|change|remove|delete|make|move|resize|tick|replace|insert|place)\b/i;
 const looksHungarian = (t) => /[áéíóöőúüű]/i.test(t) || /\b(egy|csempe|csempét|legyen|kérem|szia|tegyél|adj|mutasd)\b/i.test(t);
 const HU_HINT = 'Mindig magyarul válaszolj (Always answer in Hungarian).';
+const EN_HINT = 'Always answer in English.';
 
 // Planner fallback for models that cannot (or will not) call tools: ask for ONE JSON object instead, which
 // even small models fill in reliably, and run it through the same validated tools.
@@ -719,7 +723,7 @@ async function planWithJson({ history, persona, model, catalog, exec, state, too
   const writeTools = tools.filter((t) => !['list_tiles', 'read_tile', 'list_tile_types', 'tile_api'].includes(t.function.name));
   const types = catalog ? Object.entries(catalog).map(([t, d]) => `${t}=${d.name}[${(d.fields ?? []).map((f) => f.key).join(',')}]`).join('; ') : '';
   const tiles = state.widgets.map((w) => `${w.title} (${w.type})`).join('; ') || '(none)';
-  const hu = looksHungarian(lastUserText(history));
+  const hu = curLang === 'hu' && looksHungarian(lastUserText(history));
   const sys = [
     persona ? `${persona}\n` : '',
     "You operate the user's personal dashboard. Work out what the user wants and answer with ONE JSON object and nothing else:",
@@ -729,14 +733,23 @@ async function planWithJson({ history, persona, model, catalog, exec, state, too
     types ? `Tile types (id=Name[settings]): ${types}` : '',
     `Current tiles: ${tiles}. Refer to existing tiles by their title. Today is ${isoDay()}.`,
     'Choosing the tool: the PRICE or exchange RATE of a currency pair (USD/HUF), share, gold or crypto → add_stock (the Valutaváltó tile is only a converter calculator). A NEW tile → add_tile. Turn an existing tile into ANOTHER KIND of tile → replace_tile. Change a setting of a tile that stays what it is → update_tile. Theme, colours, animations on/off → set_appearance. An entry in a tile\'s list (links, countdown events…) → add_list_item. A to-do → add_todo. Answer format example: {"tool":"add_todo","arguments":{"text":"Tejet venni"},"reply":"Felvettem a teendőt."}',
-    hu ? HU_HINT : 'Write "reply" in the language of the user.',
+    hu ? HU_HINT : curLang === 'en' ? EN_HINT : 'Write "reply" in the language of the user.',
   ].filter(Boolean).join('\n\n');
   const msgs = [{ role: 'system', content: sys }, ...history.slice(-6).map(({ role, content }) => ({ role, content }))];
   let lastError = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     const raw = (await complete(msgs, { model, json: true, temperature: 0.1 })).content ?? '';
     const plan = parsePlan(raw);
+    const retry = attempt === 0 && !lastError;
+    if (!plan && retry) {
+      msgs.push({ role: 'assistant', content: raw }, { role: 'user', content: 'That was not a valid JSON object. Answer with exactly one JSON object: {"tool": ..., "arguments": {...}, "reply": "..."}.' });
+      continue;
+    }
     if (!plan) return lastError ? { error: lastError } : null;
+    if (!plan.tool && retry && COMMAND.test(lastUserText(history))) {
+      msgs.push({ role: 'assistant', content: raw }, { role: 'user', content: 'The user asked you to DO something on the dashboard, so "tool" must not be null. Pick the matching tool (add_stock for a rate/price, add_tile, replace_tile, update_tile, set_appearance …) and answer with the JSON object again.' });
+      continue;
+    }
     if (!plan.tool) return { none: true, reply: plan.reply };
     try {
       await exec.run(plan.tool, plan.args);
@@ -753,13 +766,14 @@ async function planWithJson({ history, persona, model, catalog, exec, state, too
  * Run one chat turn with dashboard access.
  * @returns {{ answer, meta: { actions, pending, changed, layoutChanged, readOnly? } }}
  */
-export async function agentTurn({ history, persona, model, catalog, mode }) {
+export async function agentTurn({ history, persona, model, catalog, mode, lang }) {
+  curLang = lang === 'en' ? 'en' : 'hu';
   const state = await loadState();
   const cfg = await aiConfig();
   const local = isLocal(cfg.baseUrl);
   const tools = toolsFor(mode, local);
   const exec = makeExecutor({ catalog, mode, tools });
-  const messages = [{ role: 'system', content: systemPrompt({ persona, state, catalog, mode, local, hu: looksHungarian(lastUserText(history)) }) }, ...history.slice(-12)];
+  const messages = [{ role: 'system', content: systemPrompt({ persona, state, catalog, mode, local, hu: curLang === 'hu' && looksHungarian(lastUserText(history)) }) }, ...history.slice(-12)];
   const resultLimit = local ? 3000 : 9000;
   let planned = false;
   // Executes the JSON plan; returns the finished turn, or null when the planner found nothing to change.
@@ -767,10 +781,10 @@ export async function agentTurn({ history, persona, model, catalog, mode }) {
     const fb = await planWithJson({ history, persona, model, catalog, exec, state, tools }).catch(() => null);
     if (fb?.done) {
       // The reply text of a small model can be garbled, so the answer is built from what really happened.
-      const what = exec.actions.length ? `Kész: ${exec.actions.join(', ')}.` : fb.reply || 'Kész.';
-      return { answer: exec.pending.length ? `${what} A törléshez nyomd meg a gombot a válasz alatt.` : what, meta: metaOf(exec) };
+      const what = exec.actions.length ? `${L('Kész', 'Done')}: ${exec.actions.join(', ')}.` : fb.reply || L('Kész.', 'Done.');
+      return { answer: exec.pending.length ? `${what} ${L('A törléshez nyomd meg a gombot a válasz alatt.', 'To delete it, press the button below this answer.')}` : what, meta: metaOf(exec) };
     }
-    if (fb?.error) return { answer: `Nem sikerült: ${fb.error}`, meta: metaOf(exec) };
+    if (fb?.error) return { answer: `${L('Nem sikerült', 'Failed')}: ${fb.error}`, meta: metaOf(exec) };
     return null;
   };
 
@@ -801,8 +815,8 @@ export async function agentTurn({ history, persona, model, catalog, mode }) {
           const done = await runPlan();
           if (done) return done;
         }
-        if (!answer) answer = exec.actions.length ? `Kész: ${exec.actions.join(', ')}.` : '(nincs válasz)';
-        if (claims) answer = `${answer}\n\n${NO_CHANGE}`;
+        if (!answer) answer = exec.actions.length ? `${L('Kész', 'Done')}: ${exec.actions.join(', ')}.` : L('(nincs válasz)', '(no answer)');
+        if (claims) answer = `${answer}\n\n${noChange()}`;
         return { answer, meta: metaOf(exec) };
       }
       messages.push({ role: 'assistant', content: msg.content ?? '', tool_calls: calls });
@@ -817,7 +831,7 @@ export async function agentTurn({ history, persona, model, catalog, mode }) {
         messages.push({ role: 'tool', tool_call_id: call.id, name: call.function?.name, content: clip(output, resultLimit) });
       }
     }
-    return { answer: 'Túl sok lépés kellett volna ehhez; próbáld kisebb részekre bontani a kérést.', meta: metaOf(exec) };
+    return { answer: L('Túl sok lépés kellett volna ehhez; próbáld kisebb részekre bontani a kérést.', 'That would take too many steps; try splitting the request into smaller parts.'), meta: metaOf(exec) };
   } catch (err) {
     if (!err.toolsUnsupported) throw err;
     // the model can't call tools: for a command use the JSON planner, otherwise answer from a snapshot
@@ -827,10 +841,10 @@ export async function agentTurn({ history, persona, model, catalog, mode }) {
       if (done) return done;
     }
     const snap = await snapshot(local ? 5000 : 20000);
-    const sys = `${systemPrompt({ persona, state, catalog, mode: 'read', local, hu: looksHungarian(lastUserText(history)) })}\n\nThis model cannot use tools. Current tile contents:\n${snap}\n\nYou cannot change anything; if asked to, say that this model can't do it and suggest a model with tool support (e.g. qwen2.5 / qwen3 / llama3.1 in Ollama, or a cloud model).`;
+    const sys = `${systemPrompt({ persona, state, catalog, mode: 'read', local, hu: curLang === 'hu' && looksHungarian(lastUserText(history)) })}\n\nThis model cannot use tools. Current tile contents:\n${snap}\n\nYou cannot change anything; if asked to, say that this model can't do it and suggest a model with tool support (e.g. qwen2.5 / qwen3 / llama3.1 in Ollama, or a cloud model).`;
     const msg = await complete([{ role: 'system', content: sys }, ...history.slice(-12)], { model, temperature: 0.3 });
-    let answer = msg.content || '(nincs válasz)';
-    if (CLAIM.test(answer)) answer = `${answer}\n\n⚠ Ez a modell nem tud eszközt használni, ezért semmit nem változtatott a dashboardon.`;
+    let answer = msg.content || L('(nincs válasz)', '(no answer)');
+    if (CLAIM.test(answer)) answer = `${answer}\n\n${L('⚠ Ez a modell nem tud eszközt használni, ezért semmit nem változtatott a dashboardon.', '⚠ This model cannot use tools, so it changed nothing on the dashboard.')}`;
     return { answer, meta: { actions: [], pending: [], created: [], changed: [], layoutChanged: false, readOnly: true } };
   }
 }

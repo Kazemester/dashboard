@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useItems, isoDay } from '../hooks.js';
-import { locale } from '../i18n.js';
+import { t, locale, getLang } from '../i18n.js';
 
 const LEVELS = [
   [1, 'Pocsék'],
@@ -11,6 +11,7 @@ const LEVELS = [
 ];
 const pad = (n) => String(n).padStart(2, '0');
 const DOW = ['H', 'K', 'Sz', 'Cs', 'P', 'Sz', 'V'];
+const DOW_EN = ['M', 'T', 'W', 'T', 'F', 'S', 'S']; // 'Sz' is ambiguous (Wed/Sat), so English has its own list
 
 export default function Mood({ widget }) {
   const now = new Date();
@@ -43,10 +44,10 @@ export default function Mood({ widget }) {
         <button className="icon-btn" onClick={() => shift(1)}>
           ›
         </button>
-        <span className="eyebrow mood-avg">ÁTLAG {avg ? avg.toFixed(1) : '–'}</span>
+        <span className="eyebrow mood-avg">{t('ÁTLAG')} {avg ? avg.toFixed(1) : '–'}</span>
       </div>
       <div className="mood-grid">
-        {DOW.map((d, i) => (
+        {(getLang() === 'en' ? DOW_EN : DOW).map((d, i) => (
           <span key={i} className="habit-dow">
             {d}
           </span>
@@ -72,11 +73,11 @@ export default function Mood({ widget }) {
         })}
       </div>
       <div className="mood-pick">
-        <span className="eyebrow">{sel === today ? 'MA' : sel.slice(5).replace('-', '.')}</span>
+        <span className="eyebrow">{sel === today ? t('MA') : sel.slice(5).replace('-', '.')}</span>
         {LEVELS.map(([v, label]) => (
-          <button key={v} className={`mood-lvl ${selItem?.value === v ? 'on' : ''}`} style={{ '--lvl': v / 5 }} title={label} onClick={() => setDay(sel, 'mood', v, selItem?.data ?? {})}>
+          <button key={v} className={`mood-lvl ${selItem?.value === v ? 'on' : ''}`} style={{ '--lvl': v / 5 }} title={t(label)} onClick={() => setDay(sel, 'mood', v, selItem?.data ?? {})}>
             <i />
-            <span>{label}</span>
+            <span>{t(label)}</span>
           </button>
         ))}
       </div>

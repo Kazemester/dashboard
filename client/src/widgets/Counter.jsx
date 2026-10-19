@@ -1,5 +1,6 @@
 import React from 'react';
 import { useItems, isoDay, fmtNum } from '../hooks.js';
+import { t } from '../i18n.js';
 
 export default function Counter({ widget }) {
   const cfg = widget.config;
@@ -8,7 +9,7 @@ export default function Counter({ widget }) {
   const from = isoDay(Date.now() - 13 * 86400_000);
   const { items, error, setDay } = useItems(widget.id, `kind=count&from=${from}`);
   if (error) return <div className="w-error">{error}</div>;
-  if (!items) return <div className="loading">BETÖLTÉS…</div>;
+  if (!items) return <div className="loading">{t('BETÖLTÉS…')}</div>;
 
   const today = isoDay(new Date());
   const byDay = Object.fromEntries(items.map((i) => [i.day, i.value]));
@@ -38,7 +39,7 @@ export default function Counter({ widget }) {
           <div className="bar-fill" style={{ width: `${Math.min(100, (value / goal) * 100)}%` }} />
         </div>
       )}
-      <div className="counter-hist" title="Elmúlt 14 nap">
+      <div className="counter-hist" title={t('Elmúlt 14 nap')}>
         {days.map((d) => {
           const v = byDay[d] ?? 0;
           return (
@@ -46,7 +47,7 @@ export default function Counter({ widget }) {
           );
         })}
       </div>
-      {goal > 0 && <div className="eyebrow center-text-sm">CÉL TELJESÍTVE {hits}/14 NAPON</div>}
+      {goal > 0 && <div className="eyebrow center-text-sm">{t('CÉL TELJESÍTVE {hits}/14 NAPON', { hits })}</div>}
     </div>
   );
 }

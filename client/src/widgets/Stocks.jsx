@@ -3,7 +3,7 @@ import { api } from '../api.js';
 import { useWidgetData, fmtNum } from '../hooks.js';
 import { Sparkline, LineChart, Tick } from '../components/Charts.jsx';
 import { currentAppearance, hexToRgba } from '../theme.js';
-import { locale } from '../i18n.js';
+import { t, locale, getLang } from '../i18n.js';
 
 const TYPE_LABEL = { stock: 'részvény', etf: 'ETF', index: 'index', commodity: 'nyersanyag', fx: 'deviza', crypto: 'kripto', other: '' };
 const digitsFor = (p) => (p == null ? 2 : Number.isInteger(p) ? 0 : Math.abs(p) >= 1 ? 2 : 4);
@@ -17,7 +17,7 @@ function DayRange({ range, price }) {
   if (!range || range.high <= range.low || price == null) return <span />;
   const f = Math.max(0, Math.min(1, (price - range.low) / (range.high - range.low)));
   return (
-    <span className="day-range" title={`Napi sáv: ${fmtNum(range.low, digitsFor(range.low))} – ${fmtNum(range.high, digitsFor(range.high))}`}>
+    <span className="day-range" title={t('Napi sáv: {lo} – {hi}', { lo: fmtNum(range.low, digitsFor(range.low)), hi: fmtNum(range.high, digitsFor(range.high)) })}>
       <i style={{ left: `${f * 100}%` }} />
     </span>
   );
@@ -27,13 +27,13 @@ function DayRange({ range, price }) {
 function TvChart({ symbol }) {
   const { accent, scheme } = currentAppearance();
   const cfg = {
-    symbols: [[symbol, `${symbol}|1D`]], chartOnly: true, width: '100%', height: '100%', locale: 'hu', colorTheme: scheme, autosize: true,
+    symbols: [[symbol, `${symbol}|1D`]], chartOnly: true, width: '100%', height: '100%', locale: getLang(), colorTheme: scheme, autosize: true,
     showVolume: false, showMA: false, hideDateRanges: false, hideMarketStatus: true, hideSymbolLogo: true, scalePosition: 'right', scaleMode: 'Normal',
     fontFamily: 'JetBrains Mono, monospace', fontSize: '10', noTimeScale: false, valuesTracking: '1', changeMode: 'price-and-percent', chartType: 'area',
     lineWidth: 2, lineType: 0, isTransparent: true, lineColor: hexToRgba(accent, 1), topColor: hexToRgba(accent, 0.22), bottomColor: hexToRgba(accent, 0),
     gridLineColor: hexToRgba(accent, 0.06), dateRanges: ['1d|1', '1w|15', '1m|30', '3m|60', '12m|1D', '60m|1W', 'all|1M'],
   };
-  const src = `https://www.tradingview-widget.com/embed-widget/symbol-overview/?locale=hu#${encodeURIComponent(JSON.stringify(cfg))}`;
+  const src = `https://www.tradingview-widget.com/embed-widget/symbol-overview/?locale=${getLang()}#${encodeURIComponent(JSON.stringify(cfg))}`;
   return <iframe className="tv-chart" src={src} title={symbol} loading="lazy" />;
 }
 
@@ -81,13 +81,13 @@ function Search({ widget, meta, onAdd, onClose, has }) {
   return (
     <div className="stk-search">
       <div className="row gap">
-        <input ref={focusQuietly} className="input sm grow" placeholder="Keresés: SpaceX, arany, OTP, Apple, EUR/HUF…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input ref={focusQuietly} className="input sm grow" placeholder={t('Keresés: SpaceX, arany, OTP, Apple, EUR/HUF…')} value={q} onChange={(e) => setQ(e.target.value)} />
         <button className="btn btn-ghost sm" onClick={onClose}>
-          Kész
+          {t('Kész')}
         </button>
       </div>
       <div className="chips">
-        {Object.entries(meta?.markets ?? { all: 'Mind' }).map(([k, label]) => (
+        {Object.entries(meta?.markets ?? { all: t('Mind') }).map(([k, label]) => (
           <button key={k} className={`chip ${market === k ? 'chip-on' : ''}`} onClick={() => setMarket(k)}>
             {label}
           </button>
@@ -95,8 +95,8 @@ function Search({ widget, meta, onAdd, onClose, has }) {
       </div>
       {err && <div className="w-error sm">{err}</div>}
       <ul className="stk-results">
-        {busy && <li className="loading">KERESÉS…</li>}
-        {!busy && results?.length === 0 && <li className="muted sm">Nincs találat ezen a piacon.</li>}
+        {busy && <li className="loading">{t('KERESÉS…')}</li>}
+        {!busy && results?.length === 0 && <li className="muted sm">{t('Nincs találat ezen a piacon.')}</li>}
         {!busy &&
           results?.map((r) => {
             const added = has(r);
@@ -116,7 +116,7 @@ function Search({ widget, meta, onAdd, onClose, has }) {
                   )}
                   {r.exchange}
                   {r.currency ? ` · ${r.currency}` : ''}
-                  {TYPE_LABEL[r.type] ? ` · ${TYPE_LABEL[r.type]}` : ''}
+                  {TYPE_LABEL[r.type] ? ` · ${t(TYPE_LABEL[r.type])}` : ''}
                 </span>
                 <button className={`btn sm ${added ? 'btn-ghost' : 'btn-primary'}`} disabled={added} onClick={() => onAdd(r)}>
                   {added ? '✓' : '+'}
@@ -125,7 +125,7 @@ function Search({ widget, meta, onAdd, onClose, has }) {
             );
           })}
       </ul>
-      {!q && <div className="muted sm">Tipp: a köznapi nevek is működnek („arany”, „olaj”, „forint”, „space x”).</div>}
+      {!q && <div className="muted sm">{t('Tipp: a köznapi nevek is működnek („arany”, „olaj”, „forint”, „space x”).')}</div>}
     </div>
   );
 }
@@ -149,10 +149,10 @@ function Detail({ item, provider, meta, onBack, onRemove }) {
     <div className="stk-detail">
       <div className="row between">
         <button className="btn btn-ghost sm" onClick={onBack}>
-          ‹ Lista
+          {t('‹ Lista')}
         </button>
         <button className="btn btn-ghost sm" onClick={onRemove}>
-          Eltávolítás
+          {t('Eltávolítás')}
         </button>
       </div>
       <div className="stk-d-head">
@@ -165,7 +165,7 @@ function Detail({ item, provider, meta, onBack, onRemove }) {
           <span className="muted"> {cur}</span>
           <div className={`stk-chg ${change >= 0 ? 'up' : 'down'}`}>
             {change != null && `${change >= 0 ? '▲' : '▼'} ${fmtNum(Math.abs(change), digitsFor(Math.abs(change)))} (${pct(changePct)})`}
-            <span className="muted"> {range === '1d' ? 'ma' : 'az időszakban'}</span>
+            <span className="muted"> {range === '1d' ? t('ma') : t('az időszakban')}</span>
           </div>
         </div>
       </div>
@@ -181,24 +181,24 @@ function Detail({ item, provider, meta, onBack, onRemove }) {
         <>
           <TvChart symbol={data.embed.symbol} />
           <a className="muted sm tv-link" href={`https://www.tradingview.com/symbols/${data.embed.symbol.replace(':', '-')}/`} target="_blank" rel="noreferrer">
-            Teljes grafikon a TradingView-n ↗
+            {t('Teljes grafikon a TradingView-n ↗')}
           </a>
         </>
       )}
-      {!data && !error && <div className="loading">GRAFIKON…</div>}
+      {!data && !error && <div className="loading">{t('GRAFIKON…')}</div>}
       {series.length > 1 && <LineChart points={series.map((p) => ({ x: fmtX(p.t), y: p.close }))} goal={range === '1d' ? st.prevClose : undefined} height={140} digits={digitsFor(price)} />}
       {data && (
         <div className="stk-stats">
           {[
-            ['Előző záró', money(st.prevClose)],
-            ['Napi max', money(st.high)],
-            ['Napi min', money(st.low)],
-            ['Nyitó', money(st.open)],
-            ['52 hetes max', money(st.high52)],
-            ['52 hetes min', money(st.low52)],
-            ['Forgalom', st.volume ? fmtNum(st.volume) : '–'],
-            ['Tőzsde', data.exchange || item.exchange || '–'],
-            ['Állapot', data.marketOpen == null ? '–' : data.marketOpen ? 'nyitva' : 'zárva'],
+            [t('Előző záró'), money(st.prevClose)],
+            [t('Napi max'), money(st.high)],
+            [t('Napi min'), money(st.low)],
+            [t('Nyitó'), money(st.open)],
+            [t('52 hetes max'), money(st.high52)],
+            [t('52 hetes min'), money(st.low52)],
+            [t('Forgalom'), st.volume ? fmtNum(st.volume) : '–'],
+            [t('Tőzsde'), data.exchange || item.exchange || '–'],
+            [t('Állapot'), data.marketOpen == null ? '–' : data.marketOpen ? t('nyitva') : t('zárva')],
           ]
             .filter(([, v]) => v !== '–')
             .map(([k, v]) => (
@@ -221,7 +221,7 @@ function Detail({ item, provider, meta, onBack, onRemove }) {
             ))}
         </div>
       )}
-      {data?.delayMin > 0 && <div className="muted sm">Az adat kb. {data.delayMin} perc késéssel érkezik.</div>}
+      {data?.delayMin > 0 && <div className="muted sm">{t('Az adat kb. {n} perc késéssel érkezik.', { n: data.delayMin })}</div>}
     </div>
   );
 }
@@ -253,12 +253,12 @@ export default function Stocks({ widget, onUpdateConfig }) {
   return (
     <div className="stocks">
       {error && <div className="w-error sm">{error}</div>}
-      {!symbols.length && <div className="muted center-text">Még üres a figyelőlista.</div>}
+      {!symbols.length && <div className="muted center-text">{t('Még üres a figyelőlista.')}</div>}
       {symbols.length > 0 && !data && !error && (
         <>
-          <div className="loading">PIACI ADATOK…</div>
+          <div className="loading">{t('PIACI ADATOK…')}</div>
           {(widget.config.provider === 'twelvedata' || (widget.config.provider !== 'yahoo' && meta?.twelvedataKey)) && (
-            <div className="muted sm">Twelve Data ingyenes keret: percenként 8 lekérés. Sok szimbólumnál a betöltés kivárhat egy percet.</div>
+            <div className="muted sm">{t('Twelve Data ingyenes keret: percenként 8 lekérés. Sok szimbólumnál a betöltés kivárhat egy percet.')}</div>
           )}
         </>
       )}
@@ -270,7 +270,7 @@ export default function Stocks({ widget, onUpdateConfig }) {
               <div className="stk-name">
                 <span className="stk-sym">
                   {i.symbol}
-                  {i.marketOpen === true && <i className="dot ok stk-open" title="Nyitva" />}
+                  {i.marketOpen === true && <i className="dot ok stk-open" title={t('Nyitva')} />}
                 </span>
                 <span className="muted sm stk-sub">{i.error ? i.error : i.name}</span>
               </div>
@@ -287,7 +287,7 @@ export default function Stocks({ widget, onUpdateConfig }) {
       </ul>
       <div className="stk-foot">
         <button className="btn btn-ghost sm" onClick={() => setMode('search')}>
-          + Hozzáadás
+          {t('+ Hozzáadás')}
         </button>
         <span className="eyebrow">{data ? `${PROVIDER_LABEL[data.provider] ?? data.provider} · ${new Date(items[0]?.fetchedAt ?? Date.now()).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}` : ''}</span>
       </div>

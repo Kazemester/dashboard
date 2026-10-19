@@ -1,4 +1,5 @@
 import React from 'react';
+import { t } from '../i18n.js';
 
 export const openAiSettings = () => window.dispatchEvent(new Event('nexus:ai-settings'));
 export const isAiMissing = (msg) => /AI kulcs|LLM_API_KEY/i.test(msg || '');
@@ -11,7 +12,7 @@ export default function AiError({ error }) {
       <span>{error}</span>
       {isAiMissing(error) && (
         <button className="btn btn-primary sm" onClick={openAiSettings}>
-          AI beállítása
+          {t('AI beállítása')}
         </button>
       )}
     </div>

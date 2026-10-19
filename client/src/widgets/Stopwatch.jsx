@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { t } from '../i18n.js';
 
 const fmt = (ms, withMs = true) => {
   const s = Math.floor(ms / 1000);
@@ -72,10 +73,10 @@ export default function Stopwatch({ widget }) {
     <div className="sw">
       <div className="seg">
         <button className={`seg-btn ${s.mode === 'stopwatch' ? 'on' : ''}`} onClick={() => setMode('stopwatch')}>
-          STOPPER
+          {t('STOPPER')}
         </button>
         <button className={`seg-btn ${s.mode === 'timer' ? 'on' : ''}`} onClick={() => setMode('timer')}>
-          IDŐZÍTŐ
+          {t('IDŐZÍTŐ')}
         </button>
       </div>
       <div className={`sw-time ${running ? 'running' : ''}`}>{s.mode === 'timer' ? fmt(remaining, false) : fmt(elapsed)}</div>
@@ -91,16 +92,16 @@ export default function Stopwatch({ widget }) {
       <div className="row gap center">
         {running ? (
           <button className="btn btn-primary sm" onClick={stop}>
-            ❚❚ Állj
+            ❚❚ {t('Állj')}
           </button>
         ) : (
           <button className="btn btn-primary sm" onClick={start} disabled={s.mode === 'timer' && remaining === 0}>
-            ▶ {elapsed ? 'Folytat' : 'Indít'}
+            ▶ {elapsed ? t('Folytat') : t('Indít')}
           </button>
         )}
         {s.mode === 'stopwatch' && running && (
           <button className="btn btn-ghost sm" onClick={lap}>
-            Kör
+            {t('Kör')}
           </button>
         )}
         <button className="btn btn-ghost sm" onClick={reset}>

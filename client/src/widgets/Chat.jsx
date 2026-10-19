@@ -3,6 +3,7 @@ import { api } from '../api.js';
 import { useWidgetData } from '../hooks.js';
 import AiError from '../components/AiHint.jsx';
 import { REGISTRY } from './registry.js';
+import { t, getLang } from '../i18n.js';
 
 // What the bot needs to know about tile types (names, settings fields) — the registry lives in the frontend.
 function catalog() {
@@ -35,25 +36,25 @@ function Meta({ meta, onConfirm }) {
   if (!meta) return null;
   return (
     <div className="msg-meta">
-      {meta.readOnly && <span className="chip chip-static">csak olvasás: ez a modell nem tud eszközöket használni</span>}
+      {meta.readOnly && <span className="chip chip-static">{t('csak olvasás: ez a modell nem tud eszközöket használni')}</span>}
       {meta.actions?.map((a, i) => (
         <span key={i} className="chip chip-static">
           ✓ {a}
         </span>
       ))}
-      {meta.created?.map((t) => (
-        <button key={t.id} className="btn btn-ghost sm" onClick={() => window.dispatchEvent(new CustomEvent('nexus:reveal', { detail: { id: t.id } }))} title="Odaugrik a csempéhez">
-          ↗ Megmutat: {t.title}
+      {meta.created?.map((c) => (
+        <button key={c.id} className="btn btn-ghost sm" onClick={() => window.dispatchEvent(new CustomEvent('nexus:reveal', { detail: { id: c.id } }))} title={t('Odaugrik a csempéhez')}>
+          ↗ {t('Megmutat')}: {c.title}
         </button>
       ))}
       {meta.pending?.map((p) =>
         p.done ? (
           <span key={p.id} className="chip chip-static">
-            ✓ Törölve: {p.title}
+            ✓ {t('Törölve')}: {p.title}
           </span>
         ) : (
           <button key={p.id} className="btn btn-ghost sm danger" onClick={() => onConfirm(p)}>
-            {p.replacedBy ? 'Régi csempe törlése' : 'Törlés jóváhagyása'}: {p.title}
+            {p.replacedBy ? t('Régi csempe törlése') : t('Törlés jóváhagyása')}: {p.title}
           </button>
         ),
       )}
@@ -84,7 +85,7 @@ export default function Chat({ widget }) {
     const tmpId = `tmp-${Date.now()}`;
     setData((m) => [...(m ?? []), { id: tmpId, role: 'user', content }]);
     try {
-      const reply = await api.post(`/widgets/${widget.id}/chat`, { content, catalog: widget.config.access === 'off' ? undefined : catalog() });
+      const reply = await api.post(`/widgets/${widget.id}/chat`, { content, lang: getLang(), catalog: widget.config.access === 'off' ? undefined : catalog() });
       setData((m) => [...m, reply]);
       announce(reply.meta);
     } catch (e2) {
@@ -98,14 +99,14 @@ export default function Chat({ widget }) {
 
   // A removal the bot proposed: only happens when the user presses the button.
   const confirmRemove = async (msg, p) => {
-    if (!confirm(`Biztosan törlöd: "${p.title}"? A modul adatai is törlődnek.`)) return;
+    if (!confirm(t('Biztosan törlöd: "{title}"? A modul adatai is törlődnek.', { title: p.title }))) return;
     await api.del(`/widgets/${p.id}`);
     setData((m) => m.map((x) => (x.id === msg.id ? { ...x, meta: { ...x.meta, pending: x.meta.pending.map((y) => (y.id === p.id ? { ...y, done: true } : y)) } } : x)));
     announce({ layoutChanged: true, changed: [] });
   };
 
   const clear = async () => {
-    if (!confirm('Törlöd a beszélgetést?')) return;
+    if (!confirm(t('Törlöd a beszélgetést?'))) return;
     await api.del(`/widgets/${widget.id}/chat`);
     setData([]);
   };
@@ -117,13 +118,13 @@ export default function Chat({ widget }) {
         {!data?.length && (
           <div className="muted center-text">
             {widget.config.access === 'off'
-              ? 'Csatorna nyitva. Kérdezz bármit.'
-              : 'Kérdezz a dashboardról, vagy kérd meg, hogy állítson be valamit. Pl. „Mi a mai teendőm?”, „Vegyél fel egy teendőt: számla befizetése péntekig”, „Tegyél ki egy budapesti időjárás csempét”, „Legyen amber a téma”.'}
+              ? t('Csatorna nyitva. Kérdezz bármit.')
+              : t('Kérdezz a dashboardról, vagy kérd meg, hogy állítson be valamit. Pl. „Mi a mai teendőm?”, „Vegyél fel egy teendőt: számla befizetése péntekig”, „Tegyél ki egy budapesti időjárás csempét”, „Legyen amber a téma”.')}
           </div>
         )}
         {data?.map((m) => (
           <div key={m.id} className={`msg msg-${m.role}`}>
-            <span className="msg-who">{m.role === 'user' ? 'TE' : 'AI'}</span>
+            <span className="msg-who">{m.role === 'user' ? t('TE') : 'AI'}</span>
             <div className="msg-body">
               {m.content}
               <Meta meta={m.meta} onConfirm={(p) => confirmRemove(m, p)} />
@@ -144,12 +145,12 @@ export default function Chat({ widget }) {
       </div>
       <AiError error={err} />
       <form onSubmit={send} className="row gap">
-        <input className="input sm grow" placeholder="Üzenet…" value={text} onChange={(e) => setText(e.target.value)} />
+        <input className="input sm grow" placeholder={t('Üzenet…')} value={text} onChange={(e) => setText(e.target.value)} />
         <button className="btn btn-primary sm" disabled={busy}>
           ➤
         </button>
         {data?.length > 0 && (
-          <button type="button" className="btn btn-ghost sm" onClick={clear} title="Beszélgetés törlése">
+          <button type="button" className="btn btn-ghost sm" onClick={clear} title={t('Beszélgetés törlése')}>
             ⌫
           </button>
         )}

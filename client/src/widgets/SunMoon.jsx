@@ -1,5 +1,6 @@
 import React from 'react';
 import { useWidgetData, useNow } from '../hooks.js';
+import { t } from '../i18n.js';
 
 const SYNODIC = 29.530588853;
 const NEW_MOON_REF = Date.UTC(2000, 0, 6, 18, 14); // a known new moon
@@ -7,7 +8,7 @@ const NEW_MOON_REF = Date.UTC(2000, 0, 6, 18, 14); // a known new moon
 function moon(date) {
   const p = ((((date - NEW_MOON_REF) / 86400_000) % SYNODIC) + SYNODIC) % SYNODIC / SYNODIC; // 0..1
   const illum = (1 - Math.cos(2 * Math.PI * p)) / 2;
-  const names = ['Újhold', 'Növő sarló', 'Első negyed', 'Növő hold', 'Telihold', 'Fogyó hold', 'Utolsó negyed', 'Fogyó sarló'];
+  const names = [t('Újhold'), t('Növő sarló'), t('Első negyed'), t('Növő hold'), t('Telihold'), t('Fogyó hold'), t('Utolsó negyed'), t('Fogyó sarló')];
   const name = names[Math.round(p * 8) % 8];
   const toFull = ((0.5 - p + 1) % 1) * SYNODIC;
   const toNew = ((1 - p) % 1) * SYNODIC;
@@ -32,13 +33,13 @@ function MoonIcon({ p }) {
 }
 
 const hm = (iso) => iso.slice(11, 16);
-const dur = (sec) => `${Math.floor(sec / 3600)} ó ${Math.round((sec % 3600) / 60)} p`;
+const dur = (sec) => t('{h} ó {m} p', { h: Math.floor(sec / 3600), m: Math.round((sec % 3600) / 60) });
 
 export default function SunMoon({ widget }) {
   const now = useNow(60_000);
   const { data, error } = useWidgetData(`/widgets/${widget.id}/sun`, { interval: 3600_000 });
   if (error) return <div className="w-error">{error}</div>;
-  if (!data) return <div className="loading">PÁLYAADATOK…</div>;
+  if (!data) return <div className="loading">{t('PÁLYAADATOK…')}</div>;
   const today = data.days[0];
   const tomorrow = data.days[1];
   // Open-Meteo returns local times of the place without offset; compare as local wall-clock time
@@ -65,17 +66,16 @@ export default function SunMoon({ widget }) {
         </svg>
         <div className="sun-times">
           <span>
-            <span className="eyebrow">NAPKELTE</span> {hm(today.sunrise)}
+            <span className="eyebrow">{t('NAPKELTE')}</span> {hm(today.sunrise)}
           </span>
           <span className="center-col">
-            <span className="eyebrow">NAPPAL</span> {dur(today.daylight)}
+            <span className="eyebrow">{t('NAPPAL')}</span> {dur(today.daylight)}
             <span className="muted sm">
-              holnap {diff >= 0 ? '+' : '−'}
-              {Math.abs(Math.round(diff / 60))} perc
+              {t('holnap {d} perc', { d: `${diff >= 0 ? '+' : '−'}${Math.abs(Math.round(diff / 60))}` })}
             </span>
           </span>
           <span className="right-col">
-            <span className="eyebrow">NAPNYUGTA</span> {hm(today.sunset)}
+            <span className="eyebrow">{t('NAPNYUGTA')}</span> {hm(today.sunset)}
           </span>
         </div>
       </div>
@@ -83,9 +83,9 @@ export default function SunMoon({ widget }) {
         <MoonIcon p={mo.p} />
         <div>
           <div className="moon-name">{mo.name}</div>
-          <div className="muted sm">{Math.round(mo.illum * 100)}% megvilágított</div>
+          <div className="muted sm">{t('{n}% megvilágított', { n: Math.round(mo.illum * 100) })}</div>
           <div className="muted sm">
-            telihold {Math.round(mo.toFull)} nap · újhold {Math.round(mo.toNew)} nap
+            {t('telihold {a} nap · újhold {b} nap', { a: Math.round(mo.toFull), b: Math.round(mo.toNew) })}
           </div>
         </div>
         <div className="moon-uv">

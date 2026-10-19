@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useWidgetData } from '../hooks.js';
+import { t } from '../i18n.js';
 
 const MODES = { focus: 'FÓKUSZ', short: 'RÖVID SZÜNET', long: 'HOSSZÚ SZÜNET' };
 
@@ -70,7 +71,7 @@ export default function Pomodoro({ widget }) {
     (async () => {
       beep();
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-        new Notification('NEXUS', { body: state.mode === 'focus' ? 'Fókusz kész — tarts szünetet!' : 'Szünet vége — vissza a munkához!' });
+        new Notification('NEXUS', { body: state.mode === 'focus' ? t('Fókusz kész — tarts szünetet!') : t('Szünet vége — vissza a munkához!') });
       }
       const s = await api.post(`/widgets/${widget.id}/pomodoro`, { kind: state.mode, duration_sec: total }).catch(() => null);
       if (s) setStats(s);
@@ -99,7 +100,7 @@ export default function Pomodoro({ widget }) {
       <div className="seg">
         {Object.entries(MODES).map(([k, label]) => (
           <button key={k} className={`seg-btn ${state.mode === k ? 'on' : ''}`} onClick={() => switchMode(k)}>
-            {label}
+            {t(label)}
           </button>
         ))}
       </div>
@@ -121,18 +122,18 @@ export default function Pomodoro({ widget }) {
         </svg>
         <div className="pomo-time">
           <div className={`pomo-digits ${state.endsAt ? 'running' : ''}`}>{fmt(remaining)}</div>
-          <div className="pomo-round">KÖR #{state.round + 1}</div>
+          <div className="pomo-round">{t('KÖR #{n}', { n: state.round + 1 })}</div>
         </div>
       </div>
 
       <div className="row gap center">
         {state.endsAt ? (
           <button className="btn btn-primary" onClick={pause}>
-            ❚❚ Szünet
+            {t('❚❚ Szünet')}
           </button>
         ) : (
           <button className="btn btn-primary" onClick={start}>
-            ▶ Indítás
+            {t('▶ Indítás')}
           </button>
         )}
         <button className="btn btn-ghost" onClick={reset}>
@@ -144,15 +145,15 @@ export default function Pomodoro({ widget }) {
         <div className="pomo-stats">
           <div className="stat">
             <span className="stat-val">{stats.today.sessions}</span>
-            <span className="stat-lbl">MA</span>
+            <span className="stat-lbl">{t('MA')}</span>
           </div>
           <div className="stat">
             <span className="stat-val">{Math.round(stats.today.focus_sec / 60)}′</span>
-            <span className="stat-lbl">FÓKUSZ</span>
+            <span className="stat-lbl">{t('FÓKUSZ')}</span>
           </div>
-          <div className="mini-bars" title="Elmúlt 7 nap fókuszpercei">
+          <div className="mini-bars" title={t('Elmúlt 7 nap fókuszpercei')}>
             {stats.week.map((d) => (
-              <span key={d.day} style={{ height: `${(d.focus_sec / maxWeek) * 100}%` }} title={`${d.day}: ${Math.round(d.focus_sec / 60)} perc`} />
+              <span key={d.day} style={{ height: `${(d.focus_sec / maxWeek) * 100}%` }} title={t('{day}: {n} perc', { day: d.day, n: Math.round(d.focus_sec / 60) })} />
             ))}
           </div>
         </div>

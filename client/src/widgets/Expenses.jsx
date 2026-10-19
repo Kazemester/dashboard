@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useItems, isoDay, fmtNum } from '../hooks.js';
-import { locale } from '../i18n.js';
+import { t, locale } from '../i18n.js';
 
 const pad = (n) => String(n).padStart(2, '0');
 
 export default function Expenses({ widget, editing }) {
   const cfg = widget.config;
-  const cats = String(cfg.categories || 'Étel, Lakás, Közlekedés, Szórakozás, Egyéb').split(',').map((c) => c.trim()).filter(Boolean);
+  const cats = String(cfg.categories || t('Étel, Lakás, Közlekedés, Szórakozás, Egyéb')).split(',').map((c) => c.trim()).filter(Boolean);
   const cur = cfg.currency || 'Ft';
   const budget = Number(cfg.budget) || 0;
   const now = new Date();
@@ -55,7 +55,7 @@ export default function Expenses({ widget, editing }) {
       <div className="exp-total">
         <span className="big-num">{fmtNum(total)}</span>
         <span className="muted"> {cur}</span>
-        {budget > 0 && <span className="eyebrow exp-budget">/ {fmtNum(budget)} KERET</span>}
+        {budget > 0 && <span className="eyebrow exp-budget">/ {fmtNum(budget)} {t('KERET')}</span>}
       </div>
       {budget > 0 && (
         <div className={`bar ${total > budget ? 'over' : ''}`}>
@@ -64,8 +64,8 @@ export default function Expenses({ widget, editing }) {
       )}
       {projected != null && total > 0 && (
         <div className="eyebrow">
-          VÁRHATÓ HÓ VÉGÉN ≈ {fmtNum(projected)} {cur}
-          {budget ? (projected > budget ? ' · KERET FELETT' : ' · KERETEN BELÜL') : ''}
+          {t('VÁRHATÓ HÓ VÉGÉN')} ≈ {fmtNum(projected)} {cur}
+          {budget ? (projected > budget ? ` · ${t('KERET FELETT')}` : ` · ${t('KERETEN BELÜL')}`) : ''}
         </div>
       )}
       <div className="exp-cats">
@@ -81,7 +81,7 @@ export default function Expenses({ widget, editing }) {
       </div>
       {list.length > 0 && (
         <button className="btn btn-ghost sm" onClick={() => setShowList((x) => !x)}>
-          {showList ? 'Tételek elrejtése' : `${list.length} tétel`}
+          {showList ? t('Tételek elrejtése') : t('{n} tétel', { n: list.length })}
         </button>
       )}
       {showList && (
@@ -102,13 +102,13 @@ export default function Expenses({ widget, editing }) {
         </ul>
       )}
       <form className="row gap wrap" onSubmit={submit}>
-        <input className="input sm w-num" inputMode="decimal" placeholder={`Összeg`} value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+        <input className="input sm w-num" inputMode="decimal" placeholder={t('Összeg')} value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
         <select className="input sm w-cat" value={form.cat} onChange={(e) => setForm({ ...form, cat: e.target.value })}>
           {cats.map((c) => (
             <option key={c}>{c}</option>
           ))}
         </select>
-        <input className="input sm grow" placeholder="Megjegyzés" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+        <input className="input sm grow" placeholder={t('Megjegyzés')} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
         <button className="btn btn-ghost sm">+</button>
       </form>
     </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useWidgetData } from '../hooks.js';
+import { t } from '../i18n.js';
 
 export default function Uptime({ widget, onConfigure }) {
   const has = (widget.config.targets ?? []).some((t) => t?.url);
@@ -8,9 +9,9 @@ export default function Uptime({ widget, onConfigure }) {
   if (!has)
     return (
       <div className="setup">
-        <p>Figyeld, hogy elérhetők-e az oldalaid és szolgáltatásaid (NAS, router, saját app…).</p>
+        <p>{t('Figyeld, hogy elérhetők-e az oldalaid és szolgáltatásaid (NAS, router, saját app…).')}</p>
         <button className="btn btn-primary sm" onClick={onConfigure}>
-          ⚙ Beállítás
+          ⚙ {t('Beállítás')}
         </button>
       </div>
     );
@@ -19,7 +20,7 @@ export default function Uptime({ widget, onConfigure }) {
   const down = data.filter((d) => !d.ok).length;
   return (
     <div className="uptime">
-      <div className="eyebrow">{down ? <span className="danger-text">{down} SZOLGÁLTATÁS NEM ELÉRHETŐ</span> : 'MINDEN RENDSZER MŰKÖDIK'}</div>
+      <div className="eyebrow">{down ? <span className="danger-text">{t('{n} SZOLGÁLTATÁS NEM ELÉRHETŐ', { n: down })}</span> : t('MINDEN RENDSZER MŰKÖDIK')}</div>
       <ul>
         {data.map((d) => (
           <li key={d.url} className={d.ok ? '' : 'down'}>

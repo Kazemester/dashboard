@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { api } from '../api.js';
 import { useWidgetData } from '../hooks.js';
 import useBackdropClose from '../components/useBackdropClose.js';
+import { t } from '../i18n.js';
 
 // Prompt snippets: Stable Diffusion / FLUX understand English best.
 const PRESETS = [
@@ -26,7 +27,7 @@ const SOURCES = {
 // Shrink big photos / screenshots in the browser so uploads stay small (the render is ~1 MP anyway).
 function loadImage(file) {
   return new Promise((resolve, reject) => {
-    if (!file?.type?.startsWith('image/')) return reject(new Error('Ez nem kép.'));
+    if (!file?.type?.startsWith('image/')) return reject(new Error(t('Ez nem kép.')));
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
@@ -43,7 +44,7 @@ function loadImage(file) {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error('A képet nem sikerült beolvasni.'));
+      reject(new Error(t('A képet nem sikerült beolvasni.')));
     };
     img.src = url;
   });
@@ -74,32 +75,32 @@ function Viewer({ item, onClose, onReuse, onDelete }) {
       <div className="modal render-modal">
         <img src={src} alt={item.prompt} />
         {item.error && <div className="w-error sm">{item.error}</div>}
-        {item.status === 'running' && <div className="sm muted">Készül… ({seconds(item.created_at)} mp)</div>}
+        {item.status === 'running' && <div className="sm muted">{t('Készül… ({s} mp)', { s: seconds(item.created_at) })}</div>}
         <div className="sm muted render-meta">{item.prompt}</div>
         <div className="sm muted mono">
           {short(item.params?.ckpt)}
-          {item.params?.controlnet ? ` · ${short(item.params.controlnet)}` : ''} · szabadság {item.params?.denoise}
-          {item.params?.lines ? ` · vonalak ${item.params.lines}` : ''} · {seconds(item.created_at, item.finished_at)} mp
+          {item.params?.controlnet ? ` · ${short(item.params.controlnet)}` : ''} · {t('szabadság')} {item.params?.denoise}
+          {item.params?.lines ? ` · ${t('vonalak')} ${item.params.lines}` : ''} · {seconds(item.created_at, item.finished_at)} {t('mp')}
         </div>
         <div className="modal-foot">
           {item.status === 'done' && (
             <button className="btn btn-ghost" onMouseDown={() => setBefore(true)} onMouseUp={() => setBefore(false)} onMouseLeave={() => setBefore(false)}>
-              Eredeti (nyomva tartva)
+              {t('Eredeti (nyomva tartva)')}
             </button>
           )}
           <button className="btn btn-ghost" onClick={() => onReuse(item)}>
-            Újra ezzel
+            {t('Újra ezzel')}
           </button>
           {item.status === 'done' && (
             <a className="btn btn-ghost" href={`/api/renders/${item.id}/output`} download={`latvanyterv-${item.id}.png`}>
-              Letöltés
+              {t('Letöltés')}
             </a>
           )}
           <button className="btn btn-ghost danger" onClick={() => onDelete(item)}>
-            Törlés
+            {t('Törlés')}
           </button>
           <button className="btn btn-primary" onClick={onClose}>
-            Bezár
+            {t('Bezár')}
           </button>
         </div>
       </div>
@@ -203,13 +204,13 @@ export default function Render({ widget, onUpdateConfig }) {
   return (
     <div className="render" onPaste={onPaste}>
       <div className="row gap between">
-        <button className="render-status mono sm" onClick={() => setShowModels((s) => !s)} title="Modellek">
+        <button className="render-status mono sm" onClick={() => setShowModels((s) => !s)} title={t('Modellek')}>
           <span className={`dot ${m ? 'ok' : models.error ? 'bad' : ''}`} />
-          {m ? `${short(m.checkpoint)}${m.controlnet ? ' + vonalvezetés' : ''}` : models.error ? (/^Nem érem el|nem válaszolt/.test(models.error) ? 'ComfyUI nem elérhető' : /nincs egy modell/i.test(models.error) ? 'ComfyUI fut · nincs modell' : 'ComfyUI hiba') : 'ComfyUI…'}
+          {m ? `${short(m.checkpoint)}${m.controlnet ? ` + ${t('vonalvezetés')}` : ''}` : models.error ? (/^Nem érem el|nem válaszolt/.test(models.error) ? t('ComfyUI nem elérhető') : /nincs egy modell/i.test(models.error) ? t('ComfyUI fut · nincs modell') : t('ComfyUI hiba')) : 'ComfyUI…'}
         </button>
         {models.error && (
           <button className="btn btn-ghost sm" onClick={models.reload}>
-            Újra
+            {t('Újra')}
           </button>
         )}
       </div>
@@ -217,7 +218,7 @@ export default function Render({ widget, onUpdateConfig }) {
       {showModels && m && (
         <div className="render-models">
           <label className="form-row">
-            <span className="label">Modell (checkpoint)</span>
+            <span className="label">{t('Modell (checkpoint)')}</span>
             <select className="input sm" value={m.checkpoint} onChange={(e) => setModel('checkpoint', e.target.value)}>
               {m.checkpoints.map((c) => (
                 <option key={c} value={c}>
@@ -227,10 +228,10 @@ export default function Render({ widget, onUpdateConfig }) {
             </select>
           </label>
           <label className="form-row">
-            <span className="label">ControlNet (vonalak megtartása)</span>
+            <span className="label">{t('ControlNet (vonalak megtartása)')}</span>
             <select className="input sm" value={widget.config.controlnet === 'none' ? 'none' : m.controlnet ?? ''} onChange={(e) => setModel('controlnet', e.target.value)}>
-              <option value="">{m.controlnets.length ? 'automatikus' : 'nincs letöltve'}</option>
-              <option value="none">kikapcsolva</option>
+              <option value="">{m.controlnets.length ? t('automatikus') : t('nincs letöltve')}</option>
+              <option value="none">{t('kikapcsolva')}</option>
               {m.controlnets.map((c) => (
                 <option key={c} value={c}>
                   {short(c)}
@@ -240,8 +241,7 @@ export default function Render({ widget, onUpdateConfig }) {
           </label>
           {!m.controlnet && widget.config.controlnet !== 'none' && (
             <div className="help">
-              Nincs a modellhez illő ControlNet, ezért csak img2img fut (a geometria kevésbé marad pontos). SDXL modellhez tölts le egy SDXL canny/union
-              ControlNetet a ComfyUI models/controlnet mappájába.
+              {t('Nincs a modellhez illő ControlNet, ezért csak img2img fut (a geometria kevésbé marad pontos). SDXL modellhez tölts le egy SDXL canny/union ControlNetet a ComfyUI models/controlnet mappájába.')}
             </div>
           )}
         </div>
@@ -261,7 +261,7 @@ export default function Render({ widget, onUpdateConfig }) {
           pick(e.dataTransfer.files?.[0]);
         }}
       >
-        {image ? <img src={image} alt="" /> : <span className="muted sm">Húzd ide a vázlatot / képernyőképet, kattints, vagy illeszd be (⌘V)</span>}
+        {image ? <img src={image} alt="" /> : <span className="muted sm">{t('Húzd ide a vázlatot / képernyőképet, kattints, vagy illeszd be (⌘V)')}</span>}
         <input
           ref={fileRef}
           type="file"
@@ -277,42 +277,42 @@ export default function Render({ widget, onUpdateConfig }) {
       <div className="seg">
         {Object.entries(SOURCES).map(([k, x]) => (
           <button key={k} className={`seg-btn ${source === k ? 'on' : ''}`} onClick={() => chooseSource(k)}>
-            {x.label.toUpperCase()}
+            {t(x.label).toUpperCase()}
           </button>
         ))}
       </div>
       {source === 'sketch' && !hasCn && m && (
-        <div className="help">Vázlathoz ControlNet kell, nélküle a modell nem tudja követni a vonalakat. Lásd a modellek listáját fent.</div>
+        <div className="help">{t('Vázlathoz ControlNet kell, nélküle a modell nem tudja követni a vonalakat. Lásd a modellek listáját fent.')}</div>
       )}
       <textarea
         className="input sm"
         rows={2}
-        placeholder="Mit látsz a képen? Angolul a legjobb, pl. modern family house, white plaster and larch wood cladding, garden, trees"
+        placeholder={t('Mit látsz a képen? Angolul a legjobb, pl. modern family house, white plaster and larch wood cladding, garden, trees')}
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
       />
       <div className="chips">
         {PRESETS.map(([k]) => (
           <button key={k} className={`chip ${presets.includes(k) ? 'chip-on' : ''}`} onClick={() => setPresets((p) => (p.includes(k) ? p.filter((x) => x !== k) : [...p, k]))}>
-            {k}
+            {t(k)}
           </button>
         ))}
       </div>
-      <label className="render-slider" title="Mennyire térhet el a modell az eredeti képtől">
-        <span className="label">Szabadság</span>
+      <label className="render-slider" title={t('Mennyire térhet el a modell az eredeti képtől')}>
+        <span className="label">{t('Szabadság')}</span>
         <input type="range" min={0.3} max={1} step={0.05} value={denoise} onChange={(e) => setDenoise(Number(e.target.value))} />
         <span className="mono sm">{Math.round(denoise * 100)}%</span>
       </label>
       {hasCn && (
-        <label className="render-slider" title="Mennyire kövesse a vázlat vonalait (ControlNet)">
-          <span className="label">Vonalak</span>
+        <label className="render-slider" title={t('Mennyire kövesse a vázlat vonalait (ControlNet)')}>
+          <span className="label">{t('Vonalak')}</span>
           <input type="range" min={0} max={1.5} step={0.05} value={lines} onChange={(e) => setLines(Number(e.target.value))} />
           <span className="mono sm">{Math.round(lines * 100)}%</span>
         </label>
       )}
       {err && <div className="w-error sm">{err}</div>}
       <button className="btn btn-primary" disabled={!image || sending || !m} onClick={run}>
-        {sending ? 'Küldés…' : running ? '▶ Render (sorba áll)' : '▶ Render'}
+        {sending ? t('Küldés…') : running ? t('▶ Render (sorba áll)') : '▶ Render'}
       </button>
 
       {list.length > 0 && (
@@ -320,8 +320,8 @@ export default function Render({ widget, onUpdateConfig }) {
           {list.map((x) => (
             <button key={x.id} className={`render-thumb ${x.status}`} onClick={() => setOpen(x)} title={x.error || x.prompt}>
               <img src={`/api/renders/${x.id}/${x.status === 'done' ? 'output' : 'input'}`} alt="" loading="lazy" />
-              {x.status === 'running' && <span className="render-badge mono">◌ {seconds(x.created_at)} mp</span>}
-              {x.status === 'error' && <span className="render-badge bad mono">hiba</span>}
+              {x.status === 'running' && <span className="render-badge mono">◌ {seconds(x.created_at)} {t('mp')}</span>}
+              {x.status === 'error' && <span className="render-badge bad mono">{t('hiba')}</span>}
             </button>
           ))}
         </div>

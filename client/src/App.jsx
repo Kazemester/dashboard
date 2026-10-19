@@ -9,6 +9,7 @@ import TopBar from './components/TopBar.jsx';
 import AiSettings from './components/AiSettings.jsx';
 import { applyAppearance, cachedAppearance } from './theme.js';
 import Canvas, { findFreeSpot } from './components/Canvas.jsx';
+import { t } from './i18n.js';
 
 const Grid = WidthProvider(Responsive);
 const COLS = { lg: 12, md: 10, sm: 6, xs: 2 };
@@ -184,7 +185,7 @@ export default function App() {
   }, [revealTile]);
 
   const arrangeCanvas = () => {
-    if (!confirm('Biztosan rendezed a csempéket? Minden csempe új helyre kerül egy rácsba. (Utána 12 másodpercig visszavonható.)')) return;
+    if (!confirm(t('Biztosan rendezed a csempéket? Minden csempe új helyre kerül egy rácsba. (Utána 12 másodpercig visszavonható.)'))) return;
     const before = safeCanvas;
     canvasApi.current?.arrange();
     setUndo(before);
@@ -226,7 +227,7 @@ export default function App() {
   };
 
   const removeWidget = async (w) => {
-    if (!confirm(`Biztosan törlöd: "${w.title}"? A modul adatai is törlődnek.`)) return;
+    if (!confirm(t('Biztosan törlöd: "{title}"? A modul adatai is törlődnek.', { title: t(w.title) }))) return;
     await api.del(`/widgets/${w.id}`);
     setWidgets((ws) => ws.filter((x) => x.id !== w.id));
     const next = Object.fromEntries(Object.entries(layouts).map(([bp, l]) => [bp, l.filter((x) => x.i !== w.id)]));
@@ -275,10 +276,10 @@ export default function App() {
   const empty = loaded && !widgets.length && (
     <div className="empty">
       <div className="empty-ring" />
-      <h2>A FEDÉLZET ÜRES</h2>
-      <p>Adj hozzá modulokat a katalógusból.</p>
+      <h2>{t('A FEDÉLZET ÜRES')}</h2>
+      <p>{t('Adj hozzá modulokat a katalógusból.')}</p>
       <button className="btn btn-primary" onClick={() => setPicker(true)}>
-        + Modul hozzáadása
+        {t('+ Modul hozzáadása')}
       </button>
     </div>
   );
@@ -301,9 +302,9 @@ export default function App() {
 
       {undo && (
         <div className="toast toast-info">
-          Csempék rendezve.
+          {t('Csempék rendezve.')}
           <button className="btn btn-primary sm" onClick={undoArrange}>
-            Visszavonás
+            {t('Visszavonás')}
           </button>
         </div>
       )}

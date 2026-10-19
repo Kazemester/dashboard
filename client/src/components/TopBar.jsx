@@ -30,7 +30,7 @@ export default function TopBar({ editing, onToggleEdit, onAdd, onArrange, onAi, 
         <button className="tele tele-btn" onClick={onAi}>
           <i className={`dot ${status?.llm ? 'ok' : 'off'}`} /> AI {status?.llm ? status.model.toUpperCase() : 'OFFLINE'}
         </button>
-        <span className="tele">{String(count).padStart(2, '0')} MODUL</span>
+        <span className="tele">{String(count).padStart(2, '0')} {t('MODUL')}</span>
       </div>
 
       <div className="topbar-right">
@@ -40,21 +40,21 @@ export default function TopBar({ editing, onToggleEdit, onAdd, onArrange, onAi, 
             {now.toLocaleDateString(locale(), { weekday: 'short', month: 'short', day: 'numeric' })}
           </span>
         </div>
-        <button className="btn btn-ghost ai-btn" onClick={onAi} title={status?.llm ? `AI: ${status.model}` : 'AI nincs beállítva — kattints a beállításhoz'}>
+        <button className="btn btn-ghost ai-btn" onClick={onAi} title={status?.llm ? `AI: ${status.model}` : t('AI nincs beállítva — kattints a beállításhoz')}>
           <i className={`dot ${status?.llm ? 'ok' : 'off'}`} /> AI
         </button>
         <button
           className="btn btn-ghost anim-switch"
           role="switch"
-          aria-label="Animációk"
+          aria-label={t('Animációk')}
           aria-checked={animOn}
           onClick={() => onAppearance({ ...appearance, anim: !animOn })}
-          title={animOn ? 'Animációk kikapcsolása' : 'Animációk bekapcsolása'}
+          title={animOn ? t('Animációk kikapcsolása') : t('Animációk bekapcsolása')}
         >
           <span className={`anim-sw ${animOn ? 'on' : ''}`} aria-hidden>
             <i />
           </span>
-          <span className="anim-sw-label">Anim</span>
+          <span className="anim-sw-label">{t('Anim')}</span>
         </button>
         <div className="lang-switch" role="group" aria-label={t('Nyelv')}>
           {['hu', 'en'].map((l) => (
@@ -65,15 +65,15 @@ export default function TopBar({ editing, onToggleEdit, onAdd, onArrange, onAi, 
         </div>
         <ThemePicker appearance={appearance} onChange={onAppearance} />
         {onArrange && (
-          <button className="btn btn-ghost" onClick={onArrange} title="Csempék rendezése hézag nélküli rácsba">
-            Rendezés
+          <button className="btn btn-ghost" onClick={onArrange} title={t('Csempék rendezése hézag nélküli rácsba')}>
+            {t('Rendezés')}
           </button>
         )}
         <button className={`btn btn-ghost ${editing ? 'btn-active' : ''}`} onClick={onToggleEdit}>
-          {editing ? 'Kész' : 'Szerkesztés'}
+          {editing ? t('Kész') : t('Szerkesztés')}
         </button>
         <button className="btn btn-primary" onClick={onAdd}>
-          + Modul
+          {t('+ Modul')}
         </button>
       </div>
     </header>

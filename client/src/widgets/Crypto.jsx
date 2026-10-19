@@ -1,4 +1,5 @@
 import React from 'react';
+import { t } from '../i18n.js';
 import { useWidgetData, fmtNum } from '../hooks.js';
 import { Sparkline, Tick } from '../components/Charts.jsx';
 
@@ -7,7 +8,7 @@ const SYM = { usd: '$', eur: '€', huf: 'Ft', gbp: '£' };
 export default function Crypto({ widget }) {
   const { data, error } = useWidgetData(`/widgets/${widget.id}/crypto`, { interval: 2 * 60_000 });
   if (error) return <div className="w-error">{error}</div>;
-  if (!data) return <div className="loading">PIACI ADATOK…</div>;
+  if (!data) return <div className="loading">{t('PIACI ADATOK…')}</div>;
   const sym = SYM[data.currency] ?? data.currency.toUpperCase();
   const pre = ['$', '€', '£'].includes(sym);
   return (

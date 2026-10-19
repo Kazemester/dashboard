@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import useBackdropClose from './useBackdropClose.js';
+import { getLang, t } from '../i18n.js';
 
 function Field({ field, value, onChange }) {
-  const common = { className: 'input', value: value ?? '', placeholder: field.placeholder };
+  const common = { className: 'input', value: value ?? '', placeholder: field.placeholder && t(field.placeholder) };
   switch (field.type) {
     case 'textarea':
       return <textarea {...common} rows={field.rows ?? 4} onChange={(e) => onChange(e.target.value)} />;
@@ -21,7 +22,7 @@ function Field({ field, value, onChange }) {
         <select {...common} onChange={(e) => onChange(e.target.value)}>
           {field.options.map(([v, label]) => (
             <option key={v} value={v}>
-              {label}
+              {t(label)}
             </option>
           ))}
         </select>
@@ -30,7 +31,7 @@ function Field({ field, value, onChange }) {
       return (
         <label className="check">
           <input type="checkbox" checked={value ?? field.default ?? false} onChange={(e) => onChange(e.target.checked)} />
-          <span>{field.checkLabel ?? 'Bekapcsolva'}</span>
+          <span>{t(field.checkLabel ?? 'Bekapcsolva')}</span>
         </label>
       );
     case 'color':
@@ -53,7 +54,7 @@ function Field({ field, value, onChange }) {
             </div>
           ))}
           <button type="button" className="btn btn-ghost" onClick={() => onChange([...rows, { ...(field.newItem ?? {}) }])}>
-            + {field.addLabel ?? 'Új sor'}
+            + {getLang() === 'en' && field.addLabel === 'Cím' ? 'Address' : t(field.addLabel ?? 'Új sor')}
           </button>
         </div>
       );
@@ -93,9 +94,9 @@ export default function ConfigModal({ widget, def, onSave, onClose }) {
         <div className="drawer-head">
           <div>
             <div className="eyebrow">
-              {def.icon} {def.name} // KONFIGURÁCIÓ
+              {def.icon} {t(def.name)} // {t('KONFIGURÁCIÓ')}
             </div>
-            <h2>{title || def.name}</h2>
+            <h2>{title ? t(title) : t(def.name)}</h2>
           </div>
           <button type="button" className="icon-btn" onClick={onClose}>
             ✕
@@ -104,14 +105,14 @@ export default function ConfigModal({ widget, def, onSave, onClose }) {
 
         <div className="form">
           <label className="form-row">
-            <span className="label">Cím</span>
+            <span className="label">{t('Cím')}</span>
             <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
           </label>
           {def.fields.map((f) => (
             <div key={f.key} className="form-row">
-              <span className="label">{f.label}</span>
+              <span className="label">{t(f.label)}</span>
               <Field field={f} value={config[f.key]} onChange={(v) => setConfig((c) => ({ ...c, [f.key]: v }))} />
-              {f.help && <span className="help">{f.help}</span>}
+              {f.help && <span className="help">{t(f.help)}</span>}
             </div>
           ))}
         </div>
@@ -119,10 +120,10 @@ export default function ConfigModal({ widget, def, onSave, onClose }) {
         {err && <div className="w-error">{err}</div>}
         <div className="modal-foot">
           <button type="button" className="btn btn-ghost" onClick={onClose}>
-            Mégse
+            {t('Mégse')}
           </button>
           <button className="btn btn-primary" disabled={saving}>
-            {saving ? 'Mentés…' : 'Mentés'}
+            {saving ? t('Mentés…') : t('Mentés')}
           </button>
         </div>
       </form>

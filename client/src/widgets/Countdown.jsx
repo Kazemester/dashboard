@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNow } from '../hooks.js';
-import { locale } from '../i18n.js';
+import { locale, t } from '../i18n.js';
 
 export default function Countdown({ widget, onConfigure }) {
   const now = useNow(60_000);
@@ -8,9 +8,9 @@ export default function Countdown({ widget, onConfigure }) {
   if (!events.length)
     return (
       <div className="setup">
-        <p>Adj hozzá eseményeket: születésnap, nyaralás, határidő…</p>
+        <p>{t('Adj hozzá eseményeket: születésnap, nyaralás, határidő…')}</p>
         <button className="btn btn-primary sm" onClick={onConfigure}>
-          ⚙ Beállítás
+          ⚙ {t('Beállítás')}
         </button>
       </div>
     );
@@ -33,13 +33,13 @@ export default function Countdown({ widget, onConfigure }) {
     .filter((e) => e.days >= 0 || widget.config.showPast)
     .sort((a, b) => a.days - b.days);
   const [first, ...rest] = list;
-  if (!first) return <div className="muted center-text">Minden esemény elmúlt.</div>;
+  if (!first) return <div className="muted center-text">{t('Minden esemény elmúlt.')}</div>;
 
   return (
     <div className="countdown">
       <div className="cd-main">
-        <span className="big-num">{first.days === 0 ? 'MA' : first.days}</span>
-        {first.days !== 0 && <span className="cd-unit">nap</span>}
+        <span className="big-num">{first.days === 0 ? t('MA') : first.days}</span>
+        {first.days !== 0 && <span className="cd-unit">{t('nap')}</span>}
         <div className="cd-name">{first.name}</div>
         <div className="eyebrow">{first.at.toLocaleDateString(locale(), { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}</div>
       </div>
@@ -48,7 +48,7 @@ export default function Countdown({ widget, onConfigure }) {
           {rest.map((e, i) => (
             <li key={i}>
               <span>{e.name}</span>
-              <span className="mono">{e.days < 0 ? `${-e.days} napja` : `${e.days} nap`}</span>
+              <span className="mono">{e.days < 0 ? t('{n} napja', { n: -e.days }) : t('{n} nap', { n: e.days })}</span>
             </li>
           ))}
         </ul>

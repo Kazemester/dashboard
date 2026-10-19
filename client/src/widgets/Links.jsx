@@ -1,13 +1,14 @@
 import React from 'react';
+import { t } from '../i18n.js';
 
 export default function Links({ widget, onConfigure }) {
   const links = (widget.config.links ?? []).filter((l) => l?.url);
   if (!links.length)
     return (
       <div className="setup">
-        <p>Gyorslinkek a gyakran használt oldalaidhoz.</p>
+        <p>{t('Gyorslinkek a gyakran használt oldalaidhoz.')}</p>
         <button className="btn btn-primary sm" onClick={onConfigure}>
-          ⚙ Beállítás
+          ⚙ {t('Beállítás')}
         </button>
       </div>
     );

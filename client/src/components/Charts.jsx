@@ -1,5 +1,6 @@
 import React, { useId, useRef } from 'react';
 import { locale } from '../i18n.js';
+import { t } from '../i18n.js';
 
 // Tiny dependency-free SVG charts in the HUD style.
 
@@ -60,7 +61,7 @@ export function Sparkline({ values, height = 28, className = '', fill = false })
 
 // Line chart with min/max labels and an optional goal line. points: [{ x: label, y: number }]
 export function LineChart({ points, goal, unit = '', height = 120, digits = 1 }) {
-  if (points.length < 2) return <div className="muted sm center-text">Legalább két mérés kell a grafikonhoz.</div>;
+  if (points.length < 2) return <div className="muted sm center-text">{t('Legalább két mérés kell a grafikonhoz.')}</div>;
   const ys = points.map((p) => p.y).concat(goal != null && goal !== '' ? [Number(goal)] : []);
   const min = Math.min(...ys);
   const max = Math.max(...ys);

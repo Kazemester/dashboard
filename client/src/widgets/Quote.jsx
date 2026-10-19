@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { t } from '../i18n.js';
 
 const QUOTES = [
   ['A legjobb módja annak, hogy megjósold a jövőt, ha megteremted.', 'Peter Drucker'],
@@ -36,16 +37,16 @@ export default function Quote({ widget }) {
     .map((l) => l.trim())
     .filter(Boolean)
     .map((l) => {
-      const [t, a] = l.split(/\s+[—–-]\s+/);
-      return [t, a || ''];
+      const [q, a] = l.split(/\s+[—–-]\s+/);
+      return [q, a || ''];
     });
   const list = widget.config.onlyCustom && extra.length ? extra : [...QUOTES, ...extra];
   const [offset, setOffset] = useState(0);
   const [text, author] = list[(dayIndex + offset) % list.length];
   return (
-    <div className="quote" onClick={() => setOffset((o) => o + 1)} title="Kattints a következőhöz">
-      <blockquote>{text}</blockquote>
-      {author && <cite>— {author}</cite>}
+    <div className="quote" onClick={() => setOffset((o) => o + 1)} title={t('Kattints a következőhöz')}>
+      <blockquote>{t(text)}</blockquote>
+      {author && <cite>— {t(author)}</cite>}
     </div>
   );
 }

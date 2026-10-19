@@ -1,6 +1,7 @@
 import React from 'react';
 import { useWidgetData } from '../hooks.js';
 import { Sparkline } from '../components/Charts.jsx';
+import { t } from '../i18n.js';
 
 // European AQI bands
 const AQI = [
@@ -19,14 +20,14 @@ const POLLEN = [
   ['mugwort_pollen', 'Üröm'],
 ];
 // grains/m³ → level
-const pollenLevel = (v) => (v == null ? '–' : v < 1 ? 'nincs' : v < 10 ? 'alacsony' : v < 50 ? 'közepes' : v < 200 ? 'magas' : 'nagyon magas');
+const pollenLevel = (v) => (v == null ? '–' : v < 1 ? t('nincs') : v < 10 ? t('alacsony') : v < 50 ? t('közepes') : v < 200 ? t('magas') : t('nagyon magas'));
 
 export default function AirQuality({ widget }) {
   const { data, error } = useWidgetData(`/widgets/${widget.id}/air`, { interval: 20 * 60_000 });
   if (error) return <div className="w-error">{error}</div>;
-  if (!data) return <div className="loading">LÉGKÖRI ADATOK…</div>;
+  if (!data) return <div className="loading">{t('LÉGKÖRI ADATOK…')}</div>;
   const c = data.current;
-  const band = AQI.find(([max]) => c.european_aqi <= max)[1];
+  const band = t(AQI.find(([max]) => c.european_aqi <= max)[1]);
   const nowIdx = data.hourly.time.findIndex((t) => t >= c.time);
   const next = data.hourly.european_aqi.slice(Math.max(0, nowIdx), Math.max(0, nowIdx) + 24);
   const pollen = POLLEN.filter(([k]) => c[k] != null);
@@ -53,14 +54,14 @@ export default function AirQuality({ widget }) {
         </div>
       </div>
       <div>
-        <div className="eyebrow">KÖVETKEZŐ 24 ÓRA</div>
+        <div className="eyebrow">{t('KÖVETKEZŐ 24 ÓRA')}</div>
         <Sparkline values={next} height={26} fill />
       </div>
       {pollen.length > 0 && (
         <div className="pollen">
           {pollen.map(([k, label]) => (
             <div key={k} className={`pollen-row ${c[k] >= 10 ? 'warn' : ''}`}>
-              <span>{label}</span>
+              <span>{t(label)}</span>
               <span className="mono">{pollenLevel(c[k])}</span>
             </div>
           ))}

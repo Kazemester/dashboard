@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../api.js';
 import { useWidgetData } from '../hooks.js';
+import { t } from '../i18n.js';
 
 const PALETTE = ['#00f0ff', '#ff2bd6', '#7cff6b', '#ffb020', '#8a7dff', '#ff5470'];
 
@@ -73,13 +74,13 @@ export default function Progress({ widget, editing }) {
   };
 
   const remove = async (item) => {
-    if (!confirm(`Törlöd: "${item.label}"?`)) return;
+    if (!confirm(t('Törlöd: "{label}"?', { label: item.label }))) return;
     await api.del(`/progress/${item.id}`);
     setData((items) => items.filter((x) => x.id !== item.id));
   };
 
   if (error) return <div className="w-error">{error}</div>;
-  if (!data) return <div className="loading">SZINKRONIZÁLÁS…</div>;
+  if (!data) return <div className="loading">{t('SZINKRONIZÁLÁS…')}</div>;
 
   const pctOf = (i) => Math.max(0, Math.min(100, (i.value / (i.target || 1)) * 100));
   const overall = data.length ? data.reduce((s, i) => s + pctOf(i), 0) / data.length : 0;
@@ -88,7 +89,7 @@ export default function Progress({ widget, editing }) {
     <div className="progress">
       {data.length > 0 && (
         <div className="progress-overall">
-          <span className="eyebrow">ÖSSZESÍTETT</span>
+          <span className="eyebrow">{t('ÖSSZESÍTETT')}</span>
           <span className="big-num">{overall.toFixed(0)}%</span>
         </div>
       )}
@@ -119,7 +120,7 @@ export default function Progress({ widget, editing }) {
             <div key={i.id} className="p-item">
               <div className="p-top">
                 <span className="p-label">{i.label}</span>
-                <span className="p-val" onClick={() => setEditId(i.id)} title="Kattints a szerkesztéshez">
+                <span className="p-val" onClick={() => setEditId(i.id)} title={t('Kattints a szerkesztéshez')}>
                   {i.value}
                   <span className="muted">
                     /{i.target} {i.unit}
@@ -152,9 +153,9 @@ export default function Progress({ widget, editing }) {
 
       {adding ? (
         <form onSubmit={add} className="row gap wrap">
-          <input className="input sm grow" placeholder="Cél neve" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} autoFocus />
-          <input className="input sm w-num" type="number" placeholder="Cél" value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} />
-          <input className="input sm w-unit" placeholder="egység" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
+          <input className="input sm grow" placeholder={t('Cél neve')} value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} autoFocus />
+          <input className="input sm w-num" type="number" placeholder={t('Cél')} value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} />
+          <input className="input sm w-unit" placeholder={t('egység')} value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
           <button className="btn btn-primary sm">+</button>
           <button type="button" className="btn btn-ghost sm" onClick={() => setAdding(false)}>
             ✕
@@ -162,7 +163,7 @@ export default function Progress({ widget, editing }) {
         </form>
       ) : (
         <button className="btn btn-ghost sm" onClick={() => setAdding(true)}>
-          + Új sáv
+          {t('+ Új sáv')}
         </button>
       )}
     </div>
