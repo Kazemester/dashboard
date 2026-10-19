@@ -694,13 +694,14 @@ select.input option { background: var(--surface); color: var(--text); }
 }
 
 /* =================== infinite canvas (desktop) =================== */
-.app.canvas-mode { height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+.app.canvas-mode { height: 100vh; overflow: hidden; overflow: clip; display: flex; flex-direction: column; }
 .canvas-mode .topbar { position: relative; flex-shrink: 0; }
 .canvas-main { position: relative; flex: 1; min-height: 0; }
 .canvas-main .empty { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
 .canvas-main .empty .btn { pointer-events: auto; }
 .canvas-viewport {
-  position: absolute; inset: 0; overflow: hidden; cursor: default; touch-action: none;
+  /* clip, not hidden: a hidden box can still be scrolled by the browser (focus, scrollIntoView) which shifts the whole canvas */
+  position: absolute; inset: 0; overflow: hidden; overflow: clip; cursor: default; touch-action: none;
   background-image: radial-gradient(circle, color-mix(in srgb, var(--accent) 40%, transparent) 1.2px, transparent 1.6px);
 }
 .canvas-viewport.space, .canvas-viewport.space * { cursor: grab !important; }

@@ -74,10 +74,13 @@ function Search({ widget, meta, onAdd, onClose, has }) {
     return () => clearTimeout(timer.current);
   }, [q, market, widget.config.provider]);
 
+  // focus without scrolling: an empty tile opens in search mode on page load, and autoFocus would scroll the page / canvas to it
+  const focusQuietly = (el) => el?.focus({ preventScroll: true });
+
   return (
     <div className="stk-search">
       <div className="row gap">
-        <input className="input sm grow" autoFocus placeholder="Keresés: SpaceX, arany, OTP, Apple, EUR/HUF…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input ref={focusQuietly} className="input sm grow" placeholder="Keresés: SpaceX, arany, OTP, Apple, EUR/HUF…" value={q} onChange={(e) => setQ(e.target.value)} />
         <button className="btn btn-ghost sm" onClick={onClose}>
           Kész
         </button>

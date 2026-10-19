@@ -103,7 +103,9 @@ function Ask({ widget, hasMails, pending, onPendingDone }) {
   const endRef = useRef(null);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: 'end' });
+    // scroll the log itself: scrollIntoView would also scroll every ancestor, including the canvas
+    const log = endRef.current?.parentElement;
+    if (log) log.scrollTop = log.scrollHeight;
   }, [thread, busy]);
 
   const ask = async (question) => {

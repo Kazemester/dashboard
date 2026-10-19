@@ -349,12 +349,20 @@ export default function Canvas({ items, onItemsChange, editing, children, onApi 
   };
 
   const layout = useMemo(() => items.map((l) => ({ ...l })), [items]);
-  // react-grid-layout's items only re-render when their children change. When the drag handle mode flips
-  // (zoomed out: whole tile; otherwise: header) hand them fresh elements once so the new mode applies.
+  // react-grid-layout's GridItem only re-renders when its children or its position change (its
+  // shouldComponentUpdate ignores everything else). Its drag / resize handlers keep the `transformScale` and
+  // handle settings of the last real render, so after zooming the first grab computes the tile position with
+  // the OLD zoom and the tile teleports. Hand the items fresh children whenever those inputs have changed:
+  // the drag handle mode flipping (zoomed out: whole tile; otherwise: header), and the zoom once it settles.
   const grabAll = v.zoom < 0.5;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const [settledZoom, setSettledZoom] = useState(v.zoom);
+  useEffect(() => {
+    const t = setTimeout(() => setSettledZoom(v.zoom), 80);
+    return () => clearTimeout(t);
+  }, [v.zoom]);
   // (plain array map: React.Children.map would prefix the keys react-grid-layout matches the layout by)
-  const tiles = useMemo(() => [].concat(children).map((c) => React.cloneElement(c)), [children, grabAll]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const tiles = useMemo(() => [].concat(children).map((c) => React.cloneElement(c)), [children, grabAll, settledZoom]);
   const content = bounds(items);
 
   // ---------- minimap ----------
@@ -389,6 +397,13 @@ export default function Canvas({ items, onItemsChange, editing, children, onApi 
       ref={vpRef}
       className={`canvas-viewport ${panning ? 'panning' : ''} ${space ? 'space' : ''} ${v.zoom < 0.3 ? 'far' : ''}`}
       style={bg}
+      // belt and braces for browsers without overflow: clip — this box is never meant to scroll
+      onScroll={(e) => {
+        if (e.currentTarget.scrollLeft || e.currentTarget.scrollTop) {
+          e.currentTarget.scrollLeft = 0;
+          e.currentTarget.scrollTop = 0;
+        }
+      }}
       onPointerDownCapture={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endPan}
