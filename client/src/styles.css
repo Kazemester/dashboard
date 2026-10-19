@@ -815,10 +815,10 @@ select.input option { background: var(--surface); color: var(--text); }
 :root[data-anim="on"] .lc-pulse { display: inline; fill: var(--accent); transform-box: fill-box; transform-origin: center; animation: lc-pulse 3.4s ease-out infinite; }
 @keyframes lc-pulse { 0% { transform: scale(1); opacity: 0.5; } 70%, 100% { transform: scale(3.4); opacity: 0; } }
 
-/* tiles: staggered fade-in, and a thin scan line that crosses the top edge now and then */
+/* tiles: staggered fade-in; tiles that really reload data on a timer (.tile-live) get a thin scan line across the top edge */
 :root[data-anim="on"] .tile { animation: tile-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: calc(min(var(--i, 0), 14) * 55ms); }
 @keyframes tile-in { from { opacity: 0; transform: translateY(6px); } }
-:root[data-anim="on"] .tile::after {
+:root[data-anim="on"] .tile-live::after {
   content: ''; position: absolute; left: 0; top: 0; width: 38%; height: 1px; pointer-events: none;
   background: linear-gradient(90deg, transparent, var(--accent), transparent);
   opacity: 0; transform: translateX(-100%);
@@ -854,4 +854,4 @@ select.input option { background: var(--surface); color: var(--text); }
 @keyframes glow-breathe { 50% { opacity: 0.55; } }
 
 /* zoomed far out the tiles are specks: save the work */
-.canvas-viewport.far .tile::after, .canvas-viewport.far .spark-sweep, .canvas-viewport.far .bar-fill::after, .canvas-viewport.far .lc-pulse { animation: none !important; }
+.canvas-viewport.far .tile-live::after, .canvas-viewport.far .spark-sweep, .canvas-viewport.far .bar-fill::after, .canvas-viewport.far .lc-pulse { animation: none !important; }

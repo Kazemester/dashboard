@@ -37,7 +37,7 @@ A fejléc mindig látszik, görgetés közben is. A **Téma** gombbal 7 kész t�
 
 **Animációk:** a fejléc **Anim** kapcsolójával be- és kikapcsolhatod a finom, díszítő mozgásokat. A kapcsoló állása is az adatbázisba mentődik. Amit bekapcsolva látsz:
 - a vonaldiagramokon (Tőzsde, Kripto, Levegő, Mérésnapló) időnként végigfut egy fény, minden grafikon a saját ütemében;
-- a csempék lépcsőzetesen úsznak be, és a felső szélükön időnként átsuhan egy vékony pásztázó vonal;
+- a csempék lépcsőzetesen úsznak be, és azoknak a felső szélén, amelyek tényleg időközönként töltenek adatot (pl. Tőzsde, Kripto, Időjárás, Rendszer, Hírek), időnként átsuhan egy vékony pásztázó vonal. Aki nem tölt (Teendők, Jegyzet, Óra…), annál nincs;
 - a célok sávjain időnként átfut egy fény, a megváltozott árfolyam egyet villan, az állapotjelző pontok lassan „lélegeznek";
 - a háttér halvány fénye és a logó lassan pulzál.
 

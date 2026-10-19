@@ -1,4 +1,5 @@
-import React, { Component } from 'react';
+import React, { Component, useCallback, useState } from 'react';
+import { TileLiveContext } from '../hooks.js';
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -13,28 +14,36 @@ class ErrorBoundary extends Component {
 
 export default function Tile({ widget, def, editing, onConfigure, onUpdateConfig, onRemove }) {
   const Body = def?.component;
+  // number of timed data loads running inside this tile (see useLive in hooks.js)
+  const [liveCount, setLiveCount] = useState(0);
+  const register = useCallback(() => {
+    setLiveCount((n) => n + 1);
+    return () => setLiveCount((n) => n - 1);
+  }, []);
   return (
-    <section className={`tile accent-${def?.accent ?? 'cyan'}`}>
-      <header className="tile-head">
-        <h3 className="tile-title">{widget.title}</h3>
-        <div className="tile-actions no-drag">
-          {def?.fields?.length > 0 && (
-            <button className="icon-btn" title="Beállítások" onClick={onConfigure}>
-              ⚙
-            </button>
-          )}
-          {editing && (
-            <button className="icon-btn danger" title="Eltávolítás" onClick={onRemove}>
-              ✕
-            </button>
-          )}
+    <TileLiveContext.Provider value={register}>
+      <section className={`tile accent-${def?.accent ?? 'cyan'} ${liveCount > 0 ? 'tile-live' : ''}`}>
+        <header className="tile-head">
+          <h3 className="tile-title">{widget.title}</h3>
+          <div className="tile-actions no-drag">
+            {def?.fields?.length > 0 && (
+              <button className="icon-btn" title="Beállítások" onClick={onConfigure}>
+                ⚙
+              </button>
+            )}
+            {editing && (
+              <button className="icon-btn danger" title="Eltávolítás" onClick={onRemove}>
+                ✕
+              </button>
+            )}
+          </div>
+        </header>
+        <div className="tile-body no-drag">
+          <ErrorBoundary>
+            {Body ? <Body widget={widget} editing={editing} onConfigure={onConfigure} onUpdateConfig={onUpdateConfig} /> : <div className="w-error">Ismeretlen modul: {widget.type}</div>}
+          </ErrorBoundary>
         </div>
-      </header>
-      <div className="tile-body no-drag">
-        <ErrorBoundary>
-          {Body ? <Body widget={widget} editing={editing} onConfigure={onConfigure} onUpdateConfig={onUpdateConfig} /> : <div className="w-error">Ismeretlen modul: {widget.type}</div>}
-        </ErrorBoundary>
-      </div>
-    </section>
+      </section>
+    </TileLiveContext.Provider>
   );
 }

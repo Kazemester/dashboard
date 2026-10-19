@@ -1,9 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { api } from './api.js';
+
+// A tile is "live" while something inside it really reloads data on a timer. Tile.jsx provides the registry,
+// tiles that load on their own (not through useWidgetData) call useLive(active) themselves.
+export const TileLiveContext = createContext(null);
+export function useLive(active) {
+  const register = useContext(TileLiveContext);
+  useEffect(() => (active && register ? register() : undefined), [active, register]);
+}
 
 // Load data for a widget, optionally re-polling. Pass a falsy url to skip loading.
 // Returns { data, error, loading, reload, setData }.
-export function useWidgetData(url, { interval = 0, deps = [] } = {}) {
+// `live: false` keeps a poll that only re-reads local state from marking the tile as live.
+export function useWidgetData(url, { interval = 0, deps = [], live = true } = {}) {
+  useLive(Boolean(url && interval > 0 && live));
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);

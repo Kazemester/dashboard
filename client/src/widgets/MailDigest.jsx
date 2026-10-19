@@ -200,7 +200,7 @@ function Ask({ widget, hasMails, pending, onPendingDone }) {
 }
 
 export default function MailDigest({ widget }) {
-  const { data, error, setData } = useWidgetData(`/widgets/${widget.id}/mail`, { interval: 60_000 });
+  const { data, error, setData } = useWidgetData(`/widgets/${widget.id}/mail`, { interval: 60_000, live: Number(widget.config.autoMinutes) > 0 });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [tab, setTab] = useState('summary');
