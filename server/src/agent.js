@@ -571,7 +571,7 @@ function describe(method, path, body) {
   return `${method} ${path}`;
 }
 
-function systemPrompt({ persona, state, catalog, mode, local }) {
+function systemPrompt({ persona, state, catalog, mode, local, hu }) {
   const now = new Date();
   const tiles = state.widgets.map((w) => `- ${w.title} (type ${w.type}, id ${w.id})`).join('\n') || '(no tiles yet)';
   return [
@@ -586,6 +586,7 @@ function systemPrompt({ persona, state, catalog, mode, local }) {
     mode === 'full' && !local ? API_GUIDE : '',
     catalog ? `Tile type ids (use exactly these for add_tile / replace_tile): ${Object.entries(catalog).map(([t, d]) => `${t}=${d.name}`).join(', ')}.` : '',
     'Answer in the language of the user\'s message, briefly. Never show tile or item ids to the user; refer to tiles by their title.',
+    hu ? HU_HINT : '',
   ]
     .filter(Boolean)
     .join('\n\n');
@@ -614,6 +615,84 @@ const CLAIM = /hozzáadtam|hozzá lett adva|hozzáadva|felvettem|létrehoztam|ki
 const NO_CHANGE = '⚠ Nem történt változás a dashboardon: a bot nem hajtott végre módosítást.';
 const metaOf = (exec, extra = {}) => ({ actions: exec.actions, pending: exec.pending, created: exec.created, changed: [...exec.changed], layoutChanged: exec.layoutChanged, ...extra });
 
+// What the user last asked (history may end with the bot's own nudges in older runs; skip those).
+const lastUserText = (history) => [...history].reverse().find((m) => m.role === 'user')?.content ?? '';
+// Imperative verbs (Hungarian prefixes / English words): the user wants something DONE, not explained.
+const COMMAND = /(^|[\s,.;:!?(])(adj|add|tegy|rakj|rak\b|vegy|vedd|kapcsol|állít|írj|pipál|mozg|nagyít|kicsiny|cser|módosít|hozz létre|készít|töröl|távolít|helyez|nyiss)|\b(add|create|put|set|turn|switch|change|remove|delete|make|move|resize|tick|replace|insert|place)\b/i;
+const looksHungarian = (t) => /[áéíóöőúüű]/i.test(t) || /\b(egy|csempe|csempét|legyen|kérem|szia|tegyél|adj|mutasd)\b/i.test(t);
+const HU_HINT = 'Mindig magyarul válaszolj (Always answer in Hungarian).';
+
+// Planner fallback for models that cannot (or will not) call tools: ask for ONE JSON object instead, which
+// even small models fill in reliably, and run it through the same validated tools.
+// One typical call per tool: small models copy a working example far better than they follow a description.
+const EXAMPLES = {
+  add_tile: '{"type":"weather","title":"Szeged","config":{"city":"Szeged"}}',
+  replace_tile: '{"id":"Bitcoin árfolyam","type":"currency","title":"USD-HUF","config":{"from":"USD","to":"HUF"}}',
+  update_tile: '{"id":"Bitcoin árfolyam","config":{"currency":"usd"}}',
+  move_resize_tile: '{"id":"Teendők","w":6,"h":9}',
+  remove_tile: '{"id":"Jegyzet"}',
+  set_appearance: '{"theme":"amber"} or {"animations":false} or {"accent":"#ff8800"}',
+  add_todo: '{"text":"Tejet venni","due":"2026-10-20"}',
+  complete_todo: '{"item":"tejet venni"}',
+  check_habit: '{"habit":"futás"}',
+  write_note: '{"text":"Hívni a fogorvost"}',
+  log_expense: '{"amount":4500,"category":"étel","note":"ebéd"}',
+  add_list_item: '{"tile":"Gyorslinkek","item":{"name":"Google","url":"https://google.com"}}',
+  remove_list_item: '{"tile":"Gyorslinkek","match":"Google"}',
+  set_progress: '{"item":"Olvasás","value":70}',
+};
+const briefTool = (t) => {
+  const { properties = {}, required = [] } = t.function.parameters ?? {};
+  const params = Object.keys(properties).map((k) => (required.includes(k) ? k : `${k}?`)).join(', ');
+  const ex = EXAMPLES[t.function.name];
+  return `- ${t.function.name}(${params}): ${t.function.description.split(/\.\s/)[0]}${ex ? `\n    e.g. ${ex}` : ''}`;
+};
+function parsePlan(text) {
+  const m = String(text ?? '').replace(/```(json)?/gi, '').match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  try {
+    const o = JSON.parse(m[0]);
+    const tool = typeof o.tool === 'string' && o.tool && o.tool !== 'null' ? o.tool : null;
+    const args = o.arguments ?? o.args ?? o.parameters ?? {};
+    return { tool, args: args && typeof args === 'object' ? args : {}, reply: typeof o.reply === 'string' ? o.reply.trim() : '' };
+  } catch {
+    return null;
+  }
+}
+async function planWithJson({ history, persona, model, catalog, exec, state, tools }) {
+  const writeTools = tools.filter((t) => !['list_tiles', 'read_tile', 'list_tile_types', 'tile_api'].includes(t.function.name));
+  const types = catalog ? Object.entries(catalog).map(([t, d]) => `${t}=${d.name}[${(d.fields ?? []).map((f) => f.key).join(',')}]`).join('; ') : '';
+  const tiles = state.widgets.map((w) => `${w.title} (${w.type})`).join('; ') || '(none)';
+  const hu = looksHungarian(lastUserText(history));
+  const sys = [
+    persona ? `${persona}\n` : '',
+    "You operate the user's personal dashboard. Work out what the user wants and answer with ONE JSON object and nothing else:",
+    '{"tool": "<tool name, or null>", "arguments": { ... }, "reply": "<one short sentence for the user>"}',
+    'Use "tool": null only when the message asks for no change to the dashboard (then just put your answer in "reply").',
+    `Tools:\n${writeTools.map(briefTool).join('\n')}`,
+    types ? `Tile types (id=Name[settings]): ${types}` : '',
+    `Current tiles: ${tiles}. Refer to existing tiles by their title. Today is ${isoDay()}.`,
+    'Choosing the tool: a NEW tile → add_tile. Turn an existing tile into ANOTHER KIND of tile → replace_tile. Change a setting of a tile that stays what it is → update_tile. Theme, colours, animations on/off → set_appearance. An entry in a tile\'s list (links, countdown events…) → add_list_item. A to-do → add_todo. Answer format example: {"tool":"add_todo","arguments":{"text":"Tejet venni"},"reply":"Felvettem a teendőt."}',
+    hu ? HU_HINT : 'Write "reply" in the language of the user.',
+  ].filter(Boolean).join('\n\n');
+  const msgs = [{ role: 'system', content: sys }, ...history.slice(-6).map(({ role, content }) => ({ role, content }))];
+  let lastError = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const raw = (await complete(msgs, { model, json: true, temperature: 0.1 })).content ?? '';
+    const plan = parsePlan(raw);
+    if (!plan) return lastError ? { error: lastError } : null;
+    if (!plan.tool) return { none: true, reply: plan.reply };
+    try {
+      await exec.run(plan.tool, plan.args);
+      return { done: true, reply: plan.reply };
+    } catch (err) {
+      lastError = err.message;
+      msgs.push({ role: 'assistant', content: raw }, { role: 'user', content: `That failed: ${err.message}\nRe-read what I asked, pick the right tool (add_tile, replace_tile, update_tile, set_appearance …) with valid arguments, and answer with the JSON object again.` });
+    }
+  }
+  return { error: lastError };
+}
+
 /**
  * Run one chat turn with dashboard access.
  * @returns {{ answer, meta: { actions, pending, changed, layoutChanged, readOnly? } }}
@@ -624,9 +703,27 @@ export async function agentTurn({ history, persona, model, catalog, mode }) {
   const local = isLocal(cfg.baseUrl);
   const tools = toolsFor(mode, local);
   const exec = makeExecutor({ catalog, mode, tools });
-  const messages = [{ role: 'system', content: systemPrompt({ persona, state, catalog, mode, local }) }, ...history.slice(-12)];
+  const messages = [{ role: 'system', content: systemPrompt({ persona, state, catalog, mode, local, hu: looksHungarian(lastUserText(history)) }) }, ...history.slice(-12)];
   const resultLimit = local ? 3000 : 9000;
-  let nudged = false;
+  let planned = false;
+  // Executes the JSON plan; returns the finished turn, or null when the planner found nothing to change.
+  const runPlan = async () => {
+    const fb = await planWithJson({ history, persona, model, catalog, exec, state, tools }).catch(() => null);
+    if (fb?.done) {
+      // The reply text of a small model can be garbled, so the answer is built from what really happened.
+      const what = exec.actions.length ? `Kész: ${exec.actions.join(', ')}.` : fb.reply || 'Kész.';
+      return { answer: exec.pending.length ? `${what} A törléshez nyomd meg a gombot a válasz alatt.` : what, meta: metaOf(exec) };
+    }
+    if (fb?.error) return { answer: `Nem sikerült: ${fb.error}`, meta: metaOf(exec) };
+    return null;
+  };
+
+  // test hook: skip the model's native tool calling and always use the JSON planner
+  if (process.env.AGENT_FORCE_JSON === '1' && mode === 'full') {
+    planned = true;
+    const done = await runPlan();
+    if (done) return done;
+  }
 
   try {
     for (let step = 0; step < MAX_STEPS; step++) {
@@ -639,15 +736,14 @@ export async function agentTurn({ history, persona, model, catalog, mode }) {
           messages.push({ role: 'assistant', content: '' }, { role: 'user', content: 'Please answer my previous message (use your tools if needed).' });
           continue;
         }
-        // "Done!" without any tool call: ask once to really do it, otherwise say plainly that nothing changed
+        // The model announced a change, or was told to DO something, yet no tool ran: native tool calling did not
+        // work for this model. Ask for one JSON object instead (see planWithJson) and run that through the tools.
         const claims = mode === 'full' && answer && CLAIM.test(answer) && !exec.actions.length && !exec.pending.length;
-        if (claims && step === 0 && !nudged) {
-          nudged = true;
-          messages.push(
-            { role: 'assistant', content: answer },
-            { role: 'user', content: 'You said it is done, but you called no tool, so nothing changed. Call the right tool now (add_tile, update_tile, replace_tile, add_todo …), or tell me honestly that you cannot do it.' },
-          );
-          continue;
+        const wantsAction = mode === 'full' && !exec.actions.length && !exec.pending.length && (claims || COMMAND.test(lastUserText(history)));
+        if (wantsAction && !planned) {
+          planned = true;
+          const done = await runPlan();
+          if (done) return done;
         }
         if (!answer) answer = exec.actions.length ? `Kész: ${exec.actions.join(', ')}.` : '(nincs válasz)';
         if (claims) answer = `${answer}\n\n${NO_CHANGE}`;
@@ -668,9 +764,14 @@ export async function agentTurn({ history, persona, model, catalog, mode }) {
     return { answer: 'Túl sok lépés kellett volna ehhez; próbáld kisebb részekre bontani a kérést.', meta: metaOf(exec) };
   } catch (err) {
     if (!err.toolsUnsupported) throw err;
-    // the model can't call tools: answer from a snapshot instead, without changing anything
+    // the model can't call tools: for a command use the JSON planner, otherwise answer from a snapshot
+    if (mode === 'full' && COMMAND.test(lastUserText(history)) && !planned) {
+      planned = true;
+      const done = await runPlan();
+      if (done) return done;
+    }
     const snap = await snapshot(local ? 5000 : 20000);
-    const sys = `${systemPrompt({ persona, state, catalog, mode: 'read', local })}\n\nThis model cannot use tools. Current tile contents:\n${snap}\n\nYou cannot change anything; if asked to, say that this model can't do it and suggest a model with tool support (e.g. qwen2.5 / qwen3 / llama3.1 in Ollama, or a cloud model).`;
+    const sys = `${systemPrompt({ persona, state, catalog, mode: 'read', local, hu: looksHungarian(lastUserText(history)) })}\n\nThis model cannot use tools. Current tile contents:\n${snap}\n\nYou cannot change anything; if asked to, say that this model can't do it and suggest a model with tool support (e.g. qwen2.5 / qwen3 / llama3.1 in Ollama, or a cloud model).`;
     const msg = await complete([{ role: 'system', content: sys }, ...history.slice(-12)], { model, temperature: 0.3 });
     let answer = msg.content || '(nincs válasz)';
     if (CLAIM.test(answer)) answer = `${answer}\n\n⚠ Ez a modell nem tud eszközt használni, ezért semmit nem változtatott a dashboardon.`;

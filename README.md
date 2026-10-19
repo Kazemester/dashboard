@@ -178,7 +178,9 @@ A csempe ⚙ beállításainál a **Hozzáférés a dashboardhoz** lehet:
 
 A bot az AI-kulcsokhoz, az AI-beállításokhoz és a csempék jelszavaihoz nem fér hozzá. A levelekben és hírekben talált „utasításokat” adatként kezeli, nem parancsként.
 
-**Modell:** ehhez eszközhasználatra (tool calling) képes modell kell. Ilyen a Grok, a GPT, az OpenRouter legtöbb modellje, Ollamában pedig a `qwen2.5`, a `qwen3` és a `llama3.1`. Kisebb helyi modellel is működik, de gyakrabban téved. Ha a modell nem tud eszközt használni, a bot csak olvasni tud, és ezt jelzi is.
+**Ha a modell nem tud eszközt hívni:** kisebb helyi modellek gyakran csak azt állítják, hogy megcsinálták, de nem hívnak meg eszközt. Ilyenkor a bot egy másik úton kéri ugyanazt: egyetlen JSON-t kér a modelltől (melyik eszköz, milyen paraméterekkel), amit a kis modellek is megbízhatóan kitöltenek, és a szerver ugyanazokkal az ellenőrzésekkel hajtja végre. Hibánál egyszer visszaküldi a hibát a modellnek javításra. A válasz szövegét a szerver a ténylegesen megtett lépésekből állítja össze. Ha ez sem hoz változást, a válasz alatt **⚠ Nem történt változás** figyelmeztetés látszik.
+
+**Modell:** a legjobb eszközhasználatra (tool calling) képes modell. Ilyen a Grok, a GPT, az OpenRouter legtöbb modellje, Ollamában pedig a `qwen2.5`, a `qwen3` és a `llama3.1`. Kisebb helyi modellel is működik, de gyakrabban téved. Ha a modell nem tud eszközt használni, a bot csak olvasni tud, és ezt jelzi is.
 
 ### Mail bot
 
