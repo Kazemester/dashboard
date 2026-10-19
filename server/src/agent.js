@@ -296,7 +296,13 @@ function pick(rows, wanted, nameOf) {
 }
 
 // A tile given by id or (as small models often do) by its title.
-const tileBy = (widgets, ref) => widgets.find((x) => x.id === ref) ?? pickOrNull(widgets, ref, (x) => x.title);
+// Several tiles may share a title (two "Tőzsde"): prefer the wanted type, then the first one.
+const tileBy = (widgets, ref, type) => {
+  const byId = widgets.find((x) => x.id === ref);
+  if (byId) return byId;
+  const pool = type ? widgets.filter((x) => x.type === type) : widgets;
+  return pickOrNull(pool, ref, (x) => x.title) ?? pool.find((x) => fold(x.title) === fold(ref)) ?? null;
+};
 
 function pickOrNull(rows, wanted, nameOf) {
   try {
@@ -327,8 +333,8 @@ function makeExecutor({ catalog, mode, tools }) {
   async function tileOf(type, ref) {
     const { widgets } = await loadState();
     if (ref) {
-      const w = widgets.find((x) => x.id === ref) ?? pickOrNull(widgets, ref, (x) => x.title);
-      if (!w) throw new Error(`No tile called "${ref}". Tiles: ${widgets.map((x) => x.title).join(', ')}.`);
+      const w = tileBy(widgets, ref, type);
+      if (!w) throw new Error(`No tile called "${ref}". Tiles: ${widgets.map((x) => `${x.title} [${x.id}]`).join(', ')}.`);
       if (type && w.type !== type) {
         const hint = listField(w.type) ? ' To add an entry to it use add_list_item.' : ' To change its settings use update_tile.';
         throw new Error(`"${w.title}" is a ${typeName(w.type)} tile, not a ${typeName(type)} tile. Nothing was changed.${hint}`);
@@ -464,9 +470,9 @@ function makeExecutor({ catalog, mode, tools }) {
       const alternatives = hits.slice(1, 4).map((h) => `${h.symbol} (${h.name})`);
       const { widgets } = await loadState();
       const all = widgets.filter((x) => x.type === 'stocks');
-      let w = tile ? tileBy(widgets, tile) : all.length === 1 ? all[0] : null;
+      let w = tile ? tileBy(widgets, tile, 'stocks') : all.length === 1 ? all[0] : null;
       if (tile && (!w || w.type !== 'stocks')) throw new Error(`"${tile}" is not a Tőzsde tile. Tőzsde tiles: ${all.map((x) => x.title).join(', ') || '(none yet)'}.`);
-      if (!w && all.length > 1) throw new Error(`There are several Tőzsde tiles: ${all.map((x) => x.title).join(', ')}. Pass tile.`);
+      if (!w && all.length > 1) w = all[0]; // several: the first one is fine, the user can move the symbol later
       if (!w) {
         // no Tőzsde tile yet: create one that already holds the symbol
         const made = await handlers.add_tile({ type: 'stocks', title: 'Tőzsde', config: { symbols: [entry] } });
