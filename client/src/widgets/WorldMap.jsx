@@ -80,6 +80,8 @@ export default function WorldMap({ widget, onUpdateConfig }) {
   const baseLayer = useRef(null);
   const [status, setStatus] = useState({});
   const [panel, setPanel] = useState(false);
+  // Locked (default): drags and the mouse wheel go to the dashboard, so it can still be panned and scrolled.
+  const [active, setActive] = useState(false);
   const [found, setFound] = useState(null);
   const [query, setQuery] = useState('');
   const viewKey = `nexus-map-${widget.id}`;
@@ -96,7 +98,7 @@ export default function WorldMap({ widget, onUpdateConfig }) {
     } catch {
       /* no saved view */
     }
-    const m = L.map(box.current, { center: view.center, zoom: view.zoom, minZoom: 1, worldCopyJump: true, preferCanvas: true });
+    const m = L.map(box.current, { center: view.center, zoom: view.zoom, minZoom: 1, worldCopyJump: true, preferCanvas: true, dragging: false, touchZoom: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false });
     for (const id of DATA_IDS) groups.current[id] = L.layerGroup().addTo(m);
     m.on('moveend', () => {
       try {
@@ -118,6 +120,23 @@ export default function WorldMap({ widget, onUpdateConfig }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ---- lock / unlock the map's own gestures ----
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return undefined;
+    for (const h of [m.dragging, m.touchZoom, m.scrollWheelZoom, m.doubleClickZoom, m.boxZoom, m.keyboard]) active ? h.enable() : h.disable();
+    if (!active) return undefined;
+    const lock = () => setActive(false);
+    const outside = (e) => !e.target.closest?.('.wm') && lock();
+    const esc = (e) => e.key === 'Escape' && lock();
+    document.addEventListener('pointerdown', outside, true);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('pointerdown', outside, true);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [active]);
 
   // ---- base map ----
   useEffect(() => {
@@ -280,12 +299,15 @@ export default function WorldMap({ widget, onUpdateConfig }) {
             </ul>
           )}
         </div>
+        <button className={`wm-chip ${active ? 'on' : ''}`} aria-pressed={active} onClick={() => setActive((v) => !v)} title={active ? t('A térkép aktív: húzás és görgetés a térképet mozgatja. Kattints a kilépéshez (vagy Esc).') : t('A térkép zárolva: a húzás és a görgetés a dashboardot mozgatja. Kattints a térkép mozgatásához.')}>
+          {active ? '✥ ' + t('Térkép aktív') : '✥ ' + t('Térkép mozgatása')}
+        </button>
         <button className={`wm-chip ${panel ? 'on' : ''}`} aria-expanded={panel} onClick={() => setPanel((v) => !v)}>
           ☰ {t('Rétegek')} <i className="wm-n">{layers.length}</i>
         </button>
       </div>
       <div className="wm-stage">
-        <div className="wm-map no-drag" ref={box} />
+        <div className="wm-map no-drag" ref={box} {...(active ? {} : { 'data-soft-pan': '' })} />
         {panel && (
           <div className="wm-panel no-drag">
             <div className="wm-sec">{t('Alaptérkép')}</div>

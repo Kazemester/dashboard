@@ -260,7 +260,14 @@ export default function Canvas({ items, onItemsChange, editing, children, onApi 
   // Capture phase: with space held (or the middle button) we pan even over a tile, and preventDefault on
   // pointerdown suppresses the mousedown the tile's drag handler would otherwise get. Tiles stay
   // isDraggable the whole time — toggling it does not reach react-grid-layout's memoised items.
+  const softPan = useRef(null);
   const onPointerDown = (e) => {
+    // Inert areas inside a tile (a locked map) pan the canvas too, but only once the pointer really drags:
+    // starting at once would capture the pointer and swallow taps on the map's markers and buttons.
+    if (e.button === 0 && !space && e.target.closest?.('[data-soft-pan]')) {
+      softPan.current = { id: e.pointerId, sx: e.clientX, sy: e.clientY };
+      return;
+    }
     const onTile = e.target.closest('.react-grid-item, .canvas-ui');
     if (!(e.button === 1 || (e.button === 0 && (space || !onTile)))) return;
     e.preventDefault();
@@ -270,11 +277,20 @@ export default function Canvas({ items, onItemsChange, editing, children, onApi 
     setPanning(true);
   };
   const onPointerMove = (e) => {
+    const sp = softPan.current;
+    if (sp && sp.id === e.pointerId && !pan.current) {
+      if (Math.hypot(e.clientX - sp.sx, e.clientY - sp.sy) < 6) return;
+      softPan.current = null;
+      pan.current = { id: e.pointerId, sx: sp.sx, sy: sp.sy, x: v.x, y: v.y };
+      vpRef.current.setPointerCapture(e.pointerId);
+      setPanning(true);
+    }
     const p = pan.current;
     if (!p || p.id !== e.pointerId) return;
     setView({ zoom: v.zoom, x: p.x + e.clientX - p.sx, y: p.y + e.clientY - p.sy });
   };
   const endPan = (e) => {
+    if (softPan.current?.id === e.pointerId) softPan.current = null;
     if (pan.current?.id !== e.pointerId) return;
     pan.current = null;
     setPanning(false);

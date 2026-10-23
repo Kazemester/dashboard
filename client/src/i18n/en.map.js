@@ -95,4 +95,8 @@ export default {
   'Hely keresése…': 'Search a place…',
   'Nincs találat': 'No results',
   'nagyíts rá': 'zoom in',
+  'Térkép aktív': 'Map active',
+  'Térkép mozgatása': 'Move map',
+  'A térkép aktív: húzás és görgetés a térképet mozgatja. Kattints a kilépéshez (vagy Esc).': 'Map active: dragging and scrolling move the map. Click to leave (or press Esc).',
+  'A térkép zárolva: a húzás és a görgetés a dashboardot mozgatja. Kattints a térkép mozgatásához.': 'Map locked: dragging and scrolling move the dashboard. Click to move the map.',
 };

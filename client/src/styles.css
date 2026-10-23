@@ -927,3 +927,5 @@ select.input option { background: var(--surface); color: var(--text); }
 .wm-photo { display: block; max-width: 100%; max-height: 140px; margin: 6px 0; border: 1px solid var(--line); }
 .wm-sci { color: var(--muted); font-style: italic; font-size: 12px; }
 .wm-iss i { display: block; width: 14px; height: 14px; margin: 4px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), 0 0 14px var(--accent); }
+@media (max-width: 640px) { .lang-switch button { padding: 5px 6px; font-size: 10px; letter-spacing: .06em; } }
+@media (max-width: 640px) { .theme-label { display: none; } .theme-btn { gap: 0; } }

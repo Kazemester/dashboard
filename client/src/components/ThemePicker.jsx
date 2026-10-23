@@ -23,7 +23,7 @@ export default function ThemePicker({ appearance, onChange }) {
     <div className="theme-picker" ref={ref}>
       <button className={`btn btn-ghost theme-btn ${open ? 'btn-active' : ''}`} onClick={() => setOpen((o) => !o)} title={t('Téma és színek')}>
         <span className="theme-dot" />
-        {t('Téma')}
+        <span className="theme-label">{t('Téma')}</span>
       </button>
       {open && (
         <div className="theme-pop">

@@ -144,6 +144,7 @@ A tetején helykereső és a **☰ Rétegek** gomb. A kapcsolók és az alaptér
 | Helykereső | Open-Meteo geokódolás | |
 
 - **Repülők:** az OpenSky névtelen hozzáférése napi kb. 400 kredit; egy világnézetű lekérdezés 4 kredit, percenként frissítve ez kb. másfél óra élő térkép. Ha elfogy, a csempe hibát jelez, és később újra működik. Ingyenes OpenSky-fiókkal (API kliens) sokkal több jár: az azonosítót és a titkot a csempe beállításaiban vagy `{{secret:OPENSKY_ID}}` / `{{secret:OPENSKY_SECRET}}` formában add meg (`SECRET_OPENSKY_ID` az `.env`-ben). Ezt a fiókos belépést nem tudtam kipróbálni.
+- **Zárolt térkép (alapból):** a húzás és az egérgörgő a dashboardot mozgatja (telefonon az oldal görgethető), így nagyításnál sem ragadsz be a térképbe. A kattintás (felugró infó) és a +/− gombok zárolva is működnek. A térkép mozgatásához / nagyításához kattints az **✥ Térkép mozgatása** gombra (kilépés: ugyanaz a gomb, Esc, vagy kattintás a csempén kívül).
 - A kis nagyítású nézetben a Wikipédia, a Fajmegfigyelések és a Repterek réteg a „nagyíts rá” jelzést mutatja.
 - Az API-k valódi válaszformátumát a dokumentációjuk alapján dolgoztam fel, de internet nélküli környezetben csak lemodellezett válaszokkal teszteltem. Ha egy forrás megváltozik, csak az a réteg jelez hibát.
 
