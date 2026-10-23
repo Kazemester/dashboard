@@ -71,7 +71,7 @@ Csak halvány, ritka mozgások, amelyek a processzort alig terhelik. 30%-nál ki
 | Modul | Mit csinál |
 |---|---|
 | ☁ Időjárás | Aktuális idő + 5 napos előrejelzés (Open-Meteo) |
-| ◍ Világtérkép | OpenStreetMap térkép, húzható és nagyítható. Kapcsolható rétegek (a csempe tetején): **Ország** (kattintásra zászló, főváros, népesség, nyelv, pénznem), **Repülők** (élő, OpenSky), **Rengések** (USGS), **Hírek** (GDELT, témaszűrővel). Minden forrás ingyenes, kulcs nélkül |
+| ◍ Világtérkép | OpenStreetMap térkép 19 kapcsolható réteggel, 5 alaptérképpel és helykeresővel (részletek lent). Minden forrás ingyenes, kulcs nélkül |
 | ≈ Levegő & pollen | Európai AQI, PM2.5/PM10, UV, pollen (parlagfű, fű, nyír, éger, üröm) |
 | ☾ Nap & Hold | Napkelte/napnyugta, a Nap útja, nappal hossza és változása, holdfázis |
 | ▦ Naptár | Google / iCloud / Outlook iCal linkkel |
@@ -120,11 +120,32 @@ Csak halvány, ritka mozgások, amelyek a processzort alig terhelik. 30%-nál ki
 </details>
 
 ### Világtérkép csempe
-A térkép OpenStreetMap-csempékről töltődik (a böngésző tölti, internet kell hozzá), az adatrétegeket a szerver kéri le, és gyorsítótárazza.
-- **Repülők:** az OpenSky Network névtelen hozzáférése napi kb. 400 kredit; egy világnézetű lekérdezés 4 kredit, percenként frissítve ez kb. másfél óra élő térkép. Ha elfogy, a csempe hibát jelez, és később újra működik. Ingyenes OpenSky-fiókkal (API kliens) sokkal több jár: az azonosítót és a titkot a csempe beállításaiban vagy `{{secret:OPENSKY_ID}}` / `{{secret:OPENSKY_SECRET}}` formában add meg (`SECRET_OPENSKY_ID` az `.env`-ben). Ezt a fiókos belépést nem tudtam kipróbálni.
-- **Hírek:** a GDELT geokódolt híreit mutatja az elmúlt 24 órából; a „Hírek témája” mezőben szűrhetsz (pl. `election`, `sourcecountry:HU`).
-- **Országinfó:** kattints a térképre; a szerver a Nominatim (OSM) fordított keresésével találja meg az országot, az adatokat a REST Countries adja.
-- A rétegek ki-be kapcsolása és a nézet (hol jársz a térképen) megmarad.
+A tetején helykereső és a **☰ Rétegek** gomb. A kapcsolók és az alaptérkép a csempe beállításaiba mentődnek (a bot is át tudja állítani: `layers`, `base`). A térkép képeit a böngésző tölti, az adatrétegeket a szerver kéri le és gyorsítótárazza. A kattintásra felugró ablak az országról és a pontról mutat adatot, ahogy a szolgáltatások válaszolnak.
+
+**Alaptérképek:** Térkép (OpenStreetMap), Sötét (CARTO), Domborzat (OpenTopoMap), Műhold (NASA GIBS, tegnapi valódi szín), Éjszakai Föld (NASA Black Marble).
+
+| Réteg | Forrás | Megjegyzés |
+|---|---|---|
+| Repülők | OpenSky Network | percenként frissül, részletek lent |
+| ISS űrállomás | wheretheiss.at, Open Notify | élő pozíció, pályavonal, személyzet |
+| Földrengések | USGS | az utolsó nap 2,5 feletti rengései |
+| Erdőtüzek, Vulkánok, Viharok, Árvíz/aszály/jég | NASA EONET | nyitott események |
+| Sarki fény | NOAA SWPC | OVATION előrejelzés + Kp index |
+| Eső radar | RainViewer | legfrissebb képkocka |
+| Hírek | GDELT | téma szűrhető (`newsQuery`) |
+| Wikipédia a közelben | Wikipedia | 9-es nagyítástól |
+| Fajmegfigyelések | GBIF | fényképes megfigyelések, 8-as nagyítástól |
+| Repterek | Overpass (OpenStreetMap) | IATA-kódos repterek, 5-ös nagyítástól |
+| Városi bicikli | CityBikes | hálózatok; kattintásra az állomások |
+| Hajózási jelek, Vasút | OpenSeaMap, OpenRailwayMap | fedőrétegek |
+| Nappal / éjszaka | számolt | éjszakai oldal és a Nap pontja |
+| Felszíni hőmérséklet | NASA GIBS (MODIS) | fedőréteg |
+| Kattintásra info | Nominatim, REST Countries, Open-Meteo (időjárás, levegő, magasság, tenger), Nager.Date (ünnepnapok), World Bank (GDP, élettartam, internet, munkanélküliség), open.er-api (árfolyam) | ország és hely adatai |
+| Helykereső | Open-Meteo geokódolás | |
+
+- **Repülők:** az OpenSky névtelen hozzáférése napi kb. 400 kredit; egy világnézetű lekérdezés 4 kredit, percenként frissítve ez kb. másfél óra élő térkép. Ha elfogy, a csempe hibát jelez, és később újra működik. Ingyenes OpenSky-fiókkal (API kliens) sokkal több jár: az azonosítót és a titkot a csempe beállításaiban vagy `{{secret:OPENSKY_ID}}` / `{{secret:OPENSKY_SECRET}}` formában add meg (`SECRET_OPENSKY_ID` az `.env`-ben). Ezt a fiókos belépést nem tudtam kipróbálni.
+- A kis nagyítású nézetben a Wikipédia, a Fajmegfigyelések és a Repterek réteg a „nagyíts rá” jelzést mutatja.
+- Az API-k valódi válaszformátumát a dokumentációjuk alapján dolgoztam fel, de internet nélküli környezetben csak lemodellezett válaszokkal teszteltem. Ha egy forrás megváltozik, csak az a réteg jelez hibát.
 
 ### Tőzsde csempe
 

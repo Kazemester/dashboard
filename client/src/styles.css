@@ -880,9 +880,10 @@ select.input option { background: var(--surface); color: var(--text); }
 .wm-chip:hover { color: var(--text); }
 .wm-chip.on { color: var(--accent); border-color: var(--accent-dim); background: var(--accent-soft); }
 .wm-n { font-style: normal; font-family: var(--font-mono); font-size: 10px; margin-left: 6px; opacity: .8; }
-.wm-map.leaflet-container { flex: 1; min-height: 0; border: 1px solid var(--line); background: #0b1114; overflow: hidden; position: relative; z-index: 0; }
+.wm-map.leaflet-container { flex: 1; min-height: 0; min-width: 0; border: 1px solid var(--line); background: #0b1114; overflow: hidden; position: relative; z-index: 0; }
 /* OSM tiles are light: invert + tint them into the dark theme */
-.wm-map .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.55); }
+.wm-map .wm-osm { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.55); }
+.wm-map .wm-topo { filter: brightness(.72) saturate(.7); }
 .wm-map.leaflet-container { background: #0b1114; font-family: var(--font-ui); }
 .wm-map.leaflet-container .leaflet-control-attribution { background: color-mix(in srgb, var(--bg) 70%, transparent); color: var(--muted); font-size: 10px; }
 .wm-map.leaflet-container .leaflet-control-attribution a { color: var(--accent-dim); }
@@ -902,3 +903,27 @@ select.input option { background: var(--surface); color: var(--text); }
 .wm-err { color: var(--danger); }
 .wm-hint { position: absolute; left: 10px; bottom: 30px; z-index: 5; font-size: 11px; color: var(--muted); background: color-mix(in srgb, var(--bg) 75%, transparent); padding: 2px 6px; pointer-events: none; }
 .wm-error { position: absolute; left: 10px; right: 10px; top: 44px; z-index: 5; font-size: 12px; color: var(--danger); background: color-mix(in srgb, var(--bg) 85%, transparent); border: 1px solid var(--danger); padding: 4px 8px; pointer-events: none; }
+
+.wm-stage { position: relative; flex: 1; min-height: 0; display: flex; }
+.wm-stage .wm-map { flex: 1; }
+.wm-bar { align-items: center; }
+.wm-search { position: relative; flex: 1; min-width: 120px; }
+.wm-search input { width: 100%; box-sizing: border-box; background: transparent; border: 1px solid var(--line-strong); color: var(--text); font: inherit; font-size: 13px; padding: 4px 8px; border-radius: var(--radius); }
+.wm-search ul { position: absolute; left: 0; right: 0; top: 100%; z-index: 20; margin: 2px 0 0; padding: 0; list-style: none; background: var(--surface); border: 1px solid var(--line-strong); max-height: 220px; overflow: auto; }
+.wm-search li { padding: 0; }
+.wm-search li.muted { padding: 6px 10px; color: var(--muted); font-size: 12px; }
+.wm-search li button { width: 100%; text-align: left; background: transparent; border: 0; color: var(--text); font: inherit; font-size: 13px; padding: 6px 10px; cursor: pointer; }
+.wm-search li button:hover { background: var(--accent-soft); }
+.wm-panel { position: absolute; top: 8px; right: 8px; bottom: 8px; width: min(260px, 70%); z-index: 1000; overflow: auto; background: color-mix(in srgb, var(--bg) 92%, transparent); border: 1px solid var(--line-strong); padding: 8px 10px; backdrop-filter: blur(4px); }
+.wm-sec { margin: 8px 0 4px; color: var(--muted); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+.wm-bases { display: flex; flex-wrap: wrap; gap: 4px; }
+.wm-bases .wm-chip { font-size: 11px; padding: 3px 7px; }
+.wm-layer { display: flex; align-items: center; gap: 6px; padding: 3px 0; cursor: pointer; font-size: 13px; color: var(--text); }
+.wm-layer input { accent-color: var(--accent); margin: 0; }
+.wm-ic { width: 16px; text-align: center; color: var(--accent); }
+.wm-lb { flex: 1; }
+.wm-n.bad { color: var(--danger); }
+.wm-btn { margin-top: 6px; background: transparent; border: 1px solid var(--accent-dim); color: var(--accent); font: inherit; font-size: 12px; padding: 3px 8px; cursor: pointer; }
+.wm-photo { display: block; max-width: 100%; max-height: 140px; margin: 6px 0; border: 1px solid var(--line); }
+.wm-sci { color: var(--muted); font-style: italic; font-size: 12px; }
+.wm-iss i { display: block; width: 14px; height: 14px; margin: 4px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), 0 0 14px var(--accent); }

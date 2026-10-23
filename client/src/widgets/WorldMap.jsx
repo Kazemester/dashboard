@@ -4,55 +4,88 @@ import 'leaflet/dist/leaflet.css';
 import { api } from '../api.js';
 import { useLive } from '../hooks.js';
 import { getLang, t } from '../i18n.js';
+import { el, fmt, link, popup, row } from './worldmap/dom.js';
+import { activeLayers, BASES, baseTiles, DATA, DEFAULT_LAYERS, GROUPS, LAYERS, overlayTiles } from './worldmap/layers.js';
 
-const LAYERS = [
-  { key: 'countries', icon: '⚑', label: 'Ország' },
-  { key: 'flights', icon: '✈', label: 'Repülők' },
-  { key: 'quakes', icon: '◎', label: 'Rengések' },
-  { key: 'news', icon: '☰', label: 'Hírek' },
+const WMO = [
+  [[0], 'Derült'],
+  [[1, 2, 3], 'Felhős'],
+  [[45, 48], 'Köd'],
+  [[51, 53, 55, 56, 57], 'Szitálás'],
+  [[61, 63, 65, 66, 67], 'Eső'],
+  [[71, 73, 75, 77], 'Havazás'],
+  [[80, 81, 82], 'Zápor'],
+  [[85, 86], 'Hózápor'],
+  [[95, 96, 99], 'Zivatar'],
 ];
-const FLIGHT_REFRESH = 60_000;
-// canvas-drawn markers need real colours, so read the theme's
-const cssVar = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+const AQI = [[20, 'Kiváló'], [40, 'Jó'], [60, 'Mérsékelt'], [80, 'Gyenge'], [100, 'Rossz'], [Infinity, 'Nagyon rossz']];
+const DATA_IDS = Object.keys(DATA);
+const TILE_IDS = Object.keys(overlayTiles());
+const bankLine = (b, key, label, unit, digits = 0) => row(label, b?.[key] ? `${fmt(b[key].value, digits)}${unit} (${b[key].year})` : '');
 
-// DOM helper: popups are built from elements, so API text can never inject markup.
-const el = (tag, cls, ...kids) => {
-  const n = document.createElement(tag);
-  if (cls) n.className = cls;
-  for (const k of kids.flat()) if (k != null && k !== false) n.append(k.nodeType ? k : String(k));
-  return n;
-};
-const row = (k, v) => (v ? el('div', 'wm-row', el('span', 'wm-k', k), el('span', null, v)) : null);
-const fmt = (n) => (n == null ? '' : Number(n).toLocaleString(getLang() === 'en' ? 'en-GB' : 'hu-HU'));
-const link = (href, text) => {
-  const a = el('a', null, text);
-  a.href = href;
-  a.target = '_blank';
-  a.rel = 'noopener noreferrer';
-  return a;
-};
-
-const planeIcon = (heading, ground) =>
-  L.divIcon({
-    className: `wm-plane${ground ? ' ground' : ''}`,
-    html: `<svg viewBox="0 0 24 24" style="transform:rotate(${Math.round(heading)}deg)"><path d="M12 2l2.2 7.6L22 14v2l-7.8-2.2L13 20l2.5 1.6V23L12 22l-3.5 1v-1.4L11 20l-1.2-6.2L2 16v-2l7.8-4.4z"/></svg>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
-  });
+// The popup of a click: country card, then "here" (weather, air, elevation, sea), then country extras. Sections arrive as their APIs answer.
+function infoNode({ country, here, extra, cur }) {
+  const parts = [];
+  if (country?.none) parts.push(el('b', null, t('Nyílt víz')));
+  else if (country) {
+    const name = getLang() === 'hu' && country.nameHu ? country.nameHu : country.name;
+    parts.push(
+      el('div', 'wm-head', country.flag && Object.assign(el('img'), { src: country.flag, alt: '', width: 26, height: 17 }), el('b', null, name)),
+      row(t('Főváros'), country.capital),
+      row(t('Népesség'), fmt(country.population)),
+      row(t('Terület'), country.area ? `${fmt(country.area)} km²` : ''),
+      row(t('Régió'), country.region),
+      row(t('Nyelvek'), country.languages?.join(', ')),
+      row(t('Pénznem'), country.currencies?.join(', ')),
+    );
+  }
+  if (extra?.rates) {
+    const { perUSD, perEUR } = extra.rates;
+    if (cur !== 'USD') parts.push(row(t('Árfolyam'), `1 USD = ${fmt(perUSD, 2)} ${cur}`));
+    if (cur !== 'EUR' && perEUR) parts.push(row('', `1 EUR = ${fmt(perEUR, 2)} ${cur}`));
+  }
+  if (extra?.bank) {
+    const b = extra.bank;
+    parts.push(bankLine(b, 'gdpPc', t('GDP / fő'), ' $'), bankLine(b, 'life', t('Várható élettartam'), t(' év'), 1), bankLine(b, 'internet', t('Internetezők'), '%', 0), bankLine(b, 'unemployment', t('Munkanélküliség'), '%', 1));
+  }
+  if (extra?.holidays?.length) parts.push(el('div', 'wm-sec', t('Következő ünnepnapok')), ...extra.holidays.map((h) => row(h.date, h.name)));
+  if (here) {
+    parts.push(el('div', 'wm-sec', t('Itt most')));
+    const w = here.weather;
+    if (w) {
+      const text = WMO.find(([codes]) => codes.includes(w.code))?.[1];
+      parts.push(row(t('Időjárás'), `${fmt(w.temp, 1)} °C${text ? `, ${t(text)}` : ''}`), row(t('Érzet'), `${fmt(w.feels, 1)} °C`), row(t('Szél'), `${fmt(w.wind, 0)} km/h`), row(t('Páratartalom'), `${w.humidity}%`));
+    }
+    if (here.tz) parts.push(row(t('Helyi idő'), `${new Date(Date.now() + here.tz.offset * 1000).toISOString().slice(11, 16)} (${here.tz.abbr})`));
+    if (here.sun?.rise) parts.push(row(t('Nap'), `${here.sun.rise.slice(11, 16)} – ${here.sun.set.slice(11, 16)}`));
+    if (here.air) parts.push(row(t('Levegő'), `AQI ${here.air.aqi} (${t(AQI.find(([max]) => here.air.aqi <= max)[1])}), PM2.5 ${fmt(here.air.pm25, 1)}`));
+    parts.push(row(t('Tengerszint feletti magasság'), here.elevation != null ? `${fmt(here.elevation)} m` : ''));
+    if (here.sea) parts.push(row(t('Hullámmagasság'), `${fmt(here.sea.wave, 1)} m · ${fmt(here.sea.period, 0)} s`));
+  } else if (country && !country.none && !extra) parts.push(el('div', 'wm-sec', t('Betöltés…')));
+  return el('div', 'wm-pop', ...parts);
+}
 
 export default function WorldMap({ widget, onUpdateConfig }) {
   const cfg = widget.config ?? {};
-  const on = { countries: cfg.countries !== false, flights: Boolean(cfg.flights), quakes: cfg.quakes !== false, news: Boolean(cfg.news) };
+  const fromConfig = () => (activeLayers(cfg).length || typeof cfg.layers === 'string' ? activeLayers(cfg) : DEFAULT_LAYERS);
+  // local copies: a toggle shows at once and quick successive clicks do not overwrite each other while the save is in flight
+  const [layers, setLayers] = useState(fromConfig);
+  const [base, setBase] = useState(BASES[cfg.base] ? cfg.base : 'osm');
+  useEffect(() => setLayers(fromConfig()), [cfg.layers, cfg.countries, cfg.quakes, cfg.flights, cfg.news]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => setBase(BASES[cfg.base] ? cfg.base : 'osm'), [cfg.base]);
+  const on = new Set(layers);
   const box = useRef(null);
   const map = useRef(null);
-  const layers = useRef({});
+  const groups = useRef({});
+  const baseLayer = useRef(null);
   const [status, setStatus] = useState({});
-  const [zoom, setZoom] = useState(2);
+  const [panel, setPanel] = useState(false);
+  const [found, setFound] = useState(null);
+  const [query, setQuery] = useState('');
   const viewKey = `nexus-map-${widget.id}`;
 
-  useLive(on.flights);
-
-  const setLayerStatus = useCallback((key, value) => setStatus((s) => ({ ...s, [key]: value })), []);
+  useLive(on.has('flights') || on.has('iss') || on.has('radar') || on.has('aurora'));
+  const put = useCallback((id, value) => setStatus((s) => ({ ...s, [id]: value })), []);
 
   // ---- create the map once ----
   useEffect(() => {
@@ -63,11 +96,9 @@ export default function WorldMap({ widget, onUpdateConfig }) {
     } catch {
       /* no saved view */
     }
-    const m = L.map(box.current, { center: view.center, zoom: view.zoom, minZoom: 1, worldCopyJump: true, zoomControl: true, attributionControl: true, preferCanvas: true });
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>' }).addTo(m);
-    for (const k of ['flights', 'quakes', 'news']) layers.current[k] = L.layerGroup().addTo(m);
+    const m = L.map(box.current, { center: view.center, zoom: view.zoom, minZoom: 1, worldCopyJump: true, preferCanvas: true });
+    for (const id of DATA_IDS) groups.current[id] = L.layerGroup().addTo(m);
     m.on('moveend', () => {
-      setZoom(m.getZoom());
       try {
         const c = m.getCenter();
         localStorage.setItem(viewKey, JSON.stringify({ center: [c.lat, c.lng], zoom: m.getZoom() }));
@@ -76,174 +107,217 @@ export default function WorldMap({ widget, onUpdateConfig }) {
       }
     });
     map.current = m;
-    // the tile can be resized by the user: keep Leaflet's idea of the size in sync
-    const ro = new ResizeObserver(() => m.invalidateSize());
+    const ro = new ResizeObserver(() => m.invalidateSize()); // the tile can be resized by the user
     ro.observe(box.current);
     return () => {
       ro.disconnect();
       m.remove();
       map.current = null;
+      groups.current = {};
+      baseLayer.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---- country info on click ----
+  // ---- base map ----
   useEffect(() => {
     const m = map.current;
-    if (!m || !on.countries) return undefined;
-    const onClick = async (e) => {
-      const pop = L.popup({ className: 'wm-popup', maxWidth: 280, autoPanPadding: [12, 12] }).setLatLng(e.latlng).setContent(el('div', 'wm-pop', t('Betöltés…'))).openOn(m);
-      try {
-        const lng = ((((e.latlng.lng + 180) % 360) + 360) % 360) - 180;
-        const c = await api.get(`/widgets/${widget.id}/map/country?lat=${e.latlng.lat}&lon=${lng}`);
-        if (c.none) return pop.setContent(el('div', 'wm-pop', t('Nyílt víz')));
-        const name = getLang() === 'hu' && c.nameHu ? c.nameHu : c.name;
-        const head = el('div', 'wm-head', c.flag && Object.assign(el('img'), { src: c.flag, alt: '', width: 26, height: 17 }), el('b', null, name));
-        pop.setContent(
-          el(
-            'div',
-            'wm-pop',
-            head,
-            row(t('Főváros'), c.capital),
-            row(t('Népesség'), fmt(c.population)),
-            row(t('Terület'), c.area ? `${fmt(Math.round(c.area))} km²` : ''),
-            row(t('Régió'), c.region),
-            row(t('Nyelvek'), c.languages.join(', ')),
-            row(t('Pénznem'), c.currencies.join(', ')),
-            row(t('Időzóna'), c.timezones.join(', ')),
-          ),
-        );
-        pop.update(); // the content grew: re-measure so the popup is panned fully into view
-      } catch (err) {
-        pop.setContent(el('div', 'wm-pop wm-err', err.message));
+    if (!m) return;
+    baseLayer.current?.remove();
+    const [url, opts] = baseTiles()[base];
+    baseLayer.current = L.tileLayer(url, { zIndex: 1, ...opts }).addTo(m);
+  }, [base]);
+
+  // ---- data layers (one effect per layer, the list is static) ----
+  for (const id of DATA_IDS) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useEffect(() => {
+      const m = map.current;
+      const g = groups.current[id];
+      const spec = DATA[id];
+      if (!m || !g) return undefined;
+      put(id, null);
+      if (!on.has(id)) return undefined;
+      let dead = false;
+      let timer = null;
+      const run = async () => {
+        const path = spec.local ? '' : spec.path(m);
+        if (path == null) {
+          if (!spec.keep) g.clearLayers();
+          put(id, { hint: true });
+          return;
+        }
+        try {
+          const data = spec.local ? null : await api.get(`/widgets/${widget.id}/map/${path}`);
+          if (dead) return;
+          if (!spec.keep) g.clearLayers();
+          put(id, spec.draw(data, g, { m, widgetId: widget.id }) ?? '');
+        } catch (err) {
+          if (!dead) put(id, { error: err.message });
+        }
+      };
+      run();
+      const iv = spec.interval ? setInterval(() => !document.hidden && run(), spec.interval) : null;
+      const kick = () => {
+        clearTimeout(timer);
+        timer = setTimeout(run, 700);
+      };
+      if (spec.view) m.on('moveend', kick);
+      return () => {
+        dead = true;
+        clearTimeout(timer);
+        if (iv) clearInterval(iv);
+        if (spec.view) m.off('moveend', kick);
+        g.clearLayers();
+        g._stations?.remove();
+        g._stations = null;
+        g._iss = null;
+        g._track = null;
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [on.has(id), widget.id, id === 'news' ? cfg.newsQuery : null]);
+  }
+
+  // ---- tile overlays ----
+  for (const id of TILE_IDS) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useEffect(() => {
+      const m = map.current;
+      if (!m || !on.has(id)) return undefined;
+      const [url, opts] = overlayTiles()[id];
+      const layer = L.tileLayer(url, opts).addTo(m);
+      return () => {
+        layer.remove();
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [on.has(id)]);
+  }
+
+  // ---- click / search: what is here? ----
+  const openInfo = useCallback(
+    async (latlng) => {
+      const m = map.current;
+      if (!m) return;
+      const lat = latlng.lat;
+      const lon = ((((latlng.lng + 180) % 360) + 360) % 360) - 180;
+      const base = `/widgets/${widget.id}/map`;
+      const pop = L.popup(popup({ autoPanPadding: [12, 12] })).setLatLng(latlng).setContent(el('div', 'wm-pop', t('Betöltés…'))).openOn(m);
+      const state = {};
+      const paint = () => {
+        pop.setContent(infoNode(state));
+        pop.update();
+      };
+      const [country, here] = await Promise.allSettled([api.get(`${base}/country?lat=${lat}&lon=${lon}`), api.get(`${base}/point?lat=${lat}&lon=${lon}&lang=${getLang()}`)]);
+      if (here.status === 'fulfilled') state.here = here.value;
+      if (country.status === 'fulfilled') state.country = country.value;
+      else if (!state.here) return pop.setContent(el('div', 'wm-pop wm-err', country.reason.message));
+      paint();
+      const c = state.country;
+      if (c && !c.none) {
+        state.cur = c.currencyCodes?.[0] ?? '';
+        try {
+          state.extra = await api.get(`${base}/country/extra?code=${c.code}&cur=${state.cur}`);
+          paint();
+        } catch {
+          /* the extras are optional */
+        }
       }
-    };
+    },
+    [widget.id],
+  );
+
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !on.has('countries')) return undefined;
+    const onClick = (e) => openInfo(e.latlng);
     m.on('click', onClick);
     return () => m.off('click', onClick);
-  }, [on.countries, widget.id]);
+  }, [on.has('countries'), openInfo]);
 
-  // ---- earthquakes ----
+  // ---- place search ----
   useEffect(() => {
-    const g = layers.current.quakes;
-    g?.clearLayers();
-    setLayerStatus('quakes', null);
-    if (!on.quakes) return undefined;
-    let dead = false;
-    api
-      .get(`/widgets/${widget.id}/map/quakes`)
-      .then((qs) => {
-        if (dead) return;
-        for (const q of qs) {
-          const c = L.circleMarker([q.lat, q.lon], { radius: 3 + (q.mag ?? 2) * 1.6, color: cssVar('--danger', '#f87171'), fillColor: cssVar('--danger', '#f87171'), fillOpacity: 0.35, weight: 1 }).addTo(g);
-          c.bindPopup(() => el('div', 'wm-pop', el('b', null, `M ${q.mag?.toFixed(1)}`), row(t('Hely'), q.place), row(t('Mélység'), `${Math.round(q.depth)} km`), row(t('Idő'), new Date(q.time).toLocaleString(getLang() === 'en' ? 'en-GB' : 'hu-HU')), q.url && link(q.url, 'USGS ↗')), { className: 'wm-popup' });
-        }
-        setLayerStatus('quakes', `${qs.length}`);
-      })
-      .catch((e) => !dead && setLayerStatus('quakes', { error: e.message }));
-    return () => {
-      dead = true;
-      g?.clearLayers();
-    };
-  }, [on.quakes, widget.id, setLayerStatus]);
+    if (query.trim().length < 2) return setFound(null);
+    const id = setTimeout(() => {
+      api
+        .get(`/widgets/${widget.id}/map/search?q=${encodeURIComponent(query.trim())}&lang=${getLang()}`)
+        .then(setFound)
+        .catch(() => setFound([]));
+    }, 350);
+    return () => clearTimeout(id);
+  }, [query, widget.id]);
 
-  // ---- news ----
-  useEffect(() => {
-    const g = layers.current.news;
-    g?.clearLayers();
-    setLayerStatus('news', null);
-    if (!on.news) return undefined;
-    let dead = false;
-    api
-      .get(`/widgets/${widget.id}/map/news`)
-      .then((ps) => {
-        if (dead) return;
-        for (const p of ps) {
-          const c = L.circleMarker([p.lat, p.lon], { radius: 4 + Math.min(10, Math.log2(p.count + 1) * 2), color: cssVar('--accent', '#67e8f9'), fillColor: cssVar('--accent', '#67e8f9'), fillOpacity: 0.3, weight: 1 }).addTo(g);
-          c.bindPopup(() => el('div', 'wm-pop', el('b', null, p.place), p.articles.map((a) => el('div', 'wm-art', link(a.url, a.title)))), { className: 'wm-popup', maxWidth: 300 });
-        }
-        setLayerStatus('news', `${ps.length}`);
-      })
-      .catch((e) => !dead && setLayerStatus('news', { error: e.message }));
-    return () => {
-      dead = true;
-      g?.clearLayers();
-    };
-  }, [on.news, cfg.newsQuery, widget.id, setLayerStatus]);
-
-  // ---- flights: what is in view, refreshed every minute while the layer is on ----
-  useEffect(() => {
+  const goTo = (p) => {
+    setFound(null);
+    setQuery('');
     const m = map.current;
-    const g = layers.current.flights;
-    g?.clearLayers();
-    setLayerStatus('flights', null);
-    if (!m || !on.flights) return undefined;
-    let dead = false;
-    let timer = null;
-    const load = async () => {
-      const b = m.getBounds();
-      const w = b.getWest();
-      const e = b.getEast();
-      // a view that spans the whole world (or wraps around) asks for everything
-      const wholeLng = e - w >= 360 || w < -180 || e > 180;
-      const q = new URLSearchParams({ lamin: b.getSouth(), lamax: b.getNorth(), lomin: wholeLng ? -180 : w, lomax: wholeLng ? 180 : e });
-      try {
-        const d = await api.get(`/widgets/${widget.id}/map/flights?${q}`);
-        if (dead) return;
-        g.clearLayers();
-        for (const p of d.planes) {
-          const mk = L.marker([p.lat, p.lon], { icon: planeIcon(p.heading, p.ground), keyboard: false }).addTo(g);
-          mk.bindPopup(
-            () =>
-              el(
-                'div',
-                'wm-pop',
-                el('b', null, p.call || p.id),
-                row(t('Ország'), p.country),
-                row(t('Magasság'), p.alt != null ? `${fmt(Math.round(p.alt))} m` : ''),
-                row(t('Sebesség'), p.speed != null ? `${fmt(Math.round(p.speed * 3.6))} km/h` : ''),
-                row(t('Irány'), `${Math.round(p.heading)}°`),
-                p.ground && el('div', 'wm-row', t('a földön')),
-              ),
-            { className: 'wm-popup' },
-          );
-        }
-        setLayerStatus('flights', d.total > d.planes.length ? `${d.planes.length}/${d.total}` : `${d.total}`);
-      } catch (err) {
-        if (!dead) setLayerStatus('flights', { error: err.message });
-      }
-    };
-    const kick = () => {
-      clearTimeout(timer);
-      timer = setTimeout(load, 700);
-    };
-    load();
-    const iv = setInterval(() => !document.hidden && load(), FLIGHT_REFRESH);
-    m.on('moveend', kick);
-    return () => {
-      dead = true;
-      clearTimeout(timer);
-      clearInterval(iv);
-      m.off('moveend', kick);
-      g.clearLayers();
-    };
-  }, [on.flights, widget.id, setLayerStatus]);
+    m.flyTo([p.lat, p.lon], Math.max(m.getZoom(), 8), { duration: 1.2 });
+    m.once('moveend', () => openInfo(L.latLng(p.lat, p.lon)));
+  };
 
-  const toggle = (key) => onUpdateConfig?.({ [key]: !on[key] });
-  const err = Object.values(status).find((s) => s?.error)?.error;
+  const toggle = (id) => {
+    const next = on.has(id) ? layers.filter((x) => x !== id) : [...layers, id];
+    setLayers(next);
+    onUpdateConfig?.({ layers: next.join(',') });
+  };
+  const errors = [...new Set(Object.values(status).filter((s) => s?.error).map((s) => s.error))];
 
   return (
     <div className="wm">
       <div className="wm-bar no-drag">
-        {LAYERS.map(({ key, icon, label }) => (
-          <button key={key} role="switch" aria-checked={on[key]} className={`wm-chip ${on[key] ? 'on' : ''}`} onClick={() => toggle(key)} title={t(label)}>
-            <span aria-hidden>{icon}</span> {t(label)}
-            {on[key] && typeof status[key] === 'string' && key !== 'countries' && <i className="wm-n">{status[key]}</i>}
-          </button>
-        ))}
+        <div className="wm-search">
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('Hely keresése…')} aria-label={t('Hely keresése…')} />
+          {found && (
+            <ul>
+              {found.length === 0 && <li className="muted">{t('Nincs találat')}</li>}
+              {found.map((p) => (
+                <li key={`${p.lat},${p.lon}`}>
+                  <button onClick={() => goTo(p)}>
+                    {p.name}
+                    <span className="muted"> {[p.admin, p.country].filter(Boolean).join(', ')}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <button className={`wm-chip ${panel ? 'on' : ''}`} aria-expanded={panel} onClick={() => setPanel((v) => !v)}>
+          ☰ {t('Rétegek')} <i className="wm-n">{layers.length}</i>
+        </button>
       </div>
-      <div className="wm-map nowheel no-drag" ref={box} />
-      {on.flights && zoom < 3 && <div className="wm-hint">{t('Nagyíts rá a pontosabb repülő-képhez')}</div>}
-      {err && <div className="wm-error">{err}</div>}
+      <div className="wm-stage">
+        <div className="wm-map no-drag" ref={box} />
+        {panel && (
+          <div className="wm-panel no-drag">
+            <div className="wm-sec">{t('Alaptérkép')}</div>
+            <div className="wm-bases">
+              {Object.entries(BASES).map(([id, b]) => (
+                <button key={id} className={`wm-chip ${base === id ? 'on' : ''}`} aria-pressed={base === id} onClick={() => { setBase(id); onUpdateConfig?.({ base: id }); }}>
+                  {t(b.label)}
+                </button>
+              ))}
+            </div>
+            {GROUPS.map(([group, ids]) => (
+              <div key={group}>
+                <div className="wm-sec">{t(group)}</div>
+                {ids.map((id) => {
+                  const s = status[id];
+                  return (
+                    <label key={id} className="wm-layer" title={LAYERS[id].hint}>
+                      <input type="checkbox" checked={on.has(id)} onChange={() => toggle(id)} />
+                      <span className="wm-ic" aria-hidden>{LAYERS[id].icon}</span>
+                      <span className="wm-lb">{t(LAYERS[id].label)}</span>
+                      {on.has(id) && s?.hint && <i className="wm-n">{t('nagyíts rá')}</i>}
+                      {on.has(id) && s?.error && <i className="wm-n bad">!</i>}
+                      {on.has(id) && typeof s === 'string' && s && <i className="wm-n">{s}</i>}
+                    </label>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+        {errors.length > 0 && <div className="wm-error">{errors.join(' · ')}</div>}
+      </div>
     </div>
   );
 }
