@@ -71,6 +71,7 @@ Csak halvány, ritka mozgások, amelyek a processzort alig terhelik. 30%-nál ki
 | Modul | Mit csinál |
 |---|---|
 | ☁ Időjárás | Aktuális idő + 5 napos előrejelzés (Open-Meteo) |
+| ◍ Világtérkép | OpenStreetMap térkép, húzható és nagyítható. Kapcsolható rétegek (a csempe tetején): **Ország** (kattintásra zászló, főváros, népesség, nyelv, pénznem), **Repülők** (élő, OpenSky), **Rengések** (USGS), **Hírek** (GDELT, témaszűrővel). Minden forrás ingyenes, kulcs nélkül |
 | ≈ Levegő & pollen | Európai AQI, PM2.5/PM10, UV, pollen (parlagfű, fű, nyír, éger, üröm) |
 | ☾ Nap & Hold | Napkelte/napnyugta, a Nap útja, nappal hossza és változása, holdfázis |
 | ▦ Naptár | Google / iCloud / Outlook iCal linkkel |
@@ -117,6 +118,13 @@ Csak halvány, ritka mozgások, amelyek a processzort alig terhelik. 30%-nál ki
 ![](docs/screenshot-3.png)
 
 </details>
+
+### Világtérkép csempe
+A térkép OpenStreetMap-csempékről töltődik (a böngésző tölti, internet kell hozzá), az adatrétegeket a szerver kéri le, és gyorsítótárazza.
+- **Repülők:** az OpenSky Network névtelen hozzáférése napi kb. 400 kredit; egy világnézetű lekérdezés 4 kredit, percenként frissítve ez kb. másfél óra élő térkép. Ha elfogy, a csempe hibát jelez, és később újra működik. Ingyenes OpenSky-fiókkal (API kliens) sokkal több jár: az azonosítót és a titkot a csempe beállításaiban vagy `{{secret:OPENSKY_ID}}` / `{{secret:OPENSKY_SECRET}}` formában add meg (`SECRET_OPENSKY_ID` az `.env`-ben). Ezt a fiókos belépést nem tudtam kipróbálni.
+- **Hírek:** a GDELT geokódolt híreit mutatja az elmúlt 24 órából; a „Hírek témája” mezőben szűrhetsz (pl. `election`, `sourcecountry:HU`).
+- **Országinfó:** kattints a térképre; a szerver a Nominatim (OSM) fordított keresésével találja meg az országot, az adatokat a REST Countries adja.
+- A rétegek ki-be kapcsolása és a nézet (hol jársz a térképen) megmarad.
 
 ### Tőzsde csempe
 
@@ -165,7 +173,7 @@ Haladóknak: a `.env`-ben megadott `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` 
 Az AI Chat csempe látja a dashboardodat, és kérésre változtat is rajta. Példák:
 - „Mi a mai teendőm?”, „Hány szokást pipáltam ki ezen a héten?”, „Mit írt a Mail bot összefoglalója?”, „Mennyi most az arany?”
 - „Vegyél fel egy teendőt: számla befizetése péntekig”, „Pipáld ki ma a futást”, „Írd a jegyzetbe: …”, „Költöttem 4500 Ft-ot ebédre”, „Tedd be a Gyorslinkekhez a google.com-ot”, „Vegyél fel egy visszaszámlálót: nyaralás, július 1.”
-- „Tegyél ki egy budapesti időjárás csempét”, „Tedd ki az USD/HUF árfolyamot” (a Tőzsde csempébe kerül, szükség esetén a bot létrehozza; a **Valutaváltó** csak átváltó számológép), „Tedd a SpaceX-et a tőzsde csempébe”, „Legyen nagyobb a naptár”, „Legyen amber a téma”
+- „Tegyél ki egy budapesti időjárás csempét”, „Tedd ki az USD/HUF árfolyamot” (külön Tőzsde csempét kap; a **Valutaváltó** csak átváltó számológép), „Tedd a SpaceX-et a tőzsde csempébe”, „Legyen nagyobb a naptár”, „Legyen amber a téma”
 - „Állítsd át a bitcoin csempét USD-HUF árfolyamra”: egy csempe fajtája nem változtatható, ezért a bot kitesz egy új csempét (itt Valutaváltót USD → HUF beállítással) a régi mellé, és a régi csempe törlését jóváhagyásra felajánlja (**Régi csempe törlése** gomb).
 - „Töröld a régi jegyzet csempét”: törölni csak akkor töröl, ha a válasza alatt megnyomod a **Törlés jóváhagyása** gombot.
 

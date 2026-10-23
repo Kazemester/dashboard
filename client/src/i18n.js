@@ -3,13 +3,14 @@ import core from './i18n/en.core.js';
 import widgetsA from './i18n/en.widgets-a.js';
 import widgetsB from './i18n/en.widgets-b.js';
 import catalog from './i18n/en.catalog.js';
+import worldMap from './i18n/en.map.js';
 
 /*
  * UI language (hu | en). The source language of every string is Hungarian: `t('Mentés')` returns the
  * English text from the dictionaries in ./i18n when English is selected, and the Hungarian text otherwise
  * (so a missing translation never breaks anything). Placeholders: t('{n} perc', { n: 5 }).
  */
-const EN = { ...core, ...widgetsA, ...widgetsB, ...catalog };
+const EN = { ...core, ...widgetsA, ...widgetsB, ...catalog, ...worldMap };
 const KEY = 'nexus-lang';
 const listeners = new Set();
 

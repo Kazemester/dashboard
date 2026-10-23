@@ -32,6 +32,7 @@ import Uptime from './Uptime.jsx';
 import HomeAssistant from './HomeAssistant.jsx';
 import Brief from './Brief.jsx';
 import Stocks from './Stocks.jsx';
+import WorldMap from './WorldMap.jsx';
 
 export const CATEGORIES = {
   focus: 'Fókusz & feladatok',
@@ -392,6 +393,24 @@ export const REGISTRY = {
     component: SunMoon,
     defaultConfig: { city: 'Budapest' },
     fields: [{ key: 'city', label: 'Város' }],
+  },
+  worldmap: {
+    name: 'Világtérkép',
+    icon: '◍',
+    category: 'info',
+    description: 'OpenStreetMap világtérkép kapcsolható rétegekkel: élő repülők, földrengések, hírek, és országinfó kattintásra. Ingyenes források, kulcs nélkül.',
+    size: { w: 8, h: 9, minW: 4, minH: 6 },
+    component: WorldMap,
+    defaultConfig: { countries: true, flights: false, quakes: true, news: false, newsQuery: '' },
+    fields: [
+      { key: 'countries', label: 'Rétegek', type: 'checkbox', default: true, checkLabel: 'Országinfó kattintásra' },
+      { key: 'flights', label: '', type: 'checkbox', checkLabel: 'Repülők (OpenSky)' },
+      { key: 'quakes', label: '', type: 'checkbox', default: true, checkLabel: 'Földrengések (USGS)' },
+      { key: 'news', label: '', type: 'checkbox', checkLabel: 'Hírek (GDELT)' },
+      { key: 'newsQuery', label: 'Hírek témája', placeholder: 'pl. election, Ukraine, sourcecountry:HU', help: 'Üresen az angol nyelvű hírek. A GDELT keresőnyelve: kulcsszó, "idézet", sourcecountry:HU, theme:ENV_CLIMATECHANGE.' },
+      { key: 'openskyClientId', label: 'OpenSky kliens azonosító (nem kötelező)', placeholder: '{{secret:OPENSKY_ID}}', help: 'Kulcs nélkül napi ~400 lekérdezési kredit jár (kb. 1,5 óra élő térkép). Ingyenes OpenSky-fiókkal sokkal több.' },
+      { key: 'openskyClientSecret', label: 'OpenSky kliens titok', type: 'password', placeholder: '{{secret:OPENSKY_SECRET}}' },
+    ],
   },
   quote: {
     name: 'Napi idézet',

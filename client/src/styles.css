@@ -872,3 +872,33 @@ select.input option { background: var(--surface); color: var(--text); }
 .lang-switch button { background: transparent; border: 0; color: var(--muted); font: inherit; font-size: 11px; letter-spacing: .12em; padding: 6px 8px; cursor: pointer; }
 .lang-switch button.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .lang-switch button:hover:not(.on) { color: var(--text); }
+
+/* world map tile */
+.wm { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 8px; position: relative; }
+.wm-bar { display: flex; flex-wrap: wrap; gap: 6px; flex: none; }
+.wm-chip { background: transparent; border: 1px solid var(--line-strong); color: var(--muted); font: inherit; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; padding: 4px 9px; cursor: pointer; border-radius: var(--radius); }
+.wm-chip:hover { color: var(--text); }
+.wm-chip.on { color: var(--accent); border-color: var(--accent-dim); background: var(--accent-soft); }
+.wm-n { font-style: normal; font-family: var(--font-mono); font-size: 10px; margin-left: 6px; opacity: .8; }
+.wm-map.leaflet-container { flex: 1; min-height: 0; border: 1px solid var(--line); background: #0b1114; overflow: hidden; position: relative; z-index: 0; }
+/* OSM tiles are light: invert + tint them into the dark theme */
+.wm-map .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.55); }
+.wm-map.leaflet-container { background: #0b1114; font-family: var(--font-ui); }
+.wm-map.leaflet-container .leaflet-control-attribution { background: color-mix(in srgb, var(--bg) 70%, transparent); color: var(--muted); font-size: 10px; }
+.wm-map.leaflet-container .leaflet-control-attribution a { color: var(--accent-dim); }
+.wm-map .leaflet-bar a { background: var(--surface); color: var(--accent); border-bottom-color: var(--line); }
+.wm-map .leaflet-bar a:hover { background: var(--accent-soft); }
+.wm-plane svg { width: 18px; height: 18px; fill: var(--accent); stroke: var(--bg); stroke-width: .6; filter: drop-shadow(0 0 3px var(--accent-dim)); }
+.wm-plane.ground svg { fill: var(--muted); filter: none; }
+.wm-popup .leaflet-popup-content-wrapper, .wm-popup .leaflet-popup-tip { background: var(--surface); color: var(--text); border: 1px solid var(--line-strong); border-radius: var(--radius); box-shadow: 0 4px 24px #000a; }
+.wm-popup .leaflet-popup-content { margin: 10px 12px; font-size: 13px; line-height: 1.4; }
+.wm-popup a { color: var(--accent); }
+.wm-popup .leaflet-popup-close-button { color: var(--muted); }
+.wm-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 15px; }
+.wm-head img { width: 26px; height: auto; border: 1px solid var(--line); }
+.wm-row { display: flex; gap: 8px; justify-content: space-between; }
+.wm-k { color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: .08em; }
+.wm-art { margin-top: 5px; }
+.wm-err { color: var(--danger); }
+.wm-hint { position: absolute; left: 10px; bottom: 30px; z-index: 5; font-size: 11px; color: var(--muted); background: color-mix(in srgb, var(--bg) 75%, transparent); padding: 2px 6px; pointer-events: none; }
+.wm-error { position: absolute; left: 10px; right: 10px; top: 44px; z-index: 5; font-size: 12px; color: var(--danger); background: color-mix(in srgb, var(--bg) 85%, transparent); border: 1px solid var(--danger); padding: 4px 8px; pointer-events: none; }
