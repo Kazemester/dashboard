@@ -329,6 +329,14 @@ Ha csak a saját eszközeidről (telefon, laptop, tablet) akarod elérni, a [Tai
 
 Hátránya: csak olyan eszközről működik, amin fut a Tailscale.
 
+### C) Cloudflare Tunnel + Access (saját gépről is, csak neked)
+Nem kell fix IP, nem kell portot nyitni, és elé egy Cloudflare-belépés kerül (csak a megadott e-mail-cím jut be).
+1. A domain legyen a Cloudflare-en (a regisztrátornál a névszervereket a Cloudflare által adott kettőre kell állítani).
+2. Cloudflare → Zero Trust → Networks → Tunnels → Create a tunnel → Cloudflared → név (pl. `nexus`). A telepítési parancsból másold ki a tokent (a hosszú `eyJ…` szöveg), és tedd az `.env`-be: `TUNNEL_TOKEN=eyJ…`.
+3. A tunnel **Public hostname** (újabb felületen: *Published application routes*) beállításánál: subdomain `dash`, domain `tinyaiapp.com`, service **HTTP** → `app:3000`.
+4. Zero Trust → Access → Applications → Add an application → Self-hosted: domain `dash.tinyaiapp.com`, policy **Allow**, szabály: *Emails* = a saját címed. Belépési mód: One-time PIN (e-mailben kapott kód).
+5. Indítás: `docker compose --profile tunnel up -d`. Ezután a `https://dash.tinyaiapp.com` bárhonnan elérhető, de csak neked.
+
 ### AI a VM-en
 
 Egy átlagos VM-nek nincs videokártyája, ezért a helyi modellek (Ollama, ComfyUI) ott nagyon lassúak. Lehetőségek:

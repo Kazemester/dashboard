@@ -58,6 +58,19 @@ services:
       - caddy-data:/data
       - caddy-config:/config
 
+  # Private access from anywhere through Cloudflare (no open ports, no fixed IP):
+  # `docker compose --profile tunnel up -d` with TUNNEL_TOKEN in .env (Cloudflare Zero Trust → Tunnels).
+  # In the tunnel's public hostname set the service to http://app:3000.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-} # cloudflared reads the token from this variable (the image has no shell)
+    command: tunnel --no-autoupdate run
+
 volumes:
   nexus-db:
   caddy-data:
