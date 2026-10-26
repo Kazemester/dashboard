@@ -103,7 +103,7 @@
 @media (max-width: 767px) {
   .rail { right: 6px; top: auto; transform: none; bottom: calc(84px + env(safe-area-inset-bottom)); max-height: calc(100vh - 230px); border-radius: 26px; padding: 6px 4px; }
   .rail-item { width: 50px; height: 50px; border-radius: 16px; gap: 3px; }
-  .rail-lb { display: block; max-width: 48px; font-size: 9px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rail-lb { display: block; max-width: 48px; font-size: 9px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rail-ic { font-size: 16px; }
   .deck { padding-right: 68px; padding-bottom: 110px; }
 }

@@ -29,9 +29,16 @@ Az első indításkor üres a fedélzet, és megnyílik a modul-katalógus.
 ![Végtelen vászon](docs/canvas.png)
 - **⚙**: az adott csempe beállításai (cím, adatforrás, megjelenítés…)
 
+## Felépítés
+
+- **Fejléc:** bal oldalon üdvözlés (napszak szerint: „Jó reggelt, …”; a névre koppintva beállíthatod, hogyan szólítson), dátum és idő. Középen az **AI-parancssor** („Kérdezz vagy adj utasítást…”): ugyanaz a dashboard-asszisztens, mint az AI Chat csempe, csak nem kell hozzá csempe; a válasz és a végrehajtott lépések a mező alatt jelennek meg. Jobbra az AI állapota, a nyelv (HU/EN), az animációk, a téma és a **csengő**.
+- **Értesítések (csengő):** ami ma figyelmet kér: lejárt vagy ma/holnap esedékes teendők, a következő hét visszaszámlálós eseményei (szülinapok…), a következő 24 óra naptáreseményei, a ma még ki nem pipált szokások, és ha egy Költségkövető közel van a havi kerethez vagy túllépte. Egy értesítésre koppintva a dashboard odaugrik a csempéhez.
+- **Kategóriák (jobb oldali sáv):** saját csoportjaid, pl. „Pénz”, „Otthon”, „Munka”. Az **Áttekintés** minden csempét mutat; egy kategória csak azokat, amelyeket te teszel bele. A **+** új kategóriát ad hozzá, a **✎** gombbal átnevezheted, ikont választhatsz, sorrendet állíthatsz vagy törölhetsz. Csempét a fejlécében lévő **◫** gombbal teszel kategóriába (egy csempe több kategóriában is lehet), vagy egy kategórián belül a **+** gombbal (meglévő csempét is választhatsz). Kategórián belül a szerkesztő módban a ✕ csak kiveszi a csempét a kategóriából, nem törli. Minden kategóriának saját elrendezése és nagyítása van. Telefonon a sáv jobb oldalt lent van, hüvelykujjal elérhető. A botnak is mondhatod: „Tedd a Tőzsde csempét a Pénz kategóriába.”
+- **Alsó dokk:** Szerkesztés / Kész, Rendezés (asztalon) és a kerek **+** (modul hozzáadása). Telefonon itt van az AI gomb is, ami alulról nyíló lapként nyitja meg az asszisztenst (a mező alul van, a hüvelykujjnál).
+
 ## Megjelenés
 
-A fejléc mindig látszik, görgetés közben is. A **Téma** gombbal 7 kész téma közül választhatsz (JARVIS, Borostyán, Vörös riasztás, Terminál, Ibolya, Grafit, Világos), és külön beállíthatod a **háttér** és a **kiemelés** színét. A szövegszín magától igazodik a háttér világosságához. A beállítás az adatbázisba mentődik, így minden eszközön és böngészőben ugyanaz jelenik meg.
+A fejléc mindig látszik, görgetés közben is. A **Téma** gombbal 9 kész téma közül választhatsz: **Vision** és **Vision sötét** (matt üveghatású, visionOS-szerű; ez az alapértelmezett új telepítésnél), valamint JARVIS, Borostyán, Vörös riasztás, Terminál, Ibolya, Grafit, Világos, és külön beállíthatod a **háttér** és a **kiemelés** színét. A szövegszín magától igazodik a háttér világosságához. A beállítás az adatbázisba mentődik, így minden eszközön és böngészőben ugyanaz jelenik meg.
 
 ![Témaválasztó](docs/theme-picker.png)
 
@@ -64,7 +71,7 @@ Csak halvány, ritka mozgások, amelyek a processzort alig terhelik. 30%-nál ki
 | ⊕ Napi számláló | Víz, kávé, fekvőtámasz… napi céllal és 14 napos előzménnyel (presetek: Vízfogyasztás) |
 | ◑ Hangulatnapló | Napi hangulat 1–5, havi naptárban, átlaggal |
 | ∿ Mérésnapló | Számértékek grafikonon céllal és változással (presetek: Testsúly, Alvás) |
-| ¤ Költségkövető | Havi kiadások kategóriánként, kerettel és hó végi becsléssel |
+| ¤ Költségkövető | Havi kiadások kategóriánként, kerettel és hó végi becsléssel; bevétel is rögzíthető (Kiadás / Bevétel kapcsoló), ilyenkor a hónap egyenlegét is mutatja |
 | ◔ Idő haladása | Nap / hét / hónap / év, és opcionálisan az élet százalékban |
 
 **Info**
@@ -72,6 +79,11 @@ Csak halvány, ritka mozgások, amelyek a processzort alig terhelik. 30%-nál ki
 |---|---|
 | ☁ Időjárás | Aktuális idő + 5 napos előrejelzés (Open-Meteo) |
 | ◍ Világtérkép | OpenStreetMap térkép 19 kapcsolható réteggel, 5 alaptérképpel és helykeresővel (részletek lent). Minden forrás ingyenes, kulcs nélkül |
+| ▣ Mutatók | 1–4+ mutatókártya (mint „Total Earnings $799 ↑7%”): kézi érték, a havi kiadás vagy bevétel egy Költségkövetőből (az előző hónap azonos napjaihoz mérve), vagy egy JSON API értéke (az előző naphoz mérve). Az első kártya kiemelt |
+| ◰ Egyenleg | Számláid (bármilyen pénznemben) összesítve egy alappénznemben, változás az előző hónaphoz, számlakártyák. Az összegre koppintva szerkeszthető; „+ Bevétel” / „− Kiadás” gyorsrögzítés a Költségkövetőbe |
+| ▭ Havi keret | A havi költés egy Költségkövetőből a kerethez mérve: sáv, hátralévő napok, naponta még elkölthető összeg |
+| ▥ Bevétel & kiadás | Havi bevétel és kiadás oszlopdiagramon (3–12 hónap), a hónap egyenlege |
+| ☰ Aktivitás | Minden, ami a dashboardon történt (új csempe, teendő, kiadás/bevétel, szokás, cél, fókusz, mail bot, brief, AI műveletek), kereséssel és szűrővel. Egy sorra koppintva a csempéhez ugrik |
 | ≈ Levegő & pollen | Európai AQI, PM2.5/PM10, UV, pollen (parlagfű, fű, nyír, éger, üröm) |
 | ☾ Nap & Hold | Napkelte/napnyugta, a Nap útja, nappal hossza és változása, holdfázis |
 | ▦ Naptár | Google / iCloud / Outlook iCal linkkel |

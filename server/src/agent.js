@@ -7,7 +7,7 @@ import { complete, isLocal, aiConfig } from './llm.js';
 
 const PORT = Number(process.env.PORT) || 3000;
 const MAX_STEPS = 8;
-const THEMES = ['jarvis', 'amber', 'alert', 'terminal', 'violet', 'graphite', 'light'];
+const THEMES = ['vision', 'visiondark', 'jarvis', 'amber', 'alert', 'terminal', 'violet', 'graphite', 'light'];
 
 const pad = (n) => String(n).padStart(2, '0');
 const isoDay = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -44,11 +44,12 @@ function redact(config) {
 async function loadState() {
   const [{ rows: widgets }, { rows: s }] = await Promise.all([
     q('SELECT id, type, title, config FROM widgets ORDER BY created_at'),
-    q("SELECT key, value FROM settings WHERE key IN ('canvas', 'appearance')"),
+    q("SELECT key, value FROM settings WHERE key IN ('canvas', 'appearance', 'categories')"),
   ]);
   const canvas = s.find((x) => x.key === 'canvas')?.value ?? [];
-  const appearance = s.find((x) => x.key === 'appearance')?.value ?? { theme: 'jarvis' };
-  return { widgets, canvas, appearance };
+  const appearance = s.find((x) => x.key === 'appearance')?.value ?? { theme: 'vision' };
+  const categories = s.find((x) => x.key === 'categories')?.value ?? [];
+  return { widgets, canvas, appearance, categories };
 }
 
 async function saveCanvas(canvas) {
@@ -195,6 +196,11 @@ const TOOLS = {
       bg: { type: 'string', description: 'background colour #rrggbb, or "" to reset' },
       accent: { type: 'string', description: 'highlight colour #rrggbb, or "" to reset' },
     }),
+    fn('set_tile_category', 'Put a tile into one of the user\'s categories (the groups on the right-hand rail), creating the category if it does not exist, or take it out with remove: true.', {
+      tile: { type: 'string', description: 'tile id or title' },
+      category: { type: 'string', description: 'category name, e.g. "Pénz"' },
+      remove: { type: 'boolean', description: 'true = take the tile out of the category' },
+    }, ['tile', 'category']),
     fn('tile_api', 'Change the CONTENT of a tile through the dashboard API (add a todo, tick a habit, log an expense, write a note…). See the API guide in the system prompt.', {
       method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] },
       path: { type: 'string', description: 'e.g. /widgets/<tileId>/items' },
@@ -574,6 +580,28 @@ function makeExecutor({ catalog, mode, tools }) {
       actions.push(typeof animations === 'boolean' && !theme ? `${L('Animációk', 'Animations')}: ${animations ? L('be', 'on') : L('ki', 'off')}` : `${L('Téma', 'Theme')}: ${next.theme}`);
       return { ok: true, ...next };
     },
+    async set_tile_category({ tile, category, remove }) {
+      const { widgets, categories } = await loadState();
+      const w = tileBy(widgets, tile);
+      if (!w) throw new Error(`No tile called "${tile}". Tiles: ${widgets.map((x) => x.title).join(', ')}.`);
+      const name = String(category ?? '').trim().slice(0, 40);
+      if (!name) throw new Error('Missing "category".');
+      let list = categories.map((c) => ({ ...c }));
+      let c = pickOrNull(list, name, (x) => x.name);
+      if (!c) {
+        if (remove) throw new Error(`There is no category called "${name}". Categories: ${list.map((x) => x.name).join(', ') || '(none)'}.`);
+        c = { id: `c-${Date.now().toString(36)}`, name, icon: '◆', tiles: [], canvas: [], layout: [] };
+        list = [...list, c];
+      }
+      const has = c.tiles.includes(w.id);
+      if (remove ? !has : has) return { ok: true, note: `"${w.title}" is ${remove ? 'not' : 'already'} in "${c.name}"; nothing changed.` };
+      c.tiles = remove ? c.tiles.filter((x) => x !== w.id) : [...c.tiles, w.id];
+      if (remove) (c.canvas = (c.canvas ?? []).filter((x) => x.i !== w.id)), (c.layout = (c.layout ?? []).filter((x) => x.i !== w.id));
+      await selfApi('PUT', '/settings/categories', list.map((x) => (x.id === c.id ? c : x)));
+      layoutChanged = true;
+      actions.push(`${remove ? L('Kivéve', 'Removed from') : L('Kategóriába', 'Into category')} „${c.name}”: ${w.title}`);
+      return { ok: true, category: c.name };
+    },
     async tile_api({ method, path, body }) {
       const m = String(method).toUpperCase();
       const ok = m === 'GET' ? READ_PATH.test(path) : WRITE_PATHS.some((re) => re.test(path));
@@ -627,6 +655,7 @@ function systemPrompt({ persona, state, catalog, mode, local, hu }) {
     persona || 'You are NEXUS, the concise assistant built into the user\'s personal dashboard.',
     `Now: ${now.toLocaleString('hu-HU', { dateStyle: 'full', timeStyle: 'short' })} (today ${isoDay(now)}). Theme: ${state.appearance.theme}.`,
     `Tiles on the dashboard:\n${tiles}`,
+    state.categories?.length ? `The user's categories (right-hand rail; a tile can be in several): ${state.categories.map((c) => `${c.name} [${c.tiles.map((id) => state.widgets.find((w) => w.id === id)?.title).filter(Boolean).join(', ') || 'empty'}]`).join('; ')}.` : 'The user has no categories yet (set_tile_category creates one).',
     mode === 'full'
       ? 'You can read tile contents and change the dashboard with your tools. Use read_tile before answering questions about a tile. Do what the user asks, then confirm briefly what you changed. Removing a tile only shows a confirm button to the user. A tile cannot change its kind: to turn one tile into another kind (e.g. Kripto → Valutaváltó) use replace_tile. To show the price or exchange RATE of a currency pair (USD/HUF), share, gold or crypto use add_stock; the Valutaváltó tile is only a converter calculator.'
       : 'You can read tile contents with your tools (read-only access: you cannot change anything; tell the user to enable full access in the chat tile settings if they ask for changes).',
@@ -691,6 +720,7 @@ const EXAMPLES = {
   update_tile: '{"id":"Bitcoin árfolyam","config":{"currency":"usd"}}',
   move_resize_tile: '{"id":"Teendők","w":6,"h":9}',
   remove_tile: '{"id":"Jegyzet"}',
+  set_tile_category: '{"tile":"Tőzsde","category":"Pénz"}',
   set_appearance: '{"theme":"amber"} or {"animations":false} or {"accent":"#ff8800"}',
   add_todo: '{"text":"Tejet venni","due":"2026-10-20"}',
   complete_todo: '{"item":"tejet venni"}',
@@ -732,7 +762,7 @@ async function planWithJson({ history, persona, model, catalog, exec, state, too
     `Tools:\n${writeTools.map(briefTool).join('\n')}`,
     types ? `Tile types (id=Name[settings]): ${types}` : '',
     `Current tiles: ${tiles}. Refer to existing tiles by their title. Today is ${isoDay()}.`,
-    'Choosing the tool: the PRICE or exchange RATE of a currency pair (USD/HUF), share, gold or crypto → add_stock (the Valutaváltó tile is only a converter calculator). A NEW tile → add_tile. Turn an existing tile into ANOTHER KIND of tile → replace_tile. Change a setting of a tile that stays what it is → update_tile. Theme, colours, animations on/off → set_appearance. An entry in a tile\'s list (links, countdown events…) → add_list_item. A to-do → add_todo. Answer format example: {"tool":"add_todo","arguments":{"text":"Tejet venni"},"reply":"Felvettem a teendőt."}',
+    'Choosing the tool: the PRICE or exchange RATE of a currency pair (USD/HUF), share, gold or crypto → add_stock (the Valutaváltó tile is only a converter calculator). A NEW tile → add_tile. Turn an existing tile into ANOTHER KIND of tile → replace_tile. Change a setting of a tile that stays what it is → update_tile. Theme, colours, animations on/off → set_appearance. An entry in a tile\'s list (links, countdown events…) → add_list_item. A to-do → add_todo. Put a tile into a category / group → set_tile_category. Answer format example: {"tool":"add_todo","arguments":{"text":"Tejet venni"},"reply":"Felvettem a teendőt."}',
     hu ? HU_HINT : curLang === 'en' ? EN_HINT : 'Write "reply" in the language of the user.',
   ].filter(Boolean).join('\n\n');
   const msgs = [{ role: 'system', content: sys }, ...history.slice(-6).map(({ role, content }) => ({ role, content }))];
