@@ -150,4 +150,4 @@
 :root[data-style='glass'] .asst-msg.user .asst-bubble { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 /* the rail and the dock float over tiles: a denser glass keeps them readable */
-:root[data-style='glass'] .rail, :root[data-style='glass'] .dock { background: var(--glass-strong); }
+:root[data-style='glass'] .rail, :root[data-style='glass'] .dock, :root[data-style='glass'] .topbar { background: var(--glass-strong); }
