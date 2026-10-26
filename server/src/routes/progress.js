@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { q } from '../db.js';
 import { getWidget, HttpError } from '../util.js';
+import { logGoal } from '../activity.js';
 
 const r = Router();
 const COLS = 'id, label, value, target, unit, color, sort';
@@ -35,6 +36,7 @@ r.post('/widgets/:id/progress', async (req, res) => {
     [req.params.id, label.trim(), value, target, unit, color],
   );
   await q('INSERT INTO progress_history (item_id, value) VALUES ($1, $2)', [rows[0].id, value]);
+  logGoal('add', req.params.id, rows[0]);
   res.status(201).json({ ...rows[0], history: [] });
 });
 
@@ -49,6 +51,7 @@ r.patch('/progress/:pid', async (req, res) => {
   );
   if (!rows[0]) throw new HttpError(404, 'Item not found');
   if (value !== undefined) {
+    logGoal('update', null, rows[0]);
     await q('INSERT INTO progress_history (item_id, value) VALUES ($1, $2)', [rows[0].id, value]);
   }
   res.json(rows[0]);

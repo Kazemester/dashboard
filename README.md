@@ -122,7 +122,7 @@ Csak halvány, ritka mozgások, amelyek a processzort alig terhelik. 30%-nál ki
 ### Világtérkép csempe
 A tetején helykereső és a **☰ Rétegek** gomb. A kapcsolók és az alaptérkép a csempe beállításaiba mentődnek (a bot is át tudja állítani: `layers`, `base`). A térkép képeit a böngésző tölti, az adatrétegeket a szerver kéri le és gyorsítótárazza. A kattintásra felugró ablak az országról és a pontról mutat adatot, ahogy a szolgáltatások válaszolnak.
 
-**Alaptérképek:** Térkép (OpenStreetMap), Sötét (CARTO), Domborzat (OpenTopoMap), Műhold (NASA GIBS, tegnapi valódi szín), Éjszakai Föld (NASA Black Marble).
+**Alaptérképek:** Térkép (OpenStreetMap), Sötét (Esri sötétszürke), Domborzat (OpenTopoMap), Műhold (NASA GIBS, tegnapi valódi szín), Éjszakai Föld (NASA Black Marble).
 
 | Réteg | Forrás | Megjegyzés |
 |---|---|---|

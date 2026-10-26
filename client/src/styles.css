@@ -17,6 +17,8 @@
   --accent-dim: color-mix(in srgb, var(--accent) 38%, transparent);
   --accent-soft: color-mix(in srgb, var(--accent) 9%, transparent);
   --radius: 2px;
+  --radius-lg: 2px; /* big cards (the glass theme rounds these) */
+  --ok: #34d399;
   --font-ui: 'Rajdhani', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   color-scheme: dark;
@@ -929,3 +931,4 @@ select.input option { background: var(--surface); color: var(--text); }
 .wm-iss i { display: block; width: 14px; height: 14px; margin: 4px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), 0 0 14px var(--accent); }
 @media (max-width: 640px) { .lang-switch button { padding: 5px 6px; font-size: 10px; letter-spacing: .06em; } }
 @media (max-width: 640px) { .theme-label { display: none; } .theme-btn { gap: 0; } }
+.wm-dom { color: var(--muted); font-size: 11.5px; }

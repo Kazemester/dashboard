@@ -32,7 +32,7 @@ function infoNode({ country, here, extra, cur }) {
     parts.push(
       el('div', 'wm-head', country.flag && Object.assign(el('img'), { src: country.flag, alt: '', width: 26, height: 17 }), el('b', null, name)),
       row(t('Főváros'), country.capital),
-      row(t('Népesség'), fmt(country.population)),
+      row(t('Népesség'), extra?.bank?.population ? `${fmt(extra.bank.population.value)} (${extra.bank.population.year})` : ''),
       row(t('Terület'), country.area ? `${fmt(country.area)} km²` : ''),
       row(t('Régió'), country.region),
       row(t('Nyelvek'), country.languages?.join(', ')),

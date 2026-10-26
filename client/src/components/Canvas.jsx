@@ -91,17 +91,19 @@ export function arrange(items, width, origin = { x: 24, y: 24 }) {
   return placed.map((l) => ({ ...l, x: l.x + origin.x, y: l.y + origin.y }));
 }
 
-function loadView() {
+function loadView(key) {
   try {
-    return JSON.parse(localStorage.getItem(VIEW_KEY));
+    return JSON.parse(localStorage.getItem(key));
   } catch {
     return null;
   }
 }
 
-export default function Canvas({ items, onItemsChange, editing, children, onApi }) {
+export default function Canvas({ items, onItemsChange, editing, children, onApi, viewKey }) {
   const vpRef = useRef(null);
-  const [view, setView] = useState(() => loadView());
+  // every category keeps its own pan / zoom
+  const storeKey = viewKey ? `${VIEW_KEY}:${viewKey}` : VIEW_KEY;
+  const [view, setView] = useState(() => loadView(storeKey));
   const [size, setSize] = useState({ w: 1200, h: 800 });
   const [panning, setPanning] = useState(false);
   const [space, setSpace] = useState(false);
@@ -114,7 +116,7 @@ export default function Canvas({ items, onItemsChange, editing, children, onApi 
     if (!view) return;
     const t = setTimeout(() => {
       try {
-        localStorage.setItem(VIEW_KEY, JSON.stringify(view));
+        localStorage.setItem(storeKey, JSON.stringify(view));
       } catch {
         /* ignore */
       }

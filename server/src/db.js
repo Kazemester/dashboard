@@ -123,6 +123,20 @@ CREATE TABLE IF NOT EXISTS renders (
   finished_at TIMESTAMPTZ
 );
 CREATE INDEX IF NOT EXISTS renders_widget ON renders (widget_id, id);
+
+-- Activity log (Aktivitás tile). widget_id has no FK: tiles get deleted, their history stays.
+CREATE TABLE IF NOT EXISTS activity_log (
+  id        SERIAL PRIMARY KEY,
+  at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  kind      TEXT NOT NULL,
+  title     TEXT NOT NULL,
+  detail    TEXT,
+  widget_id TEXT,
+  status    TEXT,
+  meta      JSONB
+);
+CREATE INDEX IF NOT EXISTS activity_log_at ON activity_log (at DESC);
+CREATE INDEX IF NOT EXISTS activity_log_kind ON activity_log (kind, id DESC);
 `;
 
 export async function migrate(retries = 30) {

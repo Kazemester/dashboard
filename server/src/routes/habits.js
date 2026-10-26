@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { q } from '../db.js';
 import { getWidget, HttpError } from '../util.js';
+import { logHabit } from '../activity.js';
 
 const r = Router();
 
@@ -92,6 +93,7 @@ r.post('/habits/:hid/toggle', async (req, res) => {
   if (del.rowCount === 0) {
     await q('INSERT INTO habit_checks (habit_id, day) VALUES ($1, $2)', [req.params.hid, day]);
   }
+  logHabit(req.params.hid, day, del.rowCount === 0);
   res.json({ checked: del.rowCount === 0 });
 });
 

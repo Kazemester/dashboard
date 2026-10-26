@@ -10,23 +10,40 @@ import AiSettings from './components/AiSettings.jsx';
 import { applyAppearance, cachedAppearance } from './theme.js';
 import Canvas, { findFreeSpot } from './components/Canvas.jsx';
 import { t } from './i18n.js';
+import { ShellContext, newCategoryId } from './shell/context.js';
+import CategoryRail from './shell/CategoryRail.jsx';
+import CategoryEditor from './shell/CategoryEditor.jsx';
+import Dock from './shell/Dock.jsx';
+import Assistant from './shell/Assistant.jsx';
 
 const Grid = WidthProvider(Responsive);
 const COLS = { lg: 12, md: 10, sm: 6, xs: 2 };
+// a category on a phone: one simple 2-column list (full-width or half-width tiles)
+const CAT_COLS = { lg: 2, md: 2, sm: 2, xs: 2 };
+const CAT_KEY = 'nexus-category';
 const BREAKPOINTS = { lg: 1200, md: 960, sm: 640, xs: 0 };
 
-// Desktop uses the infinite canvas; phones keep the stacked responsive grid.
-function useIsDesktop() {
-  const q = '(min-width: 768px)';
-  const [desk, setDesk] = useState(() => window.matchMedia(q).matches);
+function useMedia(q) {
+  const [hit, setHit] = useState(() => window.matchMedia(q).matches);
   useEffect(() => {
     const m = window.matchMedia(q);
-    const on = () => setDesk(m.matches);
+    const on = () => setHit(m.matches);
     m.addEventListener('change', on);
     return () => m.removeEventListener('change', on);
-  }, []);
-  return desk;
+  }, [q]);
+  return hit;
 }
+// Desktop uses the infinite canvas; phones keep the stacked responsive grid.
+const useIsDesktop = () => useMedia('(min-width: 768px)');
+
+const readCat = () => {
+  try {
+    return localStorage.getItem(CAT_KEY) || null;
+  } catch {
+    return null;
+  }
+};
+const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 // First canvas: take the old desktop layout, moved away from the world's top-left corner.
 const ORIGIN = 24;
@@ -69,13 +86,23 @@ export default function App() {
   isDesktopRef.current = isDesktop;
   const canvasRef = useRef([]);
   const undoTimer = useRef(null);
+  const [categories, setCategories] = useState([]);
+  const [profile, setProfile] = useState({});
+  const [activeCat, setActiveCat] = useState(readCat);
+  const [catEditor, setCatEditor] = useState(null); // null | { startNew }
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const catTimer = useRef(null);
+  const wide = useMedia('(min-width: 900px)');
 
   useEffect(() => {
     api
       .get('/dashboard')
-      .then(({ widgets, layouts, appearance: saved, canvas: savedCanvas }) => {
+      .then(({ widgets, layouts, appearance: saved, canvas: savedCanvas, categories: cats, profile: me }) => {
         setWidgets(widgets);
         setLayouts(layouts);
+        setCategories(cats ?? []);
+        setProfile(me ?? {});
+        if (!(cats ?? []).some((c) => c.id === readCat())) setActiveCat(null);
         if (savedCanvas) setCanvas(savedCanvas);
         else {
           // one-time migration of the old grid layout onto the canvas
@@ -119,6 +146,52 @@ export default function App() {
     [persistCanvas],
   );
 
+  // ---------- categories (right-hand rail) ----------
+  const persistCategories = useCallback((next) => {
+    clearTimeout(catTimer.current);
+    catTimer.current = setTimeout(() => api.put('/settings/categories', next).catch((e) => setError(e.message)), 400);
+  }, []);
+  const updateCategories = useCallback(
+    (fn) =>
+      setCategories((prev) => {
+        const next = fn(prev);
+        if (next !== prev) persistCategories(next);
+        return next;
+      }),
+    [persistCategories],
+  );
+  const selectCategory = useCallback((id) => {
+    setActiveCat(id);
+    try {
+      if (id) localStorage.setItem(CAT_KEY, id);
+      else localStorage.removeItem(CAT_KEY);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const stripTile = (c, id) => ({ ...c, tiles: c.tiles.filter((x) => x !== id), canvas: c.canvas.filter((x) => x.i !== id), layout: c.layout.filter((x) => x.i !== id) });
+  const setTileCategories = useCallback(
+    (widgetId, ids) =>
+      updateCategories((prev) =>
+        prev.map((c) => {
+          const has = c.tiles.includes(widgetId);
+          if (ids.includes(c.id)) return has ? c : { ...c, tiles: [...c.tiles, widgetId] };
+          return has ? stripTile(c, widgetId) : c;
+        }),
+      ),
+    [updateCategories],
+  );
+  const createCategory = useCallback(
+    (name, icon = '◆') => {
+      const id = newCategoryId();
+      updateCategories((prev) => [...prev, { id, name, icon, tiles: [], canvas: [], layout: [] }]);
+      return id;
+    },
+    [updateCategories],
+  );
+  const cat = categories.find((c) => c.id === activeCat) ?? null;
+  const shell = useMemo(() => ({ categories, active: activeCat, setTileCategories, createCategory }), [categories, activeCat, setTileCategories, createCategory]);
+
   // Every widget needs a spot on the canvas (new widgets, or ones added on a phone).
   const safeCanvas = useMemo(() => {
     let items = canvas.filter((c) => widgets.some((w) => w.id === c.i));
@@ -131,7 +204,40 @@ export default function App() {
     return items;
   }, [canvas, widgets]);
 
-  canvasRef.current = safeCanvas;
+  // The tiles on screen: everything, or the active category's tiles in its own order.
+  const visible = useMemo(() => (cat ? cat.tiles.map((id) => widgets.find((w) => w.id === id)).filter(Boolean) : widgets), [cat, widgets]);
+
+  // A category's own canvas: saved positions, the rest packed from the top-left (sizes taken from the main canvas).
+  const catCanvas = useMemo(() => {
+    if (!cat) return null;
+    const ids = new Set(visible.map((w) => w.id));
+    let items = cat.canvas.filter((c) => ids.has(c.i));
+    for (const w of visible) {
+      if (items.some((c) => c.i === w.id)) continue;
+      const main = safeCanvas.find((c) => c.i === w.id);
+      const size = main ?? REGISTRY[w.type]?.size ?? { w: 4, h: 5 };
+      items = [...items, { i: w.id, ...findFreeSpot(items, size.w, size.h, ORIGIN + size.w / 2, ORIGIN + size.h / 2), w: size.w, h: size.h, minW: size.minW ?? 2, minH: size.minH ?? 2 }];
+    }
+    return items;
+  }, [cat, visible, safeCanvas]);
+
+  // …and its phone list (2 columns; full width unless the user narrowed a tile).
+  const catLayout = useMemo(() => {
+    if (!cat) return null;
+    const ids = new Set(visible.map((w) => w.id));
+    let items = cat.layout.filter((c) => ids.has(c.i));
+    for (const w of visible) {
+      if (items.some((c) => c.i === w.id)) continue;
+      const xs = (layouts.xs ?? []).find((l) => l.i === w.id);
+      const bottom = items.reduce((m, l) => Math.max(m, l.y + l.h), 0);
+      items = [...items, { i: w.id, x: 0, y: bottom, w: 2, h: xs?.h ?? REGISTRY[w.type]?.size?.h ?? 5, minW: 1, minH: 2 }];
+    }
+    return items;
+  }, [cat, visible, layouts]);
+
+  const onCategoryCanvas = useCallback((next) => updateCategories((prev) => prev.map((c) => (c.id === activeCat ? { ...c, canvas: next } : c))), [activeCat, updateCategories]);
+
+  canvasRef.current = catCanvas ?? safeCanvas;
 
   // Tiles (chat, mail bot, brief) can ask for the AI settings: window.dispatchEvent(new Event('nexus:ai-settings'))
   useEffect(() => {
@@ -158,11 +264,22 @@ export default function App() {
     }, 200);
   }, []);
 
+  // Reveal from outside the current view (bell, bot): leave a category that does not hold the tile.
+  const revealAnywhere = useCallback(
+    (id) => {
+      if (cat && !cat.tiles.includes(id)) {
+        selectCategory(null);
+        setTimeout(() => revealTile(id, safeCanvas), 120);
+      } else revealTile(id);
+    },
+    [cat, selectCategory, revealTile, safeCanvas],
+  );
+
   useEffect(() => {
-    const onReveal = (e) => e.detail?.id && revealTile(e.detail.id);
+    const onReveal = (e) => e.detail?.id && revealAnywhere(e.detail.id);
     window.addEventListener('nexus:reveal', onReveal);
     return () => window.removeEventListener('nexus:reveal', onReveal);
-  }, [revealTile]);
+  }, [revealAnywhere]);
 
   // The chat bot changed tiles, layout or theme on the server → pull the new state.
   useEffect(() => {
@@ -172,6 +289,7 @@ export default function App() {
         setWidgets(d.widgets);
         if (d.canvas) setCanvas(d.canvas);
         if (d.appearance) setAppearance(d.appearance);
+        if (d.categories) setCategories(d.categories);
         const shown = e.detail?.shown ?? (e.detail?.created ?? []).map((c) => c.id);
         if (shown.length) revealTile(shown[shown.length - 1], d.canvas ?? []);
         const ids = e.detail?.changed ?? [];
@@ -186,24 +304,30 @@ export default function App() {
 
   const arrangeCanvas = () => {
     if (!confirm(t('Biztosan rendezed a csempéket? Minden csempe új helyre kerül egy rácsba. (Utána 12 másodpercig visszavonható.)'))) return;
-    const before = safeCanvas;
+    const before = catCanvas ?? safeCanvas;
     canvasApi.current?.arrange();
     setUndo(before);
     clearTimeout(undoTimer.current);
     undoTimer.current = setTimeout(() => setUndo(null), 12_000);
   };
   const undoArrange = () => {
-    changeCanvas(undo);
+    if (cat) onCategoryCanvas(undo);
+    else changeCanvas(undo);
     setUndo(null);
   };
 
   const onLayoutChange = useCallback(
-    (_current, all) => {
+    (current, all) => {
       if (!loaded) return;
+      if (activeCat) {
+        const next = current.map(({ i, x, y, w, h }) => ({ i, x, y, w, h }));
+        updateCategories((prev) => prev.map((c) => (c.id === activeCat && !sameJson(c.layout, next) ? { ...c, layout: next } : c)));
+        return;
+      }
       setLayouts(all);
       persistLayouts(all);
     },
-    [loaded, persistLayouts],
+    [loaded, persistLayouts, activeCat, updateCategories],
   );
 
   const addWidget = async (def) => {
@@ -217,16 +341,34 @@ export default function App() {
       setLayouts(next);
       persistLayouts(next);
       changeCanvas([...safeCanvas, spot]);
+      let shown = spot;
+      if (cat) {
+        // added inside a category: it goes there too, next to the middle of this category's view
+        shown = { ...spot, ...findFreeSpot(catCanvas, def.size.w, def.size.h, c.x, c.y) };
+        updateCategories((prev) => prev.map((x) => (x.id === cat.id ? { ...x, tiles: [...x.tiles, w.id], canvas: [...x.canvas, shown] } : x)));
+      }
       setPicker(false);
       if (def.configureOnAdd) setConfiguring(w);
-      if (isDesktop) setTimeout(() => canvasApi.current?.reveal(spot), 50);
+      if (isDesktop) setTimeout(() => canvasApi.current?.reveal(shown), 50);
       else setTimeout(() => document.getElementById(`tile-${w.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
     } catch (e) {
       setError(e.message);
     }
   };
 
+  const addExisting = (w) => {
+    if (!cat) return;
+    setTileCategories(w.id, [...categories.filter((c) => c.tiles.includes(w.id)).map((c) => c.id), cat.id]);
+    setPicker(false);
+    setTimeout(() => revealTile(w.id), 150);
+  };
+
   const removeWidget = async (w) => {
+    if (cat) {
+      // inside a category ✕ only takes the tile out of it
+      updateCategories((prev) => prev.map((c) => (c.id === cat.id ? stripTile(c, w.id) : c)));
+      return;
+    }
     if (!confirm(t('Biztosan törlöd: "{title}"? A modul adatai is törlődnek.', { title: t(w.title) }))) return;
     await api.del(`/widgets/${w.id}`);
     setWidgets((ws) => ws.filter((x) => x.id !== w.id));
@@ -234,6 +376,7 @@ export default function App() {
     setLayouts(next);
     persistLayouts(next);
     changeCanvas(safeCanvas.filter((c) => c.i !== w.id));
+    updateCategories((prev) => (prev.some((c) => c.tiles.includes(w.id)) ? prev.map((c) => stripTile(c, w.id)) : prev));
   };
 
   const saveConfig = async (w, title, config) => {
@@ -259,7 +402,7 @@ export default function App() {
     return l;
   }, [layouts, widgets]);
 
-  const tiles = widgets.map((w, idx) => (
+  const tiles = visible.map((w, idx) => (
     <div key={w.id} id={`tile-${w.id}`} style={{ '--i': idx }} className={flashId === w.id ? 'tile-flash' : undefined}>
       <Tile
         key={rev[w.id] ?? 0}
@@ -269,9 +412,23 @@ export default function App() {
         onConfigure={() => setConfiguring(w)}
         onUpdateConfig={(patch) => updateConfig(w, patch)}
         onRemove={() => removeWidget(w)}
+        removeLabel={cat ? t('Kivétel a kategóriából') : null}
       />
     </div>
   ));
+
+  const catEmpty = loaded && cat && !visible.length && (
+    <div className="empty">
+      <div className="empty-ring" />
+      <h2>
+        {cat.icon} {cat.name}
+      </h2>
+      <p>{t('Ez a kategória még üres. Tegyél bele meglévő csempéket vagy adj hozzá újat.')}</p>
+      <button className="btn btn-primary" onClick={() => setPicker(true)}>
+        {t('+ Csempe hozzáadása')}
+      </button>
+    </div>
+  );
 
   const empty = loaded && !widgets.length && (
     <div className="empty">
@@ -284,78 +441,133 @@ export default function App() {
     </div>
   );
 
+  const saveProfile = (next) => {
+    setProfile(next);
+    api.put('/settings/profile', next).catch((e) => setError(e.message));
+  };
+
   return (
-    <div className={`app ${editing ? 'is-editing' : ''} ${isDesktop ? 'canvas-mode' : ''}`}>
-      <div className="bg-grid" />
-      <div className="bg-glow" />
-      <TopBar
-        editing={editing}
-        onToggleEdit={() => setEditing((e) => !e)}
-        onAdd={() => setPicker(true)}
-        onArrange={isDesktop && widgets.length > 1 ? arrangeCanvas : null}
-        onAi={() => setAiOpen(true)}
-        aiVersion={aiVersion}
-        count={widgets.length}
-        appearance={appearance}
-        onAppearance={changeAppearance}
-      />
-
-      {undo && (
-        <div className="toast toast-info">
-          {t('Csempék rendezve.')}
-          <button className="btn btn-primary sm" onClick={undoArrange}>
-            {t('Visszavonás')}
-          </button>
-        </div>
-      )}
-
-      {error && (
-        <div className="toast" onClick={() => setError(null)}>
-          ⚠ {error}
-        </div>
-      )}
-
-      {isDesktop ? (
-        <main className="canvas-main">
-          {empty}
-          {loaded && (
-            <Canvas items={safeCanvas} onItemsChange={changeCanvas} editing={editing} onApi={(a) => (canvasApi.current = a)}>
-              {tiles}
-            </Canvas>
-          )}
-        </main>
-      ) : (
-        <main className="deck">
-          {empty}
-          <Grid
-            className="grid"
-            layouts={safeLayouts}
-            breakpoints={BREAKPOINTS}
-            cols={COLS}
-            rowHeight={44}
-            margin={[14, 14]}
-            isDraggable={editing}
-            isResizable={editing}
-            draggableHandle=".tile-head"
-            draggableCancel=".no-drag"
-            onLayoutChange={onLayoutChange}
-            resizeHandles={['se']}
-          >
-            {tiles}
-          </Grid>
-        </main>
-      )}
-
-      {picker && <WidgetPicker onPick={addWidget} onClose={() => setPicker(false)} />}
-      {aiOpen && <AiSettings onClose={() => setAiOpen(false)} onSaved={() => setAiVersion((v) => v + 1)} />}
-      {configuring && (
-        <ConfigModal
-          widget={configuring}
-          def={REGISTRY[configuring.type]}
-          onSave={saveConfig}
-          onClose={() => setConfiguring(null)}
+    <ShellContext.Provider value={shell}>
+      <div className={`app ${editing ? 'is-editing' : ''} ${isDesktop ? 'canvas-mode' : ''}`}>
+        <div className="bg-grid" />
+        <div className="bg-glow" />
+        <TopBar
+          onAi={() => setAiOpen(true)}
+          aiVersion={aiVersion}
+          appearance={appearance}
+          onAppearance={changeAppearance}
+          profile={profile}
+          onProfile={saveProfile}
+          onReveal={revealAnywhere}
+          wide={wide}
+          subtitle={cat ? `${cat.icon} ${cat.name}` : null}
         />
-      )}
-    </div>
+
+        {undo && (
+          <div className="toast toast-info">
+            {t('Csempék rendezve.')}
+            <button className="btn btn-primary sm" onClick={undoArrange}>
+              {t('Visszavonás')}
+            </button>
+          </div>
+        )}
+
+        {error && (
+          <div className="toast" onClick={() => setError(null)}>
+            ⚠ {error}
+          </div>
+        )}
+
+        {isDesktop ? (
+          <main className="canvas-main">
+            {empty}
+            {catEmpty}
+            {loaded && (
+              <Canvas
+                key={activeCat ?? 'all'}
+                viewKey={activeCat}
+                items={catCanvas ?? safeCanvas}
+                onItemsChange={cat ? onCategoryCanvas : changeCanvas}
+                editing={editing}
+                onApi={(a) => (canvasApi.current = a)}
+              >
+                {tiles}
+              </Canvas>
+            )}
+          </main>
+        ) : (
+          <main className="deck">
+            {empty}
+            {catEmpty}
+            <Grid
+              key={activeCat ?? 'all'}
+              className="grid"
+              layouts={cat ? { lg: catLayout, md: catLayout, sm: catLayout, xs: catLayout } : safeLayouts}
+              breakpoints={BREAKPOINTS}
+              cols={cat ? CAT_COLS : COLS}
+              rowHeight={44}
+              margin={[14, 14]}
+              isDraggable={editing}
+              isResizable={editing}
+              draggableHandle=".tile-head"
+              draggableCancel=".no-drag"
+              onLayoutChange={onLayoutChange}
+              resizeHandles={['se']}
+            >
+              {tiles}
+            </Grid>
+          </main>
+        )}
+
+        <CategoryRail
+          categories={categories}
+          active={cat ? cat.id : null}
+          onSelect={selectCategory}
+          onAdd={() => setCatEditor({ startNew: true })}
+          onManage={() => setCatEditor({ startNew: false })}
+        />
+        <Dock
+          editing={editing}
+          onToggleEdit={() => setEditing((e) => !e)}
+          onArrange={isDesktop && visible.length > 1 ? arrangeCanvas : null}
+          onAdd={() => setPicker(true)}
+          onAssistant={wide ? null : () => setAssistantOpen(true)}
+        />
+        {!wide && <Assistant mode="sheet" open={assistantOpen} onClose={() => setAssistantOpen(false)} />}
+
+        {picker && (
+          <WidgetPicker
+            onPick={addWidget}
+            onClose={() => setPicker(false)}
+            category={cat}
+            existing={cat ? widgets.filter((w) => !cat.tiles.includes(w.id)) : null}
+            onPickExisting={addExisting}
+          />
+        )}
+        {catEditor && (
+          <CategoryEditor
+            categories={categories}
+            startNew={catEditor.startNew}
+            onClose={() => setCatEditor(null)}
+            onSave={(next) => {
+              updateCategories(() => next);
+              setCatEditor(null);
+              const added = next.find((c) => !categories.some((x) => x.id === c.id));
+              if (added) selectCategory(added.id);
+              else if (activeCat && !next.some((c) => c.id === activeCat)) selectCategory(null);
+            }}
+          />
+        )}
+        {aiOpen && <AiSettings onClose={() => setAiOpen(false)} onSaved={() => setAiVersion((v) => v + 1)} />}
+        {configuring && (
+          <ConfigModal
+            widget={configuring}
+            def={REGISTRY[configuring.type]}
+            onSave={saveConfig}
+            onClose={() => setConfiguring(null)}
+          />
+        )}
+      </div>
+    </ShellContext.Provider>
   );
 }

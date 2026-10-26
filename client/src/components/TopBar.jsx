@@ -4,42 +4,49 @@ import { api } from '../api.js';
 import ThemePicker from './ThemePicker.jsx';
 import { animEnabled } from '../theme.js';
 import { getLang, locale, setLang, t } from '../i18n.js';
+import { greetingKey } from '../shell/context.js';
+import Assistant from '../shell/Assistant.jsx';
+import Notifications from '../shell/Notifications.jsx';
 
-export default function TopBar({ editing, onToggleEdit, onAdd, onArrange, onAi, aiVersion, count, appearance, onAppearance }) {
-  const now = useNow(1000);
+/*
+ * Header: greeting (tap to set your name), the AI command bar in the middle (desktop), and on the right
+ * AI status, language, animations, theme and the notification bell. Editing / adding lives in the bottom dock.
+ */
+export default function TopBar({ onAi, aiVersion, appearance, onAppearance, profile, onProfile, onReveal, wide, subtitle }) {
+  const now = useNow(30_000);
   const animOn = animEnabled(appearance);
   const [status, setStatus] = useState(null);
   useEffect(() => {
     api.get('/status').then(setStatus).catch(() => setStatus(null));
   }, [aiVersion]);
 
+  const name = profile?.name?.trim();
+  const askName = () => {
+    const next = prompt(t('Hogyan szólítsalak?'), name ?? '');
+    if (next !== null) onProfile({ name: next.trim() });
+  };
+
   return (
     <header className="topbar">
-      <div className="brand">
-        <svg viewBox="0 0 24 24" className="brand-logo" aria-hidden>
-          <circle cx="12" cy="12" r="10" />
-          <circle cx="12" cy="12" r="3.5" />
-        </svg>
-        <span className="brand-name">NEXUS</span>
-      </div>
-
-      <div className="telemetry">
-        <span className="tele">
-          <i className="dot ok" /> ONLINE
+      <button className="hello" onClick={askName} title={t('Név megadása')}>
+        <span className="avatar" aria-hidden>
+          {name ? name[0].toUpperCase() : '◉'}
         </span>
-        <button className="tele tele-btn" onClick={onAi}>
-          <i className={`dot ${status?.llm ? 'ok' : 'off'}`} /> AI {status?.llm ? status.model.toUpperCase() : 'OFFLINE'}
-        </button>
-        <span className="tele">{String(count).padStart(2, '0')} {t('MODUL')}</span>
-      </div>
+        <span className="hello-text">
+          <span className="hello-title">
+            {t(greetingKey(now))}
+            {name ? `, ${name}` : ''}
+          </span>
+          <span className="hello-sub">
+            {now.toLocaleDateString(locale(), { weekday: 'long', month: 'long', day: 'numeric' })} · {now.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}
+            {subtitle ? ` · ${subtitle}` : ''}
+          </span>
+        </span>
+      </button>
+
+      {wide && <Assistant mode="bar" />}
 
       <div className="topbar-right">
-        <div className="clock">
-          <span className="clock-time">{now.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}</span>
-          <span className="clock-date">
-            {now.toLocaleDateString(locale(), { weekday: 'short', month: 'short', day: 'numeric' })}
-          </span>
-        </div>
         <button className="btn btn-ghost ai-btn" onClick={onAi} title={status?.llm ? `AI: ${status.model}` : t('AI nincs beállítva — kattints a beállításhoz')}>
           <i className={`dot ${status?.llm ? 'ok' : 'off'}`} /> AI
         </button>
@@ -54,7 +61,7 @@ export default function TopBar({ editing, onToggleEdit, onAdd, onArrange, onAi, 
           <span className={`anim-sw ${animOn ? 'on' : ''}`} aria-hidden>
             <i />
           </span>
-          <span className="anim-sw-label">{t('Anim')}</span>
+          <span className="anim-sw-label">Anim</span>
         </button>
         <div className="lang-switch" role="group" aria-label={t('Nyelv')}>
           {['hu', 'en'].map((l) => (
@@ -64,17 +71,7 @@ export default function TopBar({ editing, onToggleEdit, onAdd, onArrange, onAi, 
           ))}
         </div>
         <ThemePicker appearance={appearance} onChange={onAppearance} />
-        {onArrange && (
-          <button className="btn btn-ghost" onClick={onArrange} title={t('Csempék rendezése hézag nélküli rácsba')}>
-            {t('Rendezés')}
-          </button>
-        )}
-        <button className={`btn btn-ghost ${editing ? 'btn-active' : ''}`} onClick={onToggleEdit}>
-          {editing ? t('Kész') : t('Szerkesztés')}
-        </button>
-        <button className="btn btn-primary" onClick={onAdd}>
-          {t('+ Modul')}
-        </button>
+        <Notifications onReveal={onReveal} />
       </div>
     </header>
   );

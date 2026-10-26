@@ -99,4 +99,6 @@ export default {
   'Térkép mozgatása': 'Move map',
   'A térkép aktív: húzás és görgetés a térképet mozgatja. Kattints a kilépéshez (vagy Esc).': 'Map active: dragging and scrolling move the map. Click to leave (or press Esc).',
   'A térkép zárolva: a húzás és a görgetés a dashboardot mozgatja. Kattints a térkép mozgatásához.': 'Map locked: dragging and scrolling move the dashboard. Click to move the map.',
+  '{n} cikk az elmúlt napban': '{n} articles in the last day',
+  'Hírek (forrásország szerint)': 'News (by source country)',
 };

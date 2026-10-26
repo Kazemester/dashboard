@@ -1,6 +1,7 @@
 import React, { Component, useCallback, useState } from 'react';
 import { TileLiveContext } from '../hooks.js';
 import { t } from '../i18n.js';
+import TileCategories from '../shell/TileCategories.jsx';
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -13,7 +14,7 @@ class ErrorBoundary extends Component {
   }
 }
 
-export default function Tile({ widget, def, editing, onConfigure, onUpdateConfig, onRemove }) {
+export default function Tile({ widget, def, editing, onConfigure, onUpdateConfig, onRemove, removeLabel }) {
   const Body = def?.component;
   // number of timed data loads running inside this tile (see useLive in hooks.js)
   const [liveCount, setLiveCount] = useState(0);
@@ -27,13 +28,14 @@ export default function Tile({ widget, def, editing, onConfigure, onUpdateConfig
         <header className="tile-head">
           <h3 className="tile-title">{t(widget.title)}</h3>
           <div className="tile-actions no-drag">
+            <TileCategories widget={widget} />
             {def?.fields?.length > 0 && (
               <button className="icon-btn" title={t('Beállítások')} onClick={onConfigure}>
                 ⚙
               </button>
             )}
             {editing && (
-              <button className="icon-btn danger" title={t('Eltávolítás')} onClick={onRemove}>
+              <button className="icon-btn danger" title={removeLabel ?? t('Eltávolítás')} onClick={onRemove}>
                 ✕
               </button>
             )}

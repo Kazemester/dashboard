@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { q } from '../db.js';
 import { chat, llmConfigured } from '../llm.js';
 import { getWidget } from '../util.js';
+import { logBrief } from '../activity.js';
 import { weather, wmoText } from '../services/openmeteo.js';
 import { loadEvents } from './calendar.js';
 
@@ -149,6 +150,7 @@ r.post('/widgets/:id/brief/run', async (req, res) => {
      ON CONFLICT (widget_id) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
     [w.id, JSON.stringify(value)],
   );
+  logBrief(w, value);
   res.json(value);
 });
 

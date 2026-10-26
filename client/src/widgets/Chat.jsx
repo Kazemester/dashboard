@@ -6,7 +6,7 @@ import { REGISTRY } from './registry.js';
 import { t, getLang } from '../i18n.js';
 
 // What the bot needs to know about tile types (names, settings fields) — the registry lives in the frontend.
-function catalog() {
+export function catalog() {
   const out = {};
   for (const [type, d] of Object.entries(REGISTRY)) {
     if (d.hidden) continue;
@@ -28,11 +28,11 @@ function catalog() {
 }
 
 // Tell the app to reload tiles / layout the bot changed.
-const announce = (meta) => {
+export const announce = (meta) => {
   if (meta?.changed?.length || meta?.layoutChanged) window.dispatchEvent(new CustomEvent('nexus:dashboard-changed', { detail: meta }));
 };
 
-function Meta({ meta, onConfirm }) {
+export function Meta({ meta, onConfirm }) {
   if (!meta) return null;
   return (
     <div className="msg-meta">

@@ -6,8 +6,8 @@ import { resolveSecrets } from '../secrets.js';
  * Data for the world-map tile. Every source is free and needs no key:
  *   flights   OpenSky Network (anonymous ~400 credits/day; an optional OAuth client gives much more)
  *   quakes    USGS earthquake feed
- *   news      GDELT GEO 2.0 (geolocated news mentions)
- *   country   Nominatim reverse geocoding, REST Countries, Nager.Date (holidays), World Bank, open.er-api (rates)
+ *   news      GDELT DOC 2.0 (articles of the last day, grouped by the source's country)
+ *   country   Nominatim reverse geocoding, world-countries (mledoze, via jsDelivr), Nager.Date (holidays), World Bank, open.er-api (rates)
  *   point     Open-Meteo forecast + air quality + elevation + marine
  *   events    NASA EONET (wildfires, volcanoes, storms, floods…)
  *   iss       wheretheiss.at (+ Open Notify crew list)
@@ -15,7 +15,7 @@ import { resolveSecrets } from '../secrets.js';
  *   radar     RainViewer
  *   wiki      Wikipedia geosearch
  *   species   GBIF occurrences
- *   airports  Overpass API (OpenStreetMap)
+ *   airports  OurAirports open data (via jsDelivr)
  *   bikes     CityBikes
  *   search    Open-Meteo geocoding
  * (map tiles and NASA GIBS / OpenSeaMap / OpenRailwayMap overlays are loaded by the browser directly.)
@@ -47,6 +47,18 @@ const num = (v) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 };
+
+const safeUrl = (u) => (/^https?:\/\//i.test(u ?? '') ? u : null);
+
+// Country facts (names, capital, languages, currencies, centre) — the open mledoze/world-countries data set.
+// (REST Countries now needs an API key.) ~1.4 MB, loaded once a week.
+const countries = () =>
+  cached('world-countries', 7 * 86_400_000, async () => {
+    const list = await getJson('https://cdn.jsdelivr.net/npm/world-countries@5/countries.json', { timeout: 30_000 });
+    if (!Array.isArray(list)) throw new HttpError(502, 'world-countries: unexpected answer');
+    return list;
+  });
+const fold = (x) => String(x ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
 // ---------- flights (OpenSky) ----------
 let token = null; // { value, expires }
@@ -114,72 +126,57 @@ r.get('/widgets/:id/map/quakes', async (req, res) => {
   );
 });
 
-// ---------- news (GDELT GEO) ----------
-const safeUrl = (u) => (/^https?:\/\//i.test(u) ? u : null);
-// GDELT puts a little HTML snippet in every point; keep only the article links.
-function articles(html) {
-  const out = [];
-  for (const m of String(html ?? '').matchAll(/<a[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
-    const url = safeUrl(m[1]);
-    const title = m[2].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
-    if (url && title) out.push({ title, url });
-    if (out.length >= 5) break;
-  }
-  return out;
-}
-
+// ---------- news (GDELT DOC) ----------
+// GDELT's GEO API is gone; the DOC API lists the day's articles with the country of the source,
+// so the map shows one bubble per country (at its centre) with its newest articles.
 r.get('/widgets/:id/map/news', async (req, res) => {
   const w = await getWidget(req.params.id, 'worldmap');
-  const query = String(req.query.q || w.config.newsQuery || '').trim() || 'sourcelang:eng';
-  const url = `https://api.gdeltproject.org/api/v2/geo/geo?query=${encodeURIComponent(query)}&format=GeoJSON&timespan=24h&maxpoints=150`;
-  const data = await getJson(url, { ttl: 15 * 60_000, timeout: 25_000 });
-  res.json(
-    (data.features ?? [])
-      .filter((f) => f.geometry?.coordinates?.length >= 2)
-      .map((f) => ({
-        lon: f.geometry.coordinates[0],
-        lat: f.geometry.coordinates[1],
-        place: f.properties?.name ?? '',
-        count: num(f.properties?.count) ?? 1,
-        articles: articles(f.properties?.html),
-      }))
-      .filter((p) => p.articles.length),
-  );
+  const topic = String(req.query.q || w.config.newsQuery || '').trim();
+  const query = topic || 'sourcelang:english';
+  const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=artlist&format=json&maxrecords=250&timespan=24h&sort=datedesc`;
+  const [data, list] = await Promise.all([getJson(url, { ttl: 20 * 60_000, timeout: 25_000 }), countries()]);
+  const byName = new Map();
+  for (const c of list) for (const n of [c.name?.common, c.name?.official, ...(c.altSpellings ?? [])]) if (n) byName.set(fold(n), c);
+  const groups = new Map();
+  for (const a of data.articles ?? []) {
+    const c = byName.get(fold(a.sourcecountry));
+    const link = safeUrl(a.url);
+    if (!c?.latlng || !link || !a.title) continue;
+    const g = groups.get(c.cca2) ?? { lat: c.latlng[0], lon: c.latlng[1], place: c.name.common, placeHu: c.translations?.hun?.common ?? null, count: 0, articles: [] };
+    g.count += 1;
+    if (g.articles.length < 6) g.articles.push({ title: a.title.trim(), url: link, domain: a.domain ?? '' });
+    groups.set(c.cca2, g);
+  }
+  res.json([...groups.values()].sort((a, b) => b.count - a.count));
 });
 
-// ---------- country info (Nominatim + REST Countries) ----------
+// ---------- country info (Nominatim + world-countries) ----------
 r.get('/widgets/:id/map/country', async (req, res) => {
   await getWidget(req.params.id, 'worldmap');
   const lat = num(req.query.lat);
   const lon = num(req.query.lon);
   if (lat == null || lon == null) throw new HttpError(400, 'lat and lon are required');
   const geo = await getJson(
-    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=3&addressdetails=1&lat=${lat.toFixed(3)}&lon=${lon.toFixed(3)}`,
+    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=3&addressdetails=1&accept-language=en&lat=${lat.toFixed(3)}&lon=${lon.toFixed(3)}`,
     { ttl: 3600_000 },
   );
   const code = geo.address?.country_code?.toUpperCase();
   if (!code) return res.json({ none: true }); // open sea
-  const [c] = await getJson(
-    `https://restcountries.com/v3.1/alpha/${code}?fields=name,translations,capital,population,area,region,subregion,languages,currencies,flags,cca2,timezones`,
-    { ttl: 24 * 3600_000 },
-  ).then((x) => (Array.isArray(x) ? x : [x]));
+  const c = (await settled(countries()))?.find((x) => x.cca2 === code);
   res.json({
     code,
     name: c?.name?.common ?? geo.address.country,
     nameHu: c?.translations?.hun?.common ?? null,
     official: c?.name?.official ?? null,
     capital: c?.capital?.[0] ?? null,
-    population: c?.population ?? null,
     area: c?.area ?? null,
     region: [c?.region, c?.subregion].filter(Boolean).join(' · '),
     languages: Object.values(c?.languages ?? {}),
     currencyCodes: Object.keys(c?.currencies ?? {}),
-    currencies: Object.values(c?.currencies ?? {}).map((x) => `${x.name}${x.symbol ? ` (${x.symbol})` : ''}`),
-    flag: c?.flags?.svg ?? c?.flags?.png ?? null,
-    timezones: (c?.timezones ?? []).slice(0, 3),
+    currencies: Object.entries(c?.currencies ?? {}).map(([k, x]) => `${x.name}${x.symbol ? ` (${x.symbol})` : ` (${k})`}`),
+    flag: `https://flagcdn.com/${code.toLowerCase()}.svg`,
   });
 });
-
 
 // ---------- helpers for the extra layers ----------
 const lang = (req) => (req.query.lang === 'en' ? 'en' : 'hu');
@@ -217,7 +214,7 @@ r.get('/widgets/:id/map/events', async (req, res) => {
     const inGroup = group === 'hazards' ? !known.has(cat.id) : EVENT_GROUPS[group].includes(cat.id);
     const geo = ev.geometry?.[ev.geometry.length - 1];
     const c = geo && centre(geo);
-    if (inGroup && c) out.push({ id: ev.id, title: ev.title, cat: cat.title, lon: c[0], lat: c[1], date: geo.date, link: safeUrl(ev.link) ?? safeUrl(ev.sources?.[0]?.url) });
+    if (inGroup && c) out.push({ id: ev.id, title: ev.title, cat: cat.title, lon: c[0], lat: c[1], date: geo.date, link: safeUrl(ev.sources?.[0]?.url) ?? safeUrl(ev.link) });
   }
   res.json(out);
 });
@@ -290,18 +287,61 @@ r.get('/widgets/:id/map/species', async (req, res) => {
   );
 });
 
-// ---------- airports (Overpass / OpenStreetMap) ----------
+// ---------- airports (OurAirports open data) ----------
+// The whole list (~12 MB CSV) is loaded once a week and filtered here: no rate limits, works at any zoom.
+function csvRows(text) {
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quoted) {
+      if (ch === '"' && text[i + 1] === '"') (cell += '"'), i++;
+      else if (ch === '"') quoted = false;
+      else cell += ch;
+    } else if (ch === '"') quoted = true;
+    else if (ch === ',') row.push(cell), (cell = '');
+    else if (ch === '\n') row.push(cell), rows.push(row), (row = []), (cell = '');
+    else if (ch !== '\r') cell += ch;
+  }
+  if (cell || row.length) row.push(cell), rows.push(row);
+  return rows;
+}
+const airportList = () =>
+  cached('ourairports', 7 * 86_400_000, async () => {
+    let res;
+    try {
+      res = await fetch('https://cdn.jsdelivr.net/gh/davidmegginson/ourairports-data@main/airports.csv', { headers: { 'user-agent': UA }, signal: AbortSignal.timeout(60_000) });
+    } catch (err) {
+      throw new HttpError(502, `OurAirports: ${err.message}`);
+    }
+    if (!res.ok) throw new HttpError(502, `OurAirports: HTTP ${res.status}`);
+    const [head, ...rows] = csvRows(await res.text());
+    const col = Object.fromEntries(head.map((h, i) => [h, i]));
+    return rows
+      .filter((r) => (r[col.type] === 'large_airport' || r[col.type] === 'medium_airport') && r[col.iata_code])
+      .map((r) => ({
+        name: r[col.name],
+        iata: r[col.iata_code],
+        icao: r[col.icao_code] || null,
+        city: r[col.municipality] || null,
+        country: r[col.iso_country] || null,
+        large: r[col.type] === 'large_airport',
+        lat: Number(r[col.latitude_deg]),
+        lon: Number(r[col.longitude_deg]),
+        wiki: safeUrl(r[col.wikipedia_link]),
+      }))
+      .filter((a) => Number.isFinite(a.lat) && Number.isFinite(a.lon));
+  });
+
 r.get('/widgets/:id/map/airports', async (req, res) => {
   await getWidget(req.params.id, 'worldmap');
-  const [s, w, n, e] = bbox(req, 1);
-  if ((n - s) * (e - w) > 900) throw new HttpError(400, 'zoom in');
-  const query = `[out:json][timeout:20];nwr["aeroway"="aerodrome"]["iata"](${s},${w},${n},${e});out center 150;`;
-  const d = await getJson(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`, { ttl: 3600_000, timeout: 25_000 });
-  res.json(
-    (d.elements ?? [])
-      .map((x) => ({ name: x.tags?.name ?? x.tags?.['name:en'] ?? x.tags?.iata, iata: x.tags?.iata, icao: x.tags?.icao ?? null, lat: x.lat ?? x.center?.lat, lon: x.lon ?? x.center?.lon }))
-      .filter((a) => a.lat != null && a.lon != null),
-  );
+  const [s, w, n, e] = coord(req, 'lamin', 'lomin', 'lamax', 'lomax');
+  const wide = (n - s) * (e - w) > 900; // a big view only shows the big airports
+  const list = (await airportList()).filter((a) => a.lat >= s && a.lat <= n && a.lon >= w && a.lon <= e && (a.large || !wide));
+  list.sort((a, b) => Number(b.large) - Number(a.large));
+  res.json(list.slice(0, 400));
 });
 
 // ---------- city bike networks (CityBikes) ----------
@@ -349,7 +389,7 @@ r.get('/widgets/:id/map/point', async (req, res) => {
 });
 
 // ---------- country extras: holidays, World Bank, exchange rate ----------
-const WB = { gdpPc: 'NY.GDP.PCAP.CD', life: 'SP.DYN.LE00.IN', internet: 'IT.NET.USER.ZS', unemployment: 'SL.UEM.TOTL.ZS' };
+const WB = { population: 'SP.POP.TOTL', gdpPc: 'NY.GDP.PCAP.CD', life: 'SP.DYN.LE00.IN', internet: 'IT.NET.USER.ZS', unemployment: 'SL.UEM.TOTL.ZS' };
 r.get('/widgets/:id/map/country/extra', async (req, res) => {
   await getWidget(req.params.id, 'worldmap');
   const code = String(req.query.code ?? '').toUpperCase();

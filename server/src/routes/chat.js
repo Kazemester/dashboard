@@ -3,6 +3,7 @@ import { q } from '../db.js';
 import { chat, llmConfigured, NOT_CONFIGURED } from '../llm.js';
 import { agentTurn } from '../agent.js';
 import { getWidget, HttpError } from '../util.js';
+import { logAi } from '../activity.js';
 
 const r = Router();
 
@@ -51,6 +52,7 @@ r.post('/widgets/:id/chat', async (req, res) => {
     "INSERT INTO chat_messages (widget_id, role, content, meta) VALUES ($1, 'assistant', $2, $3) RETURNING id, role, content, meta, created_at",
     [w.id, answer, meta],
   );
+  logAi(w, text, meta);
   res.json(rows[0]);
 });
 

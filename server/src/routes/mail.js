@@ -4,6 +4,7 @@ import { simpleParser } from 'mailparser';
 import { q } from '../db.js';
 import { aiConfig, chat, isLocal, NOT_CONFIGURED } from '../llm.js';
 import { getWidget, HttpError } from '../util.js';
+import { logMail } from '../activity.js';
 import { resolveSecrets } from '../secrets.js';
 
 const r = Router();
@@ -206,6 +207,7 @@ export async function runDigest(widget) {
        (SELECT id FROM mail_digests WHERE widget_id = $1 ORDER BY id DESC LIMIT 5)`,
     [widget.id],
   );
+  logMail(widget, result);
   return rows[0];
 }
 
@@ -266,7 +268,7 @@ r.post('/widgets/:id/mail/run', async (req, res) => {
   if (running.has(w.id)) throw new HttpError(409, 'Digest already running');
   running.add(w.id);
   try {
-    res.json(await runDigest(w));
+    res.json(await runDigest(w).catch((err) => { logMail(w, null, err); throw err; }));
   } finally {
     running.delete(w.id);
   }
@@ -285,7 +287,7 @@ export function startMailScheduler() {
         if (!due || running.has(w.id)) continue;
         running.add(w.id);
         runDigest(w)
-          .catch((err) => console.error(`[mail] ${w.title}: ${err.message}`))
+          .catch((err) => { logMail(w, null, err); console.error(`[mail] ${w.title}: ${err.message}`); })
           .finally(() => running.delete(w.id));
       }
     } catch (err) {

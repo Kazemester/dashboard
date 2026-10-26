@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { q } from '../db.js';
 import { getWidget } from '../util.js';
+import { logFocus } from '../activity.js';
 
 const r = Router();
 
@@ -31,6 +32,7 @@ r.post('/widgets/:id/pomodoro', async (req, res) => {
     kind,
     Math.max(0, Math.round(duration_sec)),
   ]);
+  logFocus(req.params.id, kind, duration_sec);
   res.status(201).json(await stats(req.params.id));
 });
 

@@ -27,10 +27,10 @@ export const LAYERS = {
   aurora: { icon: '✧', label: 'Sarki fény', hint: 'NOAA SWPC' },
   radar: { icon: '☂', label: 'Eső radar', hint: 'RainViewer' },
   countries: { icon: '⚑', label: 'Kattintásra info', hint: 'Open-Meteo, REST Countries, World Bank…' },
-  news: { icon: '☰', label: 'Hírek', hint: 'GDELT' },
+  news: { icon: '☰', label: 'Hírek (forrásország szerint)', hint: 'GDELT' },
   wiki: { icon: 'W', label: 'Wikipédia a közelben', hint: 'Wikipedia' },
   species: { icon: '❀', label: 'Fajmegfigyelések', hint: 'GBIF' },
-  airports: { icon: '⌂', label: 'Repterek', hint: 'Overpass / OSM' },
+  airports: { icon: '⌂', label: 'Repterek', hint: 'OurAirports' },
   bikes: { icon: '⚲', label: 'Városi bicikli', hint: 'CityBikes' },
   seamarks: { icon: '⚓', label: 'Hajózási jelek', hint: 'OpenSeaMap' },
   rail: { icon: '⛓', label: 'Vasút', hint: 'OpenRailwayMap' },
@@ -64,7 +64,8 @@ const GIBS = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best';
 /** Base maps: [url, options]. */
 export const baseTiles = () => ({
   osm: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, className: 'wm-osm', attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>' }],
-  dark: ['https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 19, attribution: '© OpenStreetMap · © <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>' }],
+  // CARTO's free dark tiles now need an API key, so the dark base is Esri's Dark Gray Canvas
+  dark: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxNativeZoom: 16, maxZoom: 19, attribution: 'Tiles © <a href="https://www.esri.com" target="_blank" rel="noopener noreferrer">Esri</a> — Esri, HERE, Garmin, © OpenStreetMap' }],
   topo: ['https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { subdomains: 'abc', maxZoom: 17, className: 'wm-topo', attribution: '© OpenStreetMap · © <a href="https://opentopomap.org" target="_blank" rel="noopener noreferrer">OpenTopoMap</a>' }],
   nasa: [`${GIBS}/MODIS_Terra_CorrectedReflectance_TrueColor/default/${day(-1)}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`, { maxNativeZoom: 9, maxZoom: 12, attribution: 'NASA GIBS · MODIS' }],
   night: [`${GIBS}/VIIRS_Black_Marble/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png`, { maxNativeZoom: 8, maxZoom: 12, attribution: 'NASA GIBS · VIIRS Black Marble' }],
@@ -203,7 +204,7 @@ export const DATA = {
       for (const p of list) {
         dot(p.lat, p.lon, 4 + Math.min(10, Math.log2(p.count + 1) * 2), cssVar('--accent', '#67e8f9'), 0.3)
           .addTo(g)
-          .bindPopup(() => el('div', 'wm-pop', el('b', null, p.place), p.articles.map((a) => el('div', 'wm-art', link(a.url, a.title)))), popup({ maxWidth: 300 }));
+          .bindPopup(() => el('div', 'wm-pop', el('b', null, getLang() === 'hu' && p.placeHu ? p.placeHu : p.place), el('div', 'wm-sci', t('{n} cikk az elmúlt napban', { n: p.count })), p.articles.map((a) => el('div', 'wm-art', link(a.url, a.title), a.domain && el('span', 'wm-dom', ` · ${a.domain}`)))), popup({ maxWidth: 320 }));
       }
       return `${list.length}`;
     },
@@ -247,12 +248,12 @@ export const DATA = {
 
   airports: {
     view: true,
-    path: (m) => (m.getZoom() < 5 ? null : `airports?${viewQuery(m)}`),
+    path: (m) => `airports?${viewQuery(m)}`,
     draw(list, g) {
       for (const a of list) {
-        dot(a.lat, a.lon, 5, '#f5f5f5', 0.7)
+        dot(a.lat, a.lon, a.large ? 5 : 3.5, cssVar('--text', '#f5f5f5'), 0.55)
           .addTo(g)
-          .bindPopup(() => el('div', 'wm-pop', el('b', null, a.name), row('IATA', a.iata), row('ICAO', a.icao)), popup());
+          .bindPopup(() => el('div', 'wm-pop', el('b', null, a.name), row(t('Város'), [a.city, a.country].filter(Boolean).join(', ')), row('IATA', a.iata), row('ICAO', a.icao), a.wiki && link(a.wiki, 'Wikipedia ↗')), popup());
       }
       return `${list.length}`;
     },

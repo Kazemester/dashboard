@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { q } from '../db.js';
 import { getWidget, HttpError } from '../util.js';
+import { logItem } from '../activity.js';
 
 // Generic storage used by simple widgets (todo, counter, mood, expenses, metric log, notes).
 const r = Router();
@@ -34,6 +35,7 @@ r.post('/widgets/:id/items', async (req, res) => {
      RETURNING ${COLS}`,
     [req.params.id, kind, day, value, JSON.stringify(data), sort ?? null],
   );
+  logItem('add', req.params.id, rows[0]);
   res.status(201).json(rows[0]);
 });
 
@@ -66,6 +68,7 @@ r.patch('/items/:iid', async (req, res) => {
     [req.params.iid, day ?? null, value ?? null, data ? JSON.stringify(data) : null, sort ?? null],
   );
   if (!rows[0]) throw new HttpError(404, 'Item not found');
+  logItem('update', null, rows[0], req.body);
   res.json(rows[0]);
 });
 
