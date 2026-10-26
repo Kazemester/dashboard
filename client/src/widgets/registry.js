@@ -33,6 +33,8 @@ import HomeAssistant from './HomeAssistant.jsx';
 import Brief from './Brief.jsx';
 import Stocks from './Stocks.jsx';
 import WorldMap from './WorldMap.jsx';
+import financeTiles from './registry.finance.js';
+import activityTiles from './registry.activity.js';
 
 export const CATEGORIES = {
   focus: 'Fókusz & feladatok',
@@ -723,6 +725,8 @@ const PRESETS = [
     size: { w: 4, h: 6, minW: 3, minH: 3 },
   },
 ];
+
+Object.assign(REGISTRY, financeTiles, activityTiles);
 
 export const CATALOG = [
   ...Object.entries(REGISTRY).map(([type, d]) => ({ key: type, type, ...d })),
