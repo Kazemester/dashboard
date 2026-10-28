@@ -47,8 +47,8 @@
 .tile-cats .eyebrow { padding: 2px 4px 6px; }
 .grow { flex: 1; min-width: 0; }
 .small { font-size: 12.5px; }
-.sheet-overlay { align-items: flex-end; justify-content: center; }
-.sheet { width: 100%; max-height: 82vh; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px calc(14px + env(safe-area-inset-bottom)); background: var(--surface); border: 1px solid var(--line-strong); border-bottom: 0; border-radius: 22px 22px 0 0; animation: sheet-up 0.22s ease-out; }
+.sheet-overlay { align-items: flex-end; justify-content: center; padding: 0 0 var(--kb, 0px); transition: padding-bottom 0.15s ease-out; }
+.sheet { width: 100%; max-height: min(82vh, calc(var(--vvh, 100vh) - 16px)); display: flex; flex-direction: column; gap: 10px; padding: 12px 14px calc(14px + env(safe-area-inset-bottom)); background: var(--surface); border: 1px solid var(--line-strong); border-bottom: 0; border-radius: 22px 22px 0 0; animation: sheet-up 0.22s ease-out; }
 @keyframes sheet-up { from { transform: translateY(30px); opacity: 0; } }
 .sheet-head { display: flex; align-items: center; gap: 8px; }
 .sheet-head .eyebrow { flex: 1; }
@@ -84,7 +84,7 @@
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
 }
-.rail-list { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; overflow-x: visible; scrollbar-width: none; }
+.rail-list { display: flex; flex-direction: column; gap: 4px; min-height: 0; flex: 0 1 auto; overflow-y: auto; overflow-x: visible; scrollbar-width: none; }
 .rail-list::-webkit-scrollbar { display: none; }
 .rail-tools { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--line); padding-top: 4px; }
 .rail-item { position: relative; width: 44px; height: 44px; flex: none; border-radius: 50%; border: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; background: transparent; color: var(--muted); transition: background 0.15s, color 0.15s; }
@@ -101,7 +101,8 @@
 }
 /* phone: lower right, in reach of the thumb, with a tiny label under each icon */
 @media (max-width: 767px) {
-  .rail { right: 6px; top: auto; transform: none; bottom: calc(84px + env(safe-area-inset-bottom)); max-height: calc(100vh - 230px); border-radius: 26px; padding: 6px 4px; }
+  /* centred on the screen's vertical midline whatever its length; long lists scroll inside, clear of header and dock */
+  .rail { right: 6px; top: 50%; bottom: auto; transform: translateY(-50%); max-height: calc(100dvh - 2 * (88px + env(safe-area-inset-bottom))); border-radius: 26px; padding: 6px 4px; }
   .rail-item { width: 50px; height: 50px; border-radius: 16px; gap: 3px; }
   .rail-lb { display: block; max-width: 48px; font-size: 9px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rail-ic { font-size: 16px; }
