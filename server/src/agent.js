@@ -682,6 +682,46 @@ async function snapshot(budget) {
   return clip(parts.join('\n\n'), budget);
 }
 
+// Which tiles a question is about: by tile kind keywords, or a word of the tile's title in the question.
+const TOPICS = {
+  maildigest: /e-?mail|levél|level|levelek|inbox|posta|mail/i,
+  todo: /teend|feladat|to-?do|tennivaló/i,
+  calendar: /naptár|esemény|program|találkoz|meeting|holnap|ma\b/i,
+  countdown: /szülinap|születésnap|évforduló|visszaszámlál|hány nap/i,
+  weather: /időjárás|eső|esik|hőmérséklet|fok|szél|hideg|meleg|weather/i,
+  stocks: /árfolyam|tőzsde|részvény|usd|eur|huf|bitcoin|arany|ár\b|price|stock/i,
+  crypto: /kripto|bitcoin|btc|eth/i,
+  expenses: /kiadás|költ|pénz|keret|budget|bevétel/i,
+  budget: /keret|költ|budget/i,
+  balance: /egyenleg|számla|pénz|balance/i,
+  cashflow: /bevétel|kiadás|megtakarít/i,
+  kpi: /bevétel|kiadás|mutató|megtakarít/i,
+  habits: /szokás|habit/i,
+  notes: /jegyzet|note/i,
+  news: /hír|news/i,
+  rss: /hír|news/i,
+  brief: /brief|összefoglal|napi/i,
+  activity: /történt|aktivitás|esemény/i,
+  air: /levegő|pollen|szmog|aqi/i,
+};
+async function questionContext(question, budget) {
+  const exec = makeExecutor({ mode: 'read' });
+  const tiles = await exec.run('list_tiles');
+  const q = fold(question);
+  const words = (t) => fold(t).split(/[^a-z0-9]+/).filter((w) => w.length > 3);
+  const hits = tiles.filter((t) => TOPICS[t.type]?.test(question) || words(t.title).some((w) => q.includes(w)));
+  // nothing matched (e.g. "Mi újság?"): a light overview of everything
+  const chosen = (hits.length ? hits : tiles).slice(0, hits.length ? 5 : 12);
+  const per = hits.length ? Math.floor(budget / chosen.length) : 400;
+  const parts = [];
+  for (const t of chosen) {
+    const r = await exec.run('read_tile', { id: t.id }).catch(() => null);
+    parts.push(`## ${t.title} (${t.type})\n${clip(r?.content ?? r?.config, per)}`);
+  }
+  const others = tiles.filter((t) => !chosen.includes(t)).map((t) => t.title);
+  return clip(parts.join('\n\n') + (others.length ? `\n\nOther tiles (not shown): ${others.join(', ')}` : ''), budget);
+}
+
 // Small local models get confused by the generic tile_api tool and its long guide; they get the named tools only.
 function toolsFor(mode, local) {
   const write = mode === 'full' ? TOOLS.write.filter((t) => !(local && t.function.name === 'tile_api')) : [];
@@ -705,7 +745,7 @@ const metaOf = (exec, extra = {}) => ({
 // What the user last asked (history may end with the bot's own nudges in older runs; skip those).
 const lastUserText = (history) => [...history].reverse().find((m) => m.role === 'user')?.content ?? '';
 // Imperative verbs (Hungarian prefixes / English words): the user wants something DONE, not explained.
-const COMMAND = /(^|[\s,.;:!?(])(adj|add|tegy|rakj|rak\b|vegy|vedd|kapcsol|állít|írj|pipál|mozg|nagyít|kicsiny|cser|módosít|hozz létre|készít|töröl|távolít|helyez|nyiss)|\b(add|create|put|set|turn|switch|change|remove|delete|make|move|resize|tick|replace|insert|place)\b/i;
+const COMMAND = /(^|[\s,.;:!?(])(adj|add|tedd|tegy|rakj|rakd|rak\b|vegy|vedd|kapcsol|állít|írj|írd|pipál|jelöld|mozg|húzd|told|nagyít|kicsiny|cser|módosít|hozz létre|készít|csinálj|töröl|távolít|helyez|nyiss|nyisd|legyen|frissít|indíts|küldd|ments|nevezd)|\b(add|create|put|set|turn|switch|change|remove|delete|make|move|resize|tick|replace|insert|place)\b/i;
 const looksHungarian = (t) => /[áéíóöőúüű]/i.test(t) || /\b(egy|csempe|csempét|legyen|kérem|szia|tegyél|adj|mutasd)\b/i.test(t);
 const HU_HINT = 'Mindig magyarul válaszolj (Always answer in Hungarian).';
 const EN_HINT = 'Always answer in English.';
@@ -753,7 +793,7 @@ async function planWithJson({ history, persona, model, catalog, exec, state, too
   const writeTools = tools.filter((t) => !['list_tiles', 'read_tile', 'list_tile_types', 'tile_api'].includes(t.function.name));
   const types = catalog ? Object.entries(catalog).map(([t, d]) => `${t}=${d.name}[${(d.fields ?? []).map((f) => f.key).join(',')}]`).join('; ') : '';
   const tiles = state.widgets.map((w) => `${w.title} (${w.type})`).join('; ') || '(none)';
-  const hu = curLang === 'hu' && looksHungarian(lastUserText(history));
+  const hu = curLang === 'hu';
   const sys = [
     persona ? `${persona}\n` : '',
     "You operate the user's personal dashboard. Work out what the user wants and answer with ONE JSON object and nothing else:",
@@ -803,7 +843,7 @@ export async function agentTurn({ history, persona, model, catalog, mode, lang }
   const local = isLocal(cfg.baseUrl);
   const tools = toolsFor(mode, local);
   const exec = makeExecutor({ catalog, mode, tools });
-  const messages = [{ role: 'system', content: systemPrompt({ persona, state, catalog, mode, local, hu: curLang === 'hu' && looksHungarian(lastUserText(history)) }) }, ...history.slice(-12)];
+  const messages = [{ role: 'system', content: systemPrompt({ persona, state, catalog, mode, local, hu: curLang === 'hu' }) }, ...history.slice(-12)];
   const resultLimit = local ? 3000 : 9000;
   let planned = false;
   // Executes the JSON plan; returns the finished turn, or null when the planner found nothing to change.
@@ -817,6 +857,16 @@ export async function agentTurn({ history, persona, model, catalog, mode, lang }
     if (fb?.error) return { answer: `${L('Nem sikerült', 'Failed')}: ${fb.error}`, meta: metaOf(exec) };
     return null;
   };
+
+  // A small local model, asked a question (no command): no tools at all. It gets the contents of the tiles the
+  // question is about and only has to answer — it cannot wander off calling random tools, and it is faster.
+  const asked = lastUserText(history);
+  if (local && mode !== 'off' && !COMMAND.test(asked) && process.env.AGENT_FORCE_JSON !== '1') {
+    const ctx = await questionContext(asked, 5000);
+    const sys = `${systemPrompt({ persona, state, catalog, mode: 'read', local, hu: curLang === 'hu' })}\n\nThe tile contents that belong to the user's question:\n${ctx}\n\nAnswer the user's message from these contents, briefly and naturally. If the answer is not in them, say so. Do not invent mails, events or numbers. If the user wants something changed, ask them to say it as a command (e.g. „Tedd ki…”, „Vegyél fel…”).`;
+    const msg = await complete([{ role: 'system', content: sys }, ...history.slice(-8)], { model, temperature: 0.3 });
+    return { answer: msg.content?.trim() || L('(nincs válasz)', '(no answer)'), meta: metaOf(exec) };
+  }
 
   // test hook: skip the model's native tool calling and always use the JSON planner
   if (process.env.AGENT_FORCE_JSON === '1' && mode === 'full') {
@@ -871,7 +921,7 @@ export async function agentTurn({ history, persona, model, catalog, mode, lang }
       if (done) return done;
     }
     const snap = await snapshot(local ? 5000 : 20000);
-    const sys = `${systemPrompt({ persona, state, catalog, mode: 'read', local, hu: curLang === 'hu' && looksHungarian(lastUserText(history)) })}\n\nThis model cannot use tools. Current tile contents:\n${snap}\n\nYou cannot change anything; if asked to, say that this model can't do it and suggest a model with tool support (e.g. qwen2.5 / qwen3 / llama3.1 in Ollama, or a cloud model).`;
+    const sys = `${systemPrompt({ persona, state, catalog, mode: 'read', local, hu: curLang === 'hu' })}\n\nThis model cannot use tools. Current tile contents:\n${snap}\n\nYou cannot change anything; if asked to, say that this model can't do it and suggest a model with tool support (e.g. qwen2.5 / qwen3 / llama3.1 in Ollama, or a cloud model).`;
     const msg = await complete([{ role: 'system', content: sys }, ...history.slice(-12)], { model, temperature: 0.3 });
     let answer = msg.content || L('(nincs válasz)', '(no answer)');
     if (CLAIM.test(answer)) answer = `${answer}\n\n${L('⚠ Ez a modell nem tud eszközt használni, ezért semmit nem változtatott a dashboardon.', '⚠ This model cannot use tools, so it changed nothing on the dashboard.')}`;
