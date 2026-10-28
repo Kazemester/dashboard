@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
-import AiError from '../components/AiHint.jsx';
+import AiError, { openAiSettings } from '../components/AiHint.jsx';
 import { announce, catalog, Meta } from '../widgets/Chat.jsx';
 import { getLang, t } from '../i18n.js';
 
@@ -149,6 +149,17 @@ export default function Assistant({ mode, open, onClose }) {
         <div className="sheet asst-sheet" onClick={(e) => e.stopPropagation()}>
           <div className="sheet-head">
             <span className="eyebrow">{t('AI asszisztens')}</span>
+            <button
+              className="icon-btn"
+              onClick={() => {
+                onClose();
+                openAiSettings();
+              }}
+              title={t('AI beállítása')}
+              aria-label={t('AI beállítása')}
+            >
+              ⚙
+            </button>
             {a.log?.length > 0 && (
               <button className="btn btn-ghost sm" onClick={a.clear}>
                 {t('Törlés')}
@@ -171,13 +182,16 @@ export default function Assistant({ mode, open, onClose }) {
       {focus && (
         <div className="asst-panel pop">
           <Log a={a} endRef={endRef} />
-          {a.log?.length > 0 && (
-            <div className="asst-foot">
+          <div className="asst-foot">
+            <button className="btn btn-ghost sm" onClick={openAiSettings}>
+              ⚙ {t('AI beállítása')}
+            </button>
+            {a.log?.length > 0 && (
               <button className="btn btn-ghost sm" onClick={a.clear}>
                 {t('Beszélgetés törlése')}
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
     </div>
