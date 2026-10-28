@@ -46,4 +46,10 @@ export default {
   'Ollama (a szerveren)': 'Ollama (on the server)',
   'A dashboarddal együtt Dockerben futó Ollama: docker compose --profile ollama up -d, majd docker compose exec ollama ollama pull qwen2.5:3b': 'Ollama running in Docker next to the dashboard: docker compose --profile ollama up -d, then docker compose exec ollama ollama pull qwen2.5:3b',
   'Még nincs letöltött modell: a szerveren futtasd: docker compose exec ollama ollama pull qwen2.5:3b ': 'No model downloaded yet: on the server run: docker compose exec ollama ollama pull qwen2.5:3b ',
+  'A belépésed lejárt: töltsd újra az oldalt, és lépj be újra.': 'Your login has expired: reload the page and sign in again.',
+  'Nem érem el a szervert (hálózati hiba). Ellenőrizd a kapcsolatot, és próbáld újra.': 'Cannot reach the server (network error). Check your connection and try again.',
+  'A szerver épp nem válaszol (újraindul?). Próbáld újra pár másodperc múlva.': 'The server is not answering right now (restarting?). Try again in a few seconds.',
+  'A kérés túl sokáig tartott, a Cloudflare megszakította. Próbáld újra.': 'The request took too long and Cloudflare cut it off. Try again.',
+  'A szerver nem érhető el (a tunnel nem fut?).': 'The server is unreachable (is the tunnel running?).',
+  'Az AI nem válaszolt időben. Próbáld újra, vagy válassz kisebb modellt.': 'The AI did not answer in time. Try again, or pick a smaller model.',
 };

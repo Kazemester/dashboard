@@ -85,7 +85,7 @@ export default function Chat({ widget }) {
     const tmpId = `tmp-${Date.now()}`;
     setData((m) => [...(m ?? []), { id: tmpId, role: 'user', content }]);
     try {
-      const reply = await api.post(`/widgets/${widget.id}/chat`, { content, lang: getLang(), catalog: widget.config.access === 'off' ? undefined : catalog() });
+      const reply = await api.postJob(`/widgets/${widget.id}/chat`, { content, lang: getLang(), catalog: widget.config.access === 'off' ? undefined : catalog() });
       setData((m) => [...m, reply]);
       announce(reply.meta);
     } catch (e2) {

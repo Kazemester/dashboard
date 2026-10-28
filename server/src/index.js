@@ -24,6 +24,7 @@ import finance from './routes/finance.js';
 import activity from './routes/activity.js';
 import assistant from './routes/assistant.js';
 import notifications from './routes/notifications.js';
+import { jobRoutes } from './jobs.js';
 import ai from './routes/ai.js';
 import render, { recoverRenders } from './routes/render.js';
 
@@ -85,7 +86,7 @@ app.get('/api/status', async (_req, res) => {
   res.json({ llm: ai.configured, model: ai.model });
 });
 
-for (const router of [dashboard, habits, progress, pomodoro, calendar, feeds, chatRoutes, mail, items, system, markets, env, homeassistant, brief, stocks, map, finance, activity, assistant, notifications, ai, render]) {
+for (const router of [dashboard, habits, progress, pomodoro, calendar, feeds, chatRoutes, mail, items, system, markets, env, homeassistant, brief, stocks, map, finance, activity, assistant, notifications, jobRoutes, ai, render]) {
   app.use('/api', router);
 }
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));

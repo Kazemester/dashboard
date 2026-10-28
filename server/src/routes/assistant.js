@@ -3,6 +3,7 @@ import { q } from '../db.js';
 import { llmConfigured, NOT_CONFIGURED } from '../llm.js';
 import { agentTurn } from '../agent.js';
 import { HttpError } from '../util.js';
+import { startJob } from '../jobs.js';
 
 /*
  * The AI command bar in the header: the same dashboard agent as the AI Chat tile, without needing a tile.
@@ -37,16 +38,21 @@ r.post('/assistant', async (req, res) => {
   const past = await history();
   const catalog = req.body?.catalog && typeof req.body.catalog === 'object' ? req.body.catalog : null;
   const turn = [...past.slice(-12).map(({ role, content }) => ({ role, content })), { role: 'user', content: text }];
-  let answer;
-  let meta;
-  try {
-    ({ answer, meta } = await agentTurn({ lang: req.body?.lang, history: turn, catalog, mode: 'full' }));
-  } catch (err) {
-    throw new HttpError(err.status || 502, err.message);
-  }
-  const at = new Date().toISOString();
-  await save([...past, { role: 'user', content: text, at }, { role: 'assistant', content: answer, meta, at }]);
-  res.json({ answer, meta });
+  const lang = req.body?.lang;
+  // runs in the background: a slow model must not hit the proxy's request time limit (see jobs.js)
+  const job = startJob(async () => {
+    let answer;
+    let meta;
+    try {
+      ({ answer, meta } = await agentTurn({ lang, history: turn, catalog, mode: 'full' }));
+    } catch (err) {
+      throw new HttpError(err.status || 502, err.message);
+    }
+    const at = new Date().toISOString();
+    await save([...(await history()), { role: 'user', content: text, at }, { role: 'assistant', content: answer, meta, at }]);
+    return { answer, meta };
+  });
+  res.status(202).json({ job });
 });
 
 export default r;

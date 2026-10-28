@@ -4,6 +4,7 @@ import { chat, llmConfigured, NOT_CONFIGURED } from '../llm.js';
 import { agentTurn } from '../agent.js';
 import { getWidget, HttpError } from '../util.js';
 import { logAi } from '../activity.js';
+import { startJob } from '../jobs.js';
 
 const r = Router();
 
@@ -32,28 +33,33 @@ r.post('/widgets/:id/chat', async (req, res) => {
   );
   // Dashboard access: 'full' (read + change), 'read' or 'off' (plain chat). Older tiles have no setting → full.
   const access = ['off', 'read', 'full'].includes(w.config.access) ? w.config.access : 'full';
-  let answer;
-  let meta = null;
-  try {
-    if (access === 'off') {
-      const system = w.config.systemPrompt || 'You are NEXUS, a concise, helpful assistant living in a sci-fi dashboard.';
-      answer = await chat([{ role: 'system', content: system }, ...history.reverse()], { model: w.config.model || undefined });
-    } else {
-      // the client sends the tile catalog (names, settings fields), which lives in the frontend registry
-      const catalog = req.body?.catalog && typeof req.body.catalog === 'object' ? req.body.catalog : null;
-      ({ answer, meta } = await agentTurn({ lang: req.body?.lang, history: history.reverse(), persona: w.config.systemPrompt, model: w.config.model || undefined, catalog, mode: access }));
+  // the client sends the tile catalog (names, settings fields), which lives in the frontend registry
+  const catalog = req.body?.catalog && typeof req.body.catalog === 'object' ? req.body.catalog : null;
+  const lang = req.body?.lang;
+  // runs in the background: a slow model must not hit the proxy's request time limit (see jobs.js)
+  const job = startJob(async () => {
+    let answer;
+    let meta = null;
+    try {
+      if (access === 'off') {
+        const system = w.config.systemPrompt || 'You are NEXUS, a concise, helpful assistant living in a sci-fi dashboard.';
+        answer = await chat([{ role: 'system', content: system }, ...history.reverse()], { model: w.config.model || undefined });
+      } else {
+        ({ answer, meta } = await agentTurn({ lang, history: history.reverse(), persona: w.config.systemPrompt, model: w.config.model || undefined, catalog, mode: access }));
+      }
+    } catch (err) {
+      // Don't leave an unanswered question in the history.
+      await q('DELETE FROM chat_messages WHERE id = $1', [userMsg.id]);
+      throw new HttpError(err.status || 502, err.message);
     }
-  } catch (err) {
-    // Don't leave an unanswered question in the history.
-    await q('DELETE FROM chat_messages WHERE id = $1', [userMsg.id]);
-    throw new HttpError(err.status || 502, err.message);
-  }
-  const { rows } = await q(
-    "INSERT INTO chat_messages (widget_id, role, content, meta) VALUES ($1, 'assistant', $2, $3) RETURNING id, role, content, meta, created_at",
-    [w.id, answer, meta],
-  );
-  logAi(w, text, meta);
-  res.json(rows[0]);
+    const { rows } = await q(
+      "INSERT INTO chat_messages (widget_id, role, content, meta) VALUES ($1, 'assistant', $2, $3) RETURNING id, role, content, meta, created_at",
+      [w.id, answer, meta],
+    );
+    logAi(w, text, meta);
+    return rows[0];
+  });
+  res.status(202).json({ job });
 });
 
 r.delete('/widgets/:id/chat', async (req, res) => {

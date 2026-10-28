@@ -25,7 +25,7 @@ function useAssistant() {
     setBusy(true);
     setLog((l) => [...(l ?? []), { role: 'user', content }]);
     try {
-      const reply = await api.post('/assistant', { content, lang: getLang(), catalog: catalog() });
+      const reply = await api.postJob('/assistant', { content, lang: getLang(), catalog: catalog() });
       setLog((l) => [...l, { role: 'assistant', content: reply.answer, meta: reply.meta }]);
       announce(reply.meta);
       return true;
