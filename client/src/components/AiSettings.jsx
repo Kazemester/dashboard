@@ -9,6 +9,7 @@ const PRESETS = [
   { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini', keyUrl: 'https://platform.openai.com/api-keys', needsKey: true },
   { id: 'openrouter', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', model: 'x-ai/grok-4', keyUrl: 'https://openrouter.ai/keys', needsKey: true },
   { id: 'ollama', name: 'Ollama (helyi, ingyenes)', baseUrl: 'http://host.docker.internal:11434/v1', model: 'llama3.1', needsKey: false },
+  { id: 'ollama-server', name: 'Ollama (a szerveren)', baseUrl: 'http://ollama:11434/v1', model: 'qwen2.5:3b', needsKey: false },
   { id: 'custom', name: 'Egyéni', baseUrl: '', model: '', needsKey: true },
 ];
 const presetOf = (url) => PRESETS.find((p) => p.baseUrl && url?.startsWith(p.baseUrl))?.id ?? 'custom';
@@ -139,6 +140,7 @@ export default function AiSettings({ onClose, onSaved }) {
                   </>
                 )}
                 {preset === 'ollama' && t('Telepítsd az Ollamát a gépedre, majd: ollama pull llama3.1 — a levelek így nem hagyják el a gépet.')}
+                {preset === 'ollama-server' && t('A dashboarddal együtt Dockerben futó Ollama: docker compose --profile ollama up -d, majd docker compose exec ollama ollama pull qwen2.5:3b')}
               </span>
             </label>
             <label className="form-row">
@@ -155,6 +157,7 @@ export default function AiSettings({ onClose, onSaved }) {
                 </div>
               ) : null}
               <span className="help">
+                {models?.length === 0 && preset === 'ollama-server' && t('Még nincs letöltött modell: a szerveren futtasd: docker compose exec ollama ollama pull qwen2.5:3b ')}
                 {models?.length === 0 && preset === 'ollama' && t('Még nincs letöltött modell: futtasd a terminálban: ollama pull qwen2.5:7b — csak a nevet írd ide (qwen2.5:7b). ')}
                 {models?.length > 0 ? t('A szolgáltató által elérhető modellek — kattints egyre. ') : t('Mentés után itt megjelennek a szolgáltató elérhető modelljei. ')}
                 {modelsErr && <span className="danger-text">{modelsErr} </span>}

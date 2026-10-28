@@ -43,4 +43,7 @@ export default {
   'Minden csempéd benne van már ebben a kategóriában.': 'All your tiles are already in this category.',
   'Új csempe a katalógusból': 'New tile from the catalog',
   'Vision sötét': 'Vision dark',
+  'Ollama (a szerveren)': 'Ollama (on the server)',
+  'A dashboarddal együtt Dockerben futó Ollama: docker compose --profile ollama up -d, majd docker compose exec ollama ollama pull qwen2.5:3b': 'Ollama running in Docker next to the dashboard: docker compose --profile ollama up -d, then docker compose exec ollama ollama pull qwen2.5:3b',
+  'Még nincs letöltött modell: a szerveren futtasd: docker compose exec ollama ollama pull qwen2.5:3b ': 'No model downloaded yet: on the server run: docker compose exec ollama ollama pull qwen2.5:3b ',
 };

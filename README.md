@@ -344,6 +344,13 @@ A VM-en nem kell portot nyitni: a Cloudflare Tunnel és az Access ugyanúgy mara
 3. A régi gépen állítsd le a tunnelt (`docker compose stop cloudflared`), különben a Cloudflare a két gép között váltogatna.
 4. A VM-en: `docker compose --profile tunnel up -d --build`.
 
+### Ollama a szerveren (VM)
+A dashboard mellett Dockerben futó Ollama, GPU nélkül (kis modellekhez elég a processzor):
+1. Az `.env`-be: `COMPOSE_PROFILES=tunnel,ollama` (így a sima `docker compose up -d` is elindítja).
+2. `docker compose up -d --build`, majd a modell letöltése: `docker compose exec ollama ollama pull qwen2.5:3b`.
+3. A fejléc **AI** gombja → **Ollama (a szerveren)** (`http://ollama:11434/v1`), modell: `qwen2.5:3b` → Mentés.
+Egy 2 magos ARM gépen a 3B-s modell néhány szót ír másodpercenként; a 7B-s (`qwen2.5:7b`) okosabb, de kb. feleolyan gyors. A modell a memóriában marad (24 óra), így a második kérdéstől nincs betöltési várakozás.
+
 ### AI a VM-en
 
 Egy átlagos VM-nek nincs videokártyája, ezért a helyi modellek (Ollama, ComfyUI) ott nagyon lassúak. Lehetőségek:
