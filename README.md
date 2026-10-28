@@ -337,6 +337,13 @@ Nem kell fix IP, nem kell portot nyitni, és elé egy Cloudflare-belépés kerü
 4. Zero Trust → Access → Applications → Add an application → Self-hosted: domain `dash.tinyaiapp.com`, policy **Allow**, szabály: *Emails* = a saját címed. Belépési mód: One-time PIN (e-mailben kapott kód).
 5. Indítás: `docker compose --profile tunnel up -d`. Ezután a `https://dash.tinyaiapp.com` bárhonnan elérhető, de csak neked.
 
+### D) Költözés VM-re (pl. Oracle Always Free), ugyanazzal a tunnellel
+A VM-en nem kell portot nyitni: a Cloudflare Tunnel és az Access ugyanúgy marad.
+1. A VM-en (Ubuntu): klónozd a repót, majd a projekt mappájában `scripts/vm-setup.sh` (Dockert telepít; első futás után ki kell lépni és újra belépni, majd újra futtatni). Megírja az `.env`-et véletlen adatbázis-jelszóval, és bekéri a tunnel tokenjét.
+2. Az adatok átvitele: a régi gépen `scripts/db-backup.sh` (egy `nexus-backup.sql` fájl lesz belőle), ezt másold át a VM-re (`scp`), és ott `scripts/db-restore.sh nexus-backup.sql`.
+3. A régi gépen állítsd le a tunnelt (`docker compose stop cloudflared`), különben a Cloudflare a két gép között váltogatna.
+4. A VM-en: `docker compose --profile tunnel up -d --build`.
+
 ### AI a VM-en
 
 Egy átlagos VM-nek nincs videokártyája, ezért a helyi modellek (Ollama, ComfyUI) ott nagyon lassúak. Lehetőségek:
