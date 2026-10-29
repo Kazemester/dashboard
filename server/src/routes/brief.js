@@ -136,7 +136,8 @@ r.post('/widgets/:id/brief/run', async (req, res) => {
         text = await chat(
           [
             { role: 'system', content: persona },
-            { role: 'user', content: JSON.stringify(ctx) },
+            // small models drift into English after an English-keyed JSON: say the language last, too
+          { role: 'user', content: `${JSON.stringify(ctx)}\n\n${/^(hu|hungarian|magyar)/i.test(cfg.language || 'Hungarian') ? 'Írd meg a briefet MAGYARUL.' : `Write the briefing in ${cfg.language}.`}` },
           ],
           { model: cfg.model || undefined, temperature: 0.6 },
         );

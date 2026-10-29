@@ -170,6 +170,32 @@ function groundDigest(d, mails) {
 
 const MAIL_KEEP = 1200; // characters of each email body kept for questions
 
+// Small models drift into English when the mails are English: repeat the language after the mails too
+// (models follow what they read last), and check the result.
+const isHungarian = (lang) => /^(hu|hungarian|magyar)/i.test(String(lang || 'Hungarian').trim());
+const langReminder = (lang) => (isHungarian(lang) ? '\n\nMinden szöveges értéket MAGYARUL írj (Write every value in Hungarian), a kulcsok maradjanak angolul.' : `\n\nWrite every value in ${lang}.`);
+function looksHungarianText(text) {
+  const t = String(text || '');
+  if (t.length < 20) return true;
+  const accents = (t.match(/[áéíóöőúüű]/gi) || []).length;
+  // Hungarian function words (accented names like "Pénzügy" alone must not pass for Hungarian)
+  const words = (t.match(/(^|[^\p{L}])(és|egy|nem|van|hogy|az|vagy|több|kell|még|már|nincs|lesz|levél|levelek|levelet|fontos|teendő|számla|kérés|válasz|holnap|mert)(?=[^\p{L}]|$)/giu) || []).length;
+  return words >= 2 || accents >= Math.max(4, t.length / 40);
+}
+const digestText = (d) => [d.headline, ...(d.important ?? []).flatMap((x) => [x.why, x.action]), ...(d.todos ?? [])].filter(Boolean).join(' ');
+
+async function translateDigest(result, model) {
+  const raw = await chat(
+    [
+      { role: 'system', content: 'Translate every string value of the JSON object to Hungarian. Keep the keys, numbers, names, email subjects and the structure unchanged. Reply with the JSON object only.' },
+      { role: 'user', content: JSON.stringify({ headline: result.headline, important: result.important, todos: result.todos }) },
+    ],
+    { json: true, model, temperature: 0.1 },
+  );
+  const t = normalizeDigest(raw);
+  return { ...result, headline: t.headline || result.headline, important: t.important.length === result.important.length ? t.important.map((x, i) => ({ ...result.important[i], why: x.why, action: x.action })) : result.important, todos: t.todos.length ? t.todos : result.todos };
+}
+
 export async function runDigest(widget) {
   const cfg = widget.config;
   const fetched = await fetchMails(cfg); // read the mailbox even without AI: the list is useful on its own
@@ -185,11 +211,14 @@ export async function runDigest(widget) {
       const raw = await chat(
         [
           { role: 'system', content: PROMPT + (cfg.language || 'Hungarian') + extra },
-          { role: 'user', content: compact(mails, await budgetFor()) },
+          { role: 'user', content: compact(mails, await budgetFor()) + langReminder(cfg.language) },
         ],
         { json: true, model: cfg.model || undefined, temperature: 0.2 },
       );
       result = groundDigest(normalizeDigest(raw), mails);
+      if (isHungarian(cfg.language) && !looksHungarianText(digestText(result))) {
+        result = await translateDigest(result, cfg.model || undefined).catch(() => result);
+      }
       if (!result.headline && !result.important.length && !result.todos.length) {
         result.aiError = 'Az AI nem adott használható összefoglalót. Kisebb helyi modellnél próbáld kevesebb levéllel, vagy kérdezz a Kérdezz fülön.';
       }
@@ -253,7 +282,7 @@ r.post('/widgets/:id/mail/ask', async (req, res) => {
   const system = `${ASK_PROMPT}${w.config.language || 'Hungarian'}\n\nEMAILS:\n${compact(mails, await budgetFor())}`;
   // background job: a slow local model can outlast the proxy's request limit (see jobs.js)
   const job = startJob(async () => {
-    const answer = await chat([{ role: 'system', content: system }, ...history.reverse(), { role: 'user', content: question }], {
+    const answer = await chat([{ role: 'system', content: system }, ...history.reverse(), { role: 'user', content: question + langReminder(w.config.language).replace(' szöveges értéket', 't').replace(', a kulcsok maradjanak angolul', '').replace('every value', 'your answer') }], {
       model: w.config.model || undefined,
       temperature: 0.3,
     });
