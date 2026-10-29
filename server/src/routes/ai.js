@@ -11,6 +11,7 @@ const publicView = async () => {
   return {
     baseUrl: c.baseUrl,
     model: c.model,
+    visionModel: c.visionModel,
     configured: c.configured,
     hasKey: Boolean(c.apiKey),
     keyHint: c.apiKey ? `…${c.apiKey.slice(-4)}` : null,
@@ -21,7 +22,7 @@ const publicView = async () => {
 r.get('/settings/ai', async (_req, res) => res.json(await publicView()));
 
 r.put('/settings/ai', async (req, res) => {
-  const { baseUrl, model, apiKey } = req.body ?? {};
+  const { baseUrl, model, apiKey, visionModel } = req.body ?? {};
   const { rows } = await q("SELECT value FROM settings WHERE key = 'ai'");
   const cur = rows[0]?.value ?? {};
   const next = { ...cur };
@@ -33,6 +34,7 @@ r.put('/settings/ai', async (req, res) => {
     // people paste "ollama pull qwen2.5:7b" — keep just the model name
     next.model = String(model).trim().replace(/^ollama\s+(pull|run)\s+/i, '').replace(/\s+/g, '').slice(0, 100) || undefined;
   }
+  if (visionModel !== undefined) next.visionModel = String(visionModel).trim().replace(/^ollama\s+(pull|run)\s+/i, '').replace(/\s+/g, '').slice(0, 100) || undefined;
   // apiKey: omitted = keep, '' / null = remove, string = replace
   if (apiKey !== undefined) next.apiKey = apiKey ? String(apiKey).trim() : undefined;
   await q(

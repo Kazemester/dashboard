@@ -19,6 +19,7 @@ import env from './routes/env.js';
 import homeassistant from './routes/homeassistant.js';
 import brief from './routes/brief.js';
 import stocks from './routes/stocks.js';
+import tradeImport from './routes/tradeImport.js';
 import map from './routes/map.js';
 import finance from './routes/finance.js';
 import activity from './routes/activity.js';
@@ -31,6 +32,7 @@ import render, { recoverRenders } from './routes/render.js';
 const app = express();
 // Render uploads carry a whole image; everything else stays small.
 app.use('/api/widgets/:id/render', express.json({ limit: '17mb' }));
+app.use('/api/widgets/:id/portfolio/import', express.json({ limit: '30mb' }));
 app.use(express.json({ limit: '1mb' }));
 
 // Optional HTTP Basic auth — set DASHBOARD_PASSWORD before exposing the app on a VM.
@@ -86,7 +88,7 @@ app.get('/api/status', async (_req, res) => {
   res.json({ llm: ai.configured, model: ai.model });
 });
 
-for (const router of [dashboard, habits, progress, pomodoro, calendar, feeds, chatRoutes, mail, items, system, markets, env, homeassistant, brief, stocks, map, finance, activity, assistant, notifications, jobRoutes, ai, render]) {
+for (const router of [dashboard, habits, progress, pomodoro, calendar, feeds, chatRoutes, mail, items, system, markets, env, homeassistant, brief, stocks, tradeImport, map, finance, activity, assistant, notifications, jobRoutes, ai, render]) {
   app.use('/api', router);
 }
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));

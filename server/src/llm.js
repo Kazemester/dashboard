@@ -28,6 +28,9 @@ export async function aiConfig() {
     baseUrl,
     apiKey,
     model,
+    // model that can read images (screenshot import); empty = the main model
+    visionModel: s.visionModel || process.env.LLM_VISION_MODEL || '',
+    isLocal: isLocal(baseUrl),
     configured: Boolean(apiKey) || isLocal(baseUrl),
     keySource: s.apiKey ? 'db' : process.env.LLM_API_KEY ? 'env' : null,
   };

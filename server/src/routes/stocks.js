@@ -12,7 +12,7 @@ const r = Router();
 
 // 'auto' → Twelve Data when a key is configured, otherwise TradingView (no key).
 const resolve = (p) => (p && p !== 'auto' ? p : twelvedata.tdKey() ? 'twelvedata' : 'tradingview');
-const providerOf = (p) => {
+export const providerOf = (p) => {
   const name = resolve(p);
   if (!PROVIDERS[name]) throw new HttpError(400, `Unknown provider: ${p}`);
   return [name, PROVIDERS[name]];
@@ -99,7 +99,7 @@ r.get('/stocks/detail', async (req, res) => {
 // Trades are widget items (kind 'trade'): day = trade date, value = quantity,
 // data = { side: 'buy'|'sell', price, fee, asset: { provider, id, symbol, name, type, exchange, currency, region } }.
 // Average-cost method: a sale realises (price − average cost) × quantity and leaves the average cost unchanged.
-const assetKey = (a) => `${a?.provider ?? ''}:${a?.id ?? a?.symbol ?? ''}`;
+export const assetKey = (a) => `${a?.provider ?? ''}:${a?.id ?? a?.symbol ?? ''}`;
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 export function buildPositions(trades) {

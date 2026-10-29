@@ -79,7 +79,7 @@ Csak halvány, ritka mozgások, amelyek a processzort alig terhelik. 30%-nál ki
 |---|---|
 | ☁ Időjárás | Aktuális idő + 5 napos előrejelzés (Open-Meteo) |
 | ◍ Világtérkép | OpenStreetMap térkép 19 kapcsolható réteggel, 5 alaptérképpel és helykeresővel (részletek lent). Minden forrás ingyenes, kulcs nélkül |
-| ◔ Portfólió | Befektetéseid élő árfolyamon (részvény, ETF, kripto). Vételeket és eladásokat rögzítesz papíronként, akár több tételt egyszerre (darab, ár, dátum, díj); az árat megadhatod forintban, euróban vagy dollárban is (dollárban jegyzett részvénynél is, a vétel napi EKB-árfolyamon számolva); a csempe tetején Ft / € / $ között váltasz, és papíronként a forintos mellett a saját pénznembeli érték is látszik. Látod az összértéket, a hozamot, a mai változást, az átlagárat (átlagár-módszer), a realizált nyereséget és az eloszlást. A bot is tud róla („Mennyit ér a portfólióm?”) |
+| ◔ Portfólió | Befektetéseid élő árfolyamon (részvény, ETF, kripto). Vételeket és eladásokat rögzítesz papíronként, akár több tételt egyszerre (darab, ár, dátum, díj); az árat megadhatod forintban, euróban vagy dollárban is (dollárban jegyzett részvénynél is, a vétel napi EKB-árfolyamon számolva); a csempe tetején Ft / € / $ között váltasz, és papíronként a forintos mellett a saját pénznembeli érték is látszik. Látod az összértéket, a hozamot, a mai változást, az átlagárat (átlagár-módszer), a realizált nyereséget és az eloszlást. Képernyőképből is importálhatsz (📷 Képből): az AI kiolvassa a vételeket és eladásokat, te ellenőrzöd és javítod, csak utána ment; a már rögzített ügyleteket jelzi. Ehhez képet olvasni tudó modell kell, lásd lent. A bot is tud róla („Mennyit ér a portfólióm?”) |
 | ▣ Mutatók | 1–4+ mutatókártya (mint „Total Earnings $799 ↑7%”): kézi érték, a havi kiadás vagy bevétel egy Költségkövetőből (az előző hónap azonos napjaihoz mérve), vagy egy JSON API értéke (az előző naphoz mérve). Az első kártya kiemelt |
 | ◰ Egyenleg | Számláid (bármilyen pénznemben) összesítve egy alappénznemben, változás az előző hónaphoz, számlakártyák. Az összegre koppintva szerkeszthető; „+ Bevétel” / „− Kiadás” gyorsrögzítés a Költségkövetőbe |
 | ▭ Havi keret | A havi költés egy Költségkövetőből a kerethez mérve: sáv, hátralévő napok, naponta még elkölthető összeg |
@@ -350,6 +350,8 @@ A dashboard mellett Dockerben futó Ollama, GPU nélkül (kis modellekhez elég 
 1. Az `.env`-be: `COMPOSE_PROFILES=tunnel,ollama` (így a sima `docker compose up -d` is elindítja).
 2. `docker compose up -d --build`, majd a modell letöltése: `docker compose exec ollama ollama pull qwen2.5:3b`.
 3. A fejléc **AI** gombja → **Ollama (a szerveren)** (`http://ollama:11434/v1`), modell: `qwen2.5:3b` → Mentés.
+4. A Portfólió képernyőkép-importjához képelemző modell is kell: `docker compose exec ollama ollama pull qwen2.5vl:3b`, majd az AI ablakban **Képelemző modell**: `qwen2.5vl:3b` (kb. 3 GB lemez és 4 GB memória; képenként 1–2 perc). Pontosabb, de lassabb a `qwen2.5vl:7b`; felhős szolgáltatónál (pl. OpenAI `gpt-4o-mini`) másodpercek alatt kész, de a kép elhagyja a szervert.
+
 Egy 2 magos ARM gépen a 3B-s modell néhány szót ír másodpercenként; a 7B-s (`qwen2.5:7b`) okosabb, de kb. feleolyan gyors. A modell a memóriában marad (24 óra), így a második kérdéstől nincs betöltési várakozás.
 
 ### AI a VM-en

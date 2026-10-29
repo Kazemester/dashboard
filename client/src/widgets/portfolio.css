@@ -69,6 +69,7 @@
   .pf-row { grid-template-columns: 1fr 1fr; }
   .pf-side { grid-column: 1 / -1; justify-self: start; }
   .pf-del { grid-column: 2; justify-self: end; }
+  .pf-row label:has(.pf-price) { grid-column: 1 / -1; } /* room for 5-6 digit HUF prices */
   .pf-spark { display: none; }
 }
 @media (max-width: 640px) { .pf-row .input { font-size: 16px; } } /* no iOS zoom on focus */
@@ -81,3 +82,25 @@
 .pf-price { display: flex; gap: 4px; min-width: 0; }
 .pf-price input { flex: 1; min-width: 0; }
 .pf-price select { flex: none; width: auto; padding-left: 6px; padding-right: 6px; }
+
+/* import from screenshots */
+.pf-imp-help { margin: 0; line-height: 1.45; }
+.pf-drop { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 18px 12px; border: 1.5px dashed var(--line-strong); border-radius: var(--radius); cursor: pointer; text-align: center; }
+.pf-drop:hover { border-color: var(--accent); background: var(--accent-soft); }
+.pf-drop.busy { opacity: 0.6; }
+.pf-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.pf-shots { display: flex; flex-wrap: wrap; gap: 6px; }
+.pf-shot { position: relative; width: 64px; height: 96px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--faint); }
+.pf-shot img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.pf-shot .icon-btn { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; min-width: 0; padding: 0; background: var(--surface); }
+.pf-imp-row { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+.pf-imp-row .pf-row { border-top: 0; padding-top: 0; }
+.pf-imp-row.off .pf-row { opacity: 0.5; }
+.pf-imp-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pf-imp-head input[type='checkbox'] { width: 18px; height: 18px; flex: none; accent-color: var(--accent); }
+.pf-imp-asset { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 6px; background: transparent; border: 0; padding: 0; color: var(--text); font: inherit; font-size: 13.5px; text-align: left; cursor: pointer; white-space: nowrap; overflow: hidden; }
+.pf-imp-asset .muted { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+span.pf-imp-asset { cursor: default; font-size: 12.5px; }
+.pf-badge { flex: none; font-size: 10.5px; padding: 1px 7px; border-radius: 999px; background: var(--faint); color: var(--muted); white-space: nowrap; }
+.pf-badge.warn { background: color-mix(in srgb, #f59e0b 20%, transparent); color: #b45309; }
+.pf-actions { flex-wrap: wrap; }
