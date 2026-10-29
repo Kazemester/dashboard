@@ -91,4 +91,7 @@ export default {
   '15 percenként': 'every 15 min',
   '30 percenként': 'every 30 min',
   'Ilyen gyakran kérem le az árakat. A TradingView egyes tőzsdéken (pl. BÉT) 15 perccel késve adja az árat.': 'How often prices are fetched. TradingView delays some exchanges (e.g. Budapest) by 15 minutes.',
+  'más ár?': 'price?',
+  'A(z) {sym} mai ára {now}, a képen {img} — biztos ez a papír? Koppints a nevére a cseréhez.': "{sym} trades at {now} today but {img} on the image — is this the right asset? Tap its name to change it.",
+  'Az átlagár ({avg}) nagyon messze van a mai ártól ({now}). Ha nem ezt a papírt vetted (pl. tőkeáttételes ETF a részvény helyett), javítsd: ⇄ Papír cseréje.': 'The average cost ({avg}) is far from today\'s price ({now}). If this is not what you bought (e.g. a leveraged ETF instead of the share), fix it with ⇄ Change asset.',
 };

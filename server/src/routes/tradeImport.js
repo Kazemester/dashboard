@@ -68,6 +68,8 @@ async function ocr(dataUrl) {
 
 // "Buy XAU" / "Market sell Apple" / "Vétel OTP" … then "0,0171 units · 1 733 803,38 Ft" / "2 shares at $213.90"
 const SIDE_LINE = /^(?:market\s+|limit\s+|stop\s+)?(buy|sell|bought|sold|vétel|vásárlás|eladás)\s+(.{1,60})$/i;
+// "NVIDIA · Market buy" / "Apple - Limit sell"
+const NAME_SIDE = /^(.{2,60}?)\s+[·•\-–|:]\s+(?:market\s+|limit\s+|stop\s+)?(buy|sell|vétel|vásárlás|eladás)\b/i;
 const QTY_PRICE = /(\d[\d\s.,]*?)\s*(?:units?|shares?|db|darab|egység|részvény)\b\s*[^\d€$£]{0,4}\s*([€$£])?\s*(\d[\d\s.,]*\d|\d)\s*(€|\$|£|Ft|HUF|EUR|USD|GBP)?/i;
 const MONEY_TAIL = /\s*[+\-−]?\s*[€$£]?\s*\d[\d\s.,]*\s*(€|\$|£|Ft|HUF|EUR|USD|GBP)?\s*$/;
 
@@ -79,15 +81,22 @@ export function parseOcrTrades(text, today) {
     const line = lines[i];
     if (/^(today|ma)$/i.test(line)) day = (today ?? new Date()).toISOString().slice(0, 10);
     else if (/^(yesterday|tegnap)$/i.test(line)) day = new Date((today ?? new Date()).getTime() - 86_400_000).toISOString().slice(0, 10);
-    else if (line.length <= 30 && !QTY_PRICE.test(line) && !/^\d{1,2}:\d{2}$/.test(line) && parseDay(line, today).day) day = line;
+    else if (line.length <= 30 && !QTY_PRICE.test(line) && !/shares?|units?|darab|\bdb\b/i.test(line) && !/^\d{1,2}:\d{2}$/.test(line) && parseDay(line, today).day) day = line;
+    let side, what;
     const m = line.match(SIDE_LINE);
-    if (!m) continue;
-    const what = m[2].replace(MONEY_TAIL, '').trim();
-    let qp = null;
-    for (let k = i; k <= i + 3 && k < lines.length && !qp; k++) qp = lines[k].match(QTY_PRICE);
+    const n = !m && line.match(NAME_SIDE);
+    if (m) [side, what] = [m[1], m[2].replace(MONEY_TAIL, '').trim()];
+    else if (n) [side, what] = [n[2], n[1].trim()];
+    else continue;
+    let qp = null, at = i;
+    for (let k = i; k <= i + 3 && k < lines.length && !qp; k++) (qp = lines[k].match(QTY_PRICE)) && (at = k);
     if (!qp || !what) continue;
+    // a date on the quantity line ("2 shares at $213.90 · Jan 2, 2026") or right below it beats the section header
+    const rest = lines[at].slice(qp.index + qp[0].length);
+    const below = lines[at + 1] && lines[at + 1].length <= 30 && !SIDE_LINE.test(lines[at + 1]) && !NAME_SIDE.test(lines[at + 1]) ? lines[at + 1] : '';
+    const own = [rest, below].find((x) => /[a-zá-ű]{3}|\d{4}|\d[./-]\d/i.test(x) && parseDay(x, today).day);
     const sym = /^[A-Z][A-Z0-9.]{0,9}$/.test(what) ? what : null;
-    out.push({ symbol: sym, name: sym ? null : what, side: m[1], quantity: qp[1], price: qp[3], currency: qp[2] || qp[4] || null, date: day });
+    out.push({ symbol: sym, name: sym ? null : what, side, quantity: qp[1], price: qp[3], currency: qp[2] || qp[4] || null, date: own ?? day });
   }
   return out;
 }
@@ -186,6 +195,16 @@ export function normalise(raw, today) {
   };
 }
 
+// Trade price vs the instrument's price today, in the same currency. Prices move, so allow ×2.5 within a
+// year and ×6 for older trades (gold doubled in five years).
+export function priceOff(t, x) {
+  if (!(t.price > 0) || !(x?.price > 0) || !t.currency || !x.currency || t.currency !== x.currency) return false;
+  const old = t.day && Date.now() - new Date(t.day).getTime() > 365 * 86_400_000;
+  const r = t.price / x.price;
+  const lim = old ? 6 : 2.5;
+  return r > lim || r < 1 / lim;
+}
+
 // Ticker / name → instrument of the tile's data source. Prefers listings in the trade's currency.
 async function findAsset(t, providerName, provider, memo, held) {
   const text = t.symbol || t.name;
@@ -213,7 +232,16 @@ async function findAsset(t, providerName, provider, memo, held) {
   // an instrument already in the portfolio wins, so the import adds to that position (XAU → the gold you hold)
   const mine = hits.slice(0, 10).find((x) => held.has(`${x.provider}:${x.id}`));
   const h = mine || top && (hits.find((x) => t.currency && x.currency === t.currency && x.type === top.type && x.symbol.toUpperCase() === top.symbol.toUpperCase()) || top);
-  const asset = h ? { provider: h.provider, id: h.id, symbol: h.symbol, name: h.name, type: h.type, exchange: h.exchange, currency: h.currency, region: h.region } : null;
+  const shape = (x) => x && { provider: x.provider, id: x.id, symbol: x.symbol, name: x.name, type: x.type, exchange: x.exchange, currency: x.currency, region: x.region, price: x.price };
+  let pick = h;
+  // a price far from today's suggests the wrong instrument (a 2x ETF instead of the share): prefer a candidate
+  // whose price fits, also from a search by name
+  if (pick && priceOff(t, pick)) {
+    const more = t.name && t.symbol ? await run(t.name) : [];
+    const fit = [...hits.slice(0, 10), ...more.slice(0, 10)].find((x) => !priceOff(t, x) && x.price != null);
+    if (fit) pick = fit;
+  }
+  const asset = shape(pick);
   memo.set(k, asset);
   return asset;
 }
@@ -249,7 +277,16 @@ r.post('/widgets/:id/portfolio/import', async (req, res) => {
         const msg = await complete([{ role: 'user', content: TEXT_PROMPT + text.slice(0, 6000) }], { temperature: 0, json: true, config: c, timeoutMs: 20 * 60_000 });
         const parsed = parseJson(msg.content);
         if (!parsed) warnings.push(`${i + 1}. kép: nem sikerült értelmezni a választ.`);
-        for (const raw of parsed?.trades ?? []) if (raw && typeof raw === 'object') found.push({ ...normalise(raw), image: i + 1 });
+        for (const raw of parsed?.trades ?? []) {
+          if (!raw || typeof raw !== 'object') continue;
+          const t = normalise(raw);
+          // small models "complete" a name into a ticker (NVIDIA → NVDL): keep a ticker only if it is on the screenshot
+          if (t.symbol && !new RegExp(`(^|[^A-Z0-9])${t.symbol.replace(/[.]/g, '\\.')}([^A-Z0-9]|$)`, 'i').test(text)) {
+            t.name = t.name || t.symbol;
+            if (t.name !== t.symbol) t.symbol = null;
+          }
+          found.push({ ...t, image: i + 1 });
+        }
         continue;
       }
       methods.add('vision');
@@ -286,7 +323,14 @@ r.post('/widgets/:id/portfolio/import', async (req, res) => {
     const [providerName, provider] = providerOf(w.config.provider);
     const memo = new Map();
     const held = new Set(rows.map((x) => assetKey(x.data?.asset)));
-    for (const t of unique) t.asset = await findAsset(t, providerName, provider, memo, held).catch(() => null);
+    for (const t of unique) {
+      const a = await findAsset(t, providerName, provider, memo, held).catch(() => null);
+      if (a) {
+        const { price, ...asset } = a;
+        t.asset = asset;
+        if (priceOff(t, a)) t.priceOff = price; // shown as "check: today's price is …"
+      } else t.asset = null;
+    }
 
     // already in the portfolio?
     const have = new Set(rows.map((x) => [assetKey(x.data?.asset), String(x.day).slice(0, 10), x.data?.side === 'sell' ? 'sell' : 'buy', +Number(x.value).toFixed(6)].join('|')));

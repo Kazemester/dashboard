@@ -433,6 +433,11 @@ function ImportPanel({ widgetId, held, onDone, onCancel }) {
                   <span className="pf-imp-asset muted">{t('A képen: {name}', { name: [r.symbol, r.name].filter(Boolean).join(' · ') || '?' })}</span>
                 )}
                 {r.duplicate && <span className="pf-badge">{t('Már rögzítve')}</span>}
+                {r.priceOff != null && (
+                  <span className="pf-badge warn" title={t('A(z) {sym} mai ára {now}, a képen {img} — biztos ez a papír? Koppints a nevére a cseréhez.', { sym: r.asset?.symbol, now: fmtMoney(r.priceOff, r.asset?.currency), img: fmtMoney(num(r.price), r.currency || r.asset?.currency) })}>
+                    {t('más ár?')}
+                  </span>
+                )}
                 {r.mismatch && (
                   <span className="pf-badge warn" title={t('A darab × ár nem egyezik a képen látható összeggel ({total}) — ellenőrizd.', { total: fmtMoney(r.total, r.currency || r.asset?.currency) })}>
                     {t('ellenőrizd')}
@@ -552,6 +557,11 @@ function Position({ p, base, open, onToggle, onTrade, onDelete, onReassign, onRe
               {t('Pozíció törlése')}
             </button>
           </div>
+          {p.price > 0 && p.avgCost > 0 && (p.avgCost / p.price > 4 || p.price / p.avgCost > 4) && !swap && (
+            <div className="pf-warn small">
+              {t('Az átlagár ({avg}) nagyon messze van a mai ártól ({now}). Ha nem ezt a papírt vetted (pl. tőkeáttételes ETF a részvény helyett), javítsd: ⇄ Papír cseréje.', { avg: fmtMoney(p.avgCost, p.currency), now: fmtMoney(p.price, p.currency) })}
+            </div>
+          )}
           {swap && <AssetSearch initial={p.asset.symbol} onPick={(a) => (setSwap(false), onReassign(a))} />}
         </div>
       )}
