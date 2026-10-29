@@ -3,6 +3,7 @@ import { q } from '../db.js';
 import { chat, llmConfigured } from '../llm.js';
 import { getWidget } from '../util.js';
 import { logBrief } from '../activity.js';
+import { startJob } from '../jobs.js';
 import { weather, wmoText } from '../services/openmeteo.js';
 import { loadEvents } from './calendar.js';
 
@@ -117,41 +118,45 @@ r.get('/widgets/:id/brief', async (req, res) => {
 
 r.post('/widgets/:id/brief/run', async (req, res) => {
   const w = await getWidget(req.params.id, 'brief');
-  const cfg = w.config;
-  const ctx = await gather(cfg);
-  let text;
-  let ai = false;
-  if (await llmConfigured()) {
-    const persona =
-      `You are J.A.R.V.I.S., a calm, dry-witted personal assistant. Address the user as "${cfg.address || 'Uram'}". ` +
-      `Write a short spoken-style daily briefing in ${cfg.language || 'Hungarian'} from the JSON context: ` +
-      'greeting fitting the time of day, weather and what to wear/bring, schedule, the 3 most important things to focus on, ' +
-      'gentle reminders (habits, deadlines, countdowns), one closing line. Max ~150 words, no markdown headings, ' +
-      'use short paragraphs. Never invent facts that are not in the context.' +
-      (cfg.instructions ? `\nExtra instructions: ${cfg.instructions}` : '');
-    try {
-      text = await chat(
-        [
-          { role: 'system', content: persona },
-          { role: 'user', content: JSON.stringify(ctx) },
-        ],
-        { model: cfg.model || undefined, temperature: 0.6 },
-      );
-      ai = true;
-    } catch (err) {
-      text = `${fallback(ctx)}\n\n(AI hiba: ${err.message})`;
+  // background job: gathering the data and a slow local model can outlast the proxy's request limit (jobs.js)
+  const job = startJob(async () => {
+    const cfg = w.config;
+    const ctx = await gather(cfg);
+    let text;
+    let ai = false;
+    if (await llmConfigured()) {
+      const persona =
+        `You are J.A.R.V.I.S., a calm, dry-witted personal assistant. Address the user as "${cfg.address || 'Uram'}". ` +
+        `Write a short spoken-style daily briefing in ${cfg.language || 'Hungarian'} from the JSON context: ` +
+        'greeting fitting the time of day, weather and what to wear/bring, schedule, the 3 most important things to focus on, ' +
+        'gentle reminders (habits, deadlines, countdowns), one closing line. Max ~150 words, no markdown headings, ' +
+        'use short paragraphs. Never invent facts that are not in the context.' +
+        (cfg.instructions ? `\nExtra instructions: ${cfg.instructions}` : '');
+      try {
+        text = await chat(
+          [
+            { role: 'system', content: persona },
+            { role: 'user', content: JSON.stringify(ctx) },
+          ],
+          { model: cfg.model || undefined, temperature: 0.6 },
+        );
+        ai = true;
+      } catch (err) {
+        text = `${fallback(ctx)}\n\n(AI hiba: ${err.message})`;
+      }
+    } else {
+      text = fallback(ctx);
     }
-  } else {
-    text = fallback(ctx);
-  }
-  const value = { text, ai, context: ctx, generatedAt: new Date().toISOString() };
-  await q(
-    `INSERT INTO widget_state (widget_id, value, updated_at) VALUES ($1, $2, now())
-     ON CONFLICT (widget_id) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-    [w.id, JSON.stringify(value)],
-  );
-  logBrief(w, value);
-  res.json(value);
+    const value = { text, ai, context: ctx, generatedAt: new Date().toISOString() };
+    await q(
+      `INSERT INTO widget_state (widget_id, value, updated_at) VALUES ($1, $2, now())
+       ON CONFLICT (widget_id) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+      [w.id, JSON.stringify(value)],
+    );
+    logBrief(w, value);
+    return value;
+  });
+  res.status(202).json({ job });
 });
 
 export default r;

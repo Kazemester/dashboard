@@ -14,7 +14,7 @@ export default function Brief({ widget }) {
     setBusy(true);
     setErr(null);
     try {
-      setData(await api.post(`/widgets/${widget.id}/brief/run`));
+      setData(await api.postJob(`/widgets/${widget.id}/brief/run`));
     } catch (e) {
       setErr(e.message);
     } finally {

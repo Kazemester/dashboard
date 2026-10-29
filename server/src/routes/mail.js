@@ -5,6 +5,7 @@ import { q } from '../db.js';
 import { aiConfig, chat, isLocal, NOT_CONFIGURED } from '../llm.js';
 import { getWidget, HttpError } from '../util.js';
 import { logMail } from '../activity.js';
+import { startJob } from '../jobs.js';
 import { resolveSecrets } from '../secrets.js';
 
 const r = Router();
@@ -250,16 +251,20 @@ r.post('/widgets/:id/mail/ask', async (req, res) => {
   if (!mails?.length) throw new HttpError(400, 'Még nincsenek letöltött levelek: nyomd meg a Futtatás gombot.');
   const { rows: history } = await q('SELECT role, content FROM chat_messages WHERE widget_id = $1 ORDER BY id DESC LIMIT 8', [w.id]);
   const system = `${ASK_PROMPT}${w.config.language || 'Hungarian'}\n\nEMAILS:\n${compact(mails, await budgetFor())}`;
-  const answer = await chat([{ role: 'system', content: system }, ...history.reverse(), { role: 'user', content: question }], {
-    model: w.config.model || undefined,
-    temperature: 0.3,
+  // background job: a slow local model can outlast the proxy's request limit (see jobs.js)
+  const job = startJob(async () => {
+    const answer = await chat([{ role: 'system', content: system }, ...history.reverse(), { role: 'user', content: question }], {
+      model: w.config.model || undefined,
+      temperature: 0.3,
+    });
+    await q("INSERT INTO chat_messages (widget_id, role, content) VALUES ($1, 'user', $2)", [w.id, question]);
+    const { rows } = await q(
+      "INSERT INTO chat_messages (widget_id, role, content) VALUES ($1, 'assistant', $2) RETURNING id, role, content, created_at",
+      [w.id, answer],
+    );
+    return rows[0];
   });
-  await q("INSERT INTO chat_messages (widget_id, role, content) VALUES ($1, 'user', $2)", [w.id, question]);
-  const { rows } = await q(
-    "INSERT INTO chat_messages (widget_id, role, content) VALUES ($1, 'assistant', $2) RETURNING id, role, content, created_at",
-    [w.id, answer],
-  );
-  res.json(rows[0]);
+  res.status(202).json({ job });
 });
 
 const running = new Set();
@@ -267,11 +272,16 @@ r.post('/widgets/:id/mail/run', async (req, res) => {
   const w = await getWidget(req.params.id, 'maildigest');
   if (running.has(w.id)) throw new HttpError(409, 'Digest already running');
   running.add(w.id);
-  try {
-    res.json(await runDigest(w).catch((err) => { logMail(w, null, err); throw err; }));
-  } finally {
-    running.delete(w.id);
-  }
+  // background job: fetching the mails and summarising them with a slow model can take minutes (see jobs.js)
+  const job = startJob(() =>
+    runDigest(w)
+      .catch((err) => {
+        logMail(w, null, err);
+        throw err;
+      })
+      .finally(() => running.delete(w.id)),
+  );
+  res.status(202).json({ job });
 });
 
 // Background bot: re-runs digests whose "autoMinutes" interval elapsed.

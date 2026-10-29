@@ -118,7 +118,7 @@ function Ask({ widget, hasMails, pending, onPendingDone }) {
     const tmp = { id: `tmp-${Date.now()}`, role: 'user', content: q };
     setData((t) => [...(t ?? []), tmp]);
     try {
-      const reply = await api.post(`/widgets/${widget.id}/mail/ask`, { question: q });
+      const reply = await api.postJob(`/widgets/${widget.id}/mail/ask`, { question: q });
       setData((t) => [...t.filter((x) => x.id !== tmp.id), { ...tmp, id: `${tmp.id}-q` }, reply]);
     } catch (e) {
       setErr(e.message);
@@ -211,7 +211,7 @@ export default function MailDigest({ widget }) {
     setBusy(true);
     setErr(null);
     try {
-      setData(await api.post(`/widgets/${widget.id}/mail/run`));
+      setData(await api.postJob(`/widgets/${widget.id}/mail/run`));
     } catch (e) {
       setErr(e.message);
     } finally {

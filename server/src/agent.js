@@ -28,6 +28,15 @@ async function selfApi(method, path, body) {
   });
   const data = await res.json().catch(() => null);
   if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  // long actions (mail digest, brief…) answer 202 { job }: wait for the result like the browser does
+  if (res.status === 202 && data?.job) {
+    for (const until = Date.now() + 10 * 60_000; Date.now() < until; ) {
+      await new Promise((ok) => setTimeout(ok, 1500));
+      const r = await selfApi('GET', `/jobs/${data.job}`);
+      if (r.state === 'done') return r.result;
+    }
+    throw new Error('Timed out waiting for the result.');
+  }
   return data;
 }
 
