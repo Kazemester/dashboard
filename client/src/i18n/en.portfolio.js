@@ -43,4 +43,7 @@ export default {
   'Ügylet törlése': 'Delete trade',
   'Törlöd ezt az ügyletet? ({side}, {qty} db)': 'Delete this trade? ({side}, {qty})',
   'Lezárt pozíciók ({n})': 'Closed positions ({n})',
+  'Ár / db': 'Price / unit',
+  'Pénznem': 'Currency',
+  'A más pénznemben megadott árat a vétel napi (EKB) árfolyamán számolom át {cur}-ra.': 'Prices entered in another currency are converted to {cur} at the ECB rate of the trade day.',
 };

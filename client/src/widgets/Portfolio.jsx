@@ -16,7 +16,9 @@ const num = (s) => {
 };
 const fmtQty = (n) => (n == null ? '–' : Number(n).toLocaleString(locale(), { maximumFractionDigits: 6 }));
 const signed = (n, unit) => (n == null ? '–' : `${n > 0 ? '+' : n < 0 ? '−' : ''}${fmtMoney(Math.abs(n), unit)}`);
-const emptyRow = (side = 'buy', price = '') => ({ side, qty: '', price, day: isoDay(new Date()), fee: '' });
+// currency '' = the share's own currency; `auto` marks a price filled in from the live quote
+const emptyRow = (side = 'buy', price = '') => ({ side, qty: '', price, auto: price !== '', currency: '', day: isoDay(new Date()), fee: '' });
+const BASES = [['HUF', 'Ft'], ['EUR', '€'], ['USD', '$']];
 // allocation colours: the accent first, then distinct hues that work on light and dark themes
 const PALETTE = ['var(--accent)', '#6366f1', '#f59e0b', '#ec4899', '#0ea5e9', '#84cc16', '#a855f7', '#ef4444'];
 const colour = (i) => PALETTE[i % PALETTE.length];
@@ -70,13 +72,14 @@ function TradeForm({ widgetId, preset, positions, onDone, onCancel }) {
       .get(`/stocks/detail?id=${encodeURIComponent(asset.id)}&provider=${encodeURIComponent(asset.provider)}&range=1d`)
       .then((d) => {
         setQuote({ price: d.price, currency: d.currency || asset.currency });
-        if (Number.isFinite(d.price)) setRows((rs) => rs.map((r) => (r.price === '' ? { ...r, price: String(+d.price.toFixed(4)) } : r)));
+        if (Number.isFinite(d.price)) setRows((rs) => rs.map((r) => (r.price === '' && !r.currency ? { ...r, price: String(+d.price.toFixed(4)), auto: true } : r)));
       })
       .catch(() => {});
   }, [asset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (i, patch) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   const cur = quote?.currency || asset?.currency || '';
+  const currencies = [...new Set([cur, 'HUF', 'EUR', 'USD'].filter(Boolean))];
 
   const save = async (e) => {
     e.preventDefault();
@@ -94,7 +97,7 @@ function TradeForm({ widgetId, preset, positions, onDone, onCancel }) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(r.day)) return setErr(t('{n}. sor: adj meg dátumot.', { n: i + 1 }));
       balance += r.side === 'sell' ? -qty : qty;
       if (balance < -1e-9) return setErr(t('{n}. sor: többet adnál el, mint amennyi van ({held} db).', { n: i + 1, held: fmtQty(balance + qty) }));
-      clean.push({ kind: 'trade', day: r.day, value: qty, data: { side: r.side, price, fee, asset } });
+      clean.push({ kind: 'trade', day: r.day, value: qty, data: { side: r.side, price, fee, currency: r.currency || cur || undefined, asset: { ...asset, currency: asset.currency || cur || undefined } } });
     }
     setBusy(true);
     try {
@@ -140,6 +143,7 @@ function TradeForm({ widgetId, preset, positions, onDone, onCancel }) {
         </>
       )}
       {asset && held > 0 && <div className="muted small">{t('Jelenleg: {qty} db', { qty: fmtQty(held) })}</div>}
+      {asset && rows.some((r) => r.currency && r.currency !== cur) && <div className="muted small">{t('A más pénznemben megadott árat a vétel napi (EKB) árfolyamán számolom át {cur}-ra.', { cur })}</div>}
       {asset &&
         rows.map((r, i) => (
           <div key={i} className="pf-row">
@@ -156,10 +160,22 @@ function TradeForm({ widgetId, preset, positions, onDone, onCancel }) {
               <input className="input sm" inputMode="decimal" value={r.qty} onChange={(e) => set(i, { qty: e.target.value })} placeholder="10" />
             </label>
             <label>
-              <span>
-                {t('Ár')} {cur && <i>({cur})</i>}
+              <span>{t('Ár / db')}</span>
+              <span className="pf-price">
+                <input className="input sm" inputMode="decimal" value={r.price} onChange={(e) => set(i, { price: e.target.value, auto: false })} />
+                <select
+                  className="input sm"
+                  value={r.currency || cur}
+                  onChange={(e) => set(i, { currency: e.target.value === cur ? '' : e.target.value, ...(r.auto ? { price: '', auto: false } : {}) })}
+                  aria-label={t('Pénznem')}
+                >
+                  {currencies.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
               </span>
-              <input className="input sm" inputMode="decimal" value={r.price} onChange={(e) => set(i, { price: e.target.value })} />
             </label>
             <label>
               <span>{t('Dátum')}</span>
@@ -204,6 +220,7 @@ function Position({ p, base, open, onToggle, onTrade, onDelete }) {
         </span>
         <span className="pf-val">
           <b>{fmtMoney(p.valueBase, base)}</b>
+          {p.currency !== base && p.value != null && <span className="pf-native">{fmtMoney(p.value, p.currency)}</span>}
           {p.error ? <span className="pf-err">{t('nincs ár')}</span> : <Trend change={p.unrealizedPct} />}
         </span>
       </button>
@@ -240,7 +257,8 @@ function Position({ p, base, open, onToggle, onTrade, onDelete }) {
                   <td className={tr.side}>{tr.side === 'sell' ? t('Eladás') : t('Vétel')}</td>
                   <td>{tr.day}</td>
                   <td>
-                    {fmtQty(tr.qty)} × {fmtMoney(tr.price, p.currency)}
+                    {fmtQty(tr.qty)} × {fmtMoney(tr.paid ?? tr.price, tr.paidCurrency || p.currency)}
+                    {tr.paidCurrency && tr.paidCurrency !== p.currency && <span className="muted"> ≈ {fmtMoney(tr.price, p.currency)}</span>}
                   </td>
                   <td>
                     <button type="button" className="icon-btn danger" onClick={() => onDelete(tr)} aria-label={t('Ügylet törlése')} title={t('Ügylet törlése')}>
@@ -267,7 +285,7 @@ function Position({ p, base, open, onToggle, onTrade, onDelete }) {
   );
 }
 
-export default function Portfolio({ widget }) {
+export default function Portfolio({ widget, onUpdateConfig }) {
   const refresh = Math.max(1, Number(widget.config.refreshMin) || 3) * 60_000;
   const { data, error, reload } = useWidgetData(`/widgets/${widget.id}/portfolio`, { interval: refresh });
   const [form, setForm] = useState(null); // null | { asset?, side?, price? }
@@ -292,7 +310,16 @@ export default function Portfolio({ widget }) {
       {!empty && (
         <div className="pf-top">
           <div className="pf-total">
-            <span className="eyebrow">{t('Portfólió értéke')}</span>
+            <span className="pf-head">
+              <span className="eyebrow">{t('Portfólió értéke')}</span>
+              <span className="pf-cur" role="group" aria-label={t('Pénznem')}>
+                {BASES.map(([code, label]) => (
+                  <button key={code} type="button" className={base === code ? 'on' : ''} aria-pressed={base === code} onClick={() => onUpdateConfig?.({ base: code })} title={code}>
+                    {label}
+                  </button>
+                ))}
+              </span>
+            </span>
             <span className="big-num">{fmtMoney(totals.value, base)}</span>
             <span className="pf-line">
               <Trend change={totals.unrealizedPct} />

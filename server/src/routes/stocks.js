@@ -111,8 +111,9 @@ export function buildPositions(trades) {
     const k = assetKey(a);
     const p = by.get(k) ?? { key: k, asset: a, qty: 0, cost: 0, realized: 0, bought: 0, sold: 0, trades: [] };
     const qty = Math.abs(num(t.value));
-    const price = num(t.data.price);
-    const fee = num(t.data.fee);
+    // a price entered in another currency (e.g. HUF for a USD share) was converted at that day's rate
+    const price = num(t.data.priceInstr ?? t.data.price);
+    const fee = num(t.data.feeInstr ?? t.data.fee);
     if (t.data.side === 'sell') {
       const sell = Math.min(qty, p.qty);
       const avg = p.qty ? p.cost / p.qty : 0;
@@ -127,16 +128,42 @@ export function buildPositions(trades) {
     }
     if (p.qty < 1e-9) (p.qty = 0), (p.cost = 0);
     p.asset = { ...p.asset, ...a };
-    p.trades.push({ id: t.id, day: t.day, side: t.data.side === 'sell' ? 'sell' : 'buy', qty, price, fee, note: t.data.note ?? '' });
+    p.trades.push({ id: t.id, day: t.day, side: t.data.side === 'sell' ? 'sell' : 'buy', qty, price, fee, paid: num(t.data.price), paidCurrency: t.data.currency || null, note: t.data.note ?? '' });
     by.set(k, p);
   }
   return [...by.values()];
+}
+
+// Exchange rate of a past day (ECB reference rates via Frankfurter, no key); falls back to today's rate.
+async function dayRate(day, from, to) {
+  if (from === to) return 1;
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(String(day)) ? String(day) : 'latest';
+  try {
+    return await cached(`fx:${d}:${from}:${to}`, d === 'latest' ? 6 * 3600_000 : 30 * 86_400_000, async () => {
+      const res = await fetch(`https://api.frankfurter.dev/v1/${d}?from=${from}&to=${to}`, { signal: AbortSignal.timeout(10_000) });
+      const rate = res.ok ? (await res.json()).rates?.[to] : null;
+      if (!Number.isFinite(rate)) throw new Error('no rate');
+      return rate;
+    });
+  } catch {
+    const r = await fxRates().catch(() => null);
+    return r?.[from] && r?.[to] ? r[to] / r[from] : null;
+  }
 }
 
 r.get('/widgets/:id/portfolio', async (req, res) => {
   const w = await getWidget(req.params.id, 'portfolio');
   const base = String(w.config.base || 'HUF').toUpperCase();
   const { rows: trades } = await q("SELECT id, day, value, data FROM widget_items WHERE widget_id = $1 AND kind = 'trade'", [w.id]);
+  for (const t of trades) {
+    const paid = String(t.data?.currency || '').toUpperCase();
+    const instr = String(t.data?.asset?.currency || '').toUpperCase();
+    if (!paid || !instr || paid === instr) continue;
+    const rate = await dayRate(String(t.day).slice(0, 10), paid, instr);
+    if (rate == null) continue;
+    t.data.priceInstr = num(t.data.price) * rate;
+    t.data.feeInstr = num(t.data.fee) * rate;
+  }
   const positions = buildPositions(trades);
   const open = positions.filter((p) => p.qty > 0);
   const [name, p] = providerOf(w.config.provider);
