@@ -242,18 +242,22 @@ select.input option { background: var(--surface); color: var(--text); }
 .mini-bars span:last-child { background: var(--accent); }
 
 /* ---------- habits ---------- */
-.habits { display: flex; flex-direction: column; gap: 12px; height: 100%; }
+.habits { display: flex; flex-direction: column; gap: 12px; height: 100%; container-type: inline-size; }
 .habits-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .habit-nav { display: flex; align-items: center; gap: 4px; }
 .habit-month { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; min-width: 130px; text-align: center; }
 .habits-summary { display: flex; align-items: center; gap: 16px; font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 0.16em; }
 .habits-summary b { color: var(--accent); font-weight: 400; }
-.habit-scroll { flex: 1; min-height: 0; overflow: auto; }
-.habit-grid { display: grid; grid-template-columns: minmax(64px, max-content) repeat(var(--cols), minmax(13px, 1fr)) 40px; gap: 8px 3px; align-items: center; min-width: min-content; }
+.habit-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; align-items: flex-start; }
+.habit-scroll { flex: 1; min-width: 0; overflow-x: auto; overflow-y: hidden; }
+/* both columns share the row heights: day numbers, then one row per habit */
+.habit-grid, .habit-names { display: grid; grid-template-rows: 14px; grid-auto-rows: 22px; row-gap: 8px; align-items: center; }
+.habit-grid { grid-template-columns: repeat(var(--cols), minmax(13px, 1fr)) 40px; column-gap: 3px; min-width: min-content; }
 .habit-dow { font-family: var(--font-mono); font-size: 8px; color: var(--muted); text-align: center; }
 .habit-dow.weekend { opacity: 0.45; }
 .habit-dow.today { color: var(--accent); opacity: 1; }
-.habit-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 8px; max-width: 140px; }
+.habit-names { flex: none; width: max-content; min-width: 64px; max-width: min(40%, 160px); padding-right: 10px; }
+.habit-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .habit-cell { aspect-ratio: 1; width: 100%; max-width: 16px; justify-self: center; border-radius: 50%; border: 1px solid var(--line-strong); background: transparent; cursor: pointer; transition: all 0.12s; padding: 0; }
 .habit-cell:hover:not(:disabled) { border-color: var(--accent); }
 .habit-cell.today { border-color: var(--accent); }

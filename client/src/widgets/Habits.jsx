@@ -39,9 +39,7 @@ export default function Habits({ widget, editing }) {
 
   const toggle = async (h, day) => {
     const { checked } = await api.post(`/habits/${h.id}/toggle`, { day });
-    setHabits((hs) =>
-      hs.map((x) => (x.id === h.id ? { ...x, days: checked ? [...x.days, day] : x.days.filter((d) => d !== day) } : x)),
-    );
+    setHabits((hs) => hs.map((x) => (x.id === h.id ? { ...x, days: checked ? [...x.days, day] : x.days.filter((d) => d !== day) } : x)));
   };
 
   const add = async (e) => {
@@ -109,51 +107,54 @@ export default function Habits({ widget, editing }) {
         </div>
       </div>
 
-      <div className="habit-scroll" ref={scrollRef}>
-        <div className="habit-grid" style={{ '--cols': daysInMonth }}>
-          <div />
-          {days.map((d, i) => {
-            const dow = new Date(y, m - 1, i + 1).getDay();
-            return (
-              <div key={d} className={`habit-dow ${d === today ? 'today' : ''} ${dow === 0 || dow === 6 ? 'weekend' : ''}`}>
-                {i + 1}
+      {/* names in their own column: only the days scroll sideways, so every row keeps its title */}
+      <div className="habit-body">
+        {habits.length > 0 && (
+          <div className="habit-names">
+            <div />
+            {habits.map((h) => (
+              <div key={h.id} className="habit-name" title={isCurrent && h.streak ? t('Sorozat: {n} nap', { n: h.streak }) : h.name}>
+                {h.name}
               </div>
-            );
-          })}
-          <div />
-          {habits.map((h) => {
-            const set = new Set(h.days);
-            return (
-              <React.Fragment key={h.id}>
-                <div className="habit-name" title={isCurrent && h.streak ? t('Sorozat: {n} nap', { n: h.streak }) : h.name}>
-                  <span>{h.name}</span>
+            ))}
+          </div>
+        )}
+        <div className="habit-scroll" ref={scrollRef}>
+          <div className="habit-grid" style={{ '--cols': daysInMonth }}>
+            {days.map((d, i) => {
+              const dow = new Date(y, m - 1, i + 1).getDay();
+              return (
+                <div key={d} className={`habit-dow ${d === today ? 'today' : ''} ${dow === 0 || dow === 6 ? 'weekend' : ''}`}>
+                  {i + 1}
                 </div>
-                {days.map((d) => (
-                  <button
-                    key={d}
-                    className={`habit-cell ${set.has(d) ? 'done' : ''} ${d === today ? 'today' : ''}`}
-                    disabled={d > today}
-                    title={d}
-                    onClick={() => toggle(h, d)}
-                  />
-                ))}
-                <div className="habit-streak">
-                  {editing ? (
-                    <button className="icon-btn danger sm" onClick={() => remove(h)} title={t('Sor eltávolítása')}>
-                      ✕
-                    </button>
-                  ) : (
-                    <span title={t('Teljesített napok ebben a hónapban')}>
-                      {h.days.length}
-                      <span className="muted">/{elapsed || daysInMonth}</span>
-                    </span>
-                  )}
-                </div>
-              </React.Fragment>
-            );
-          })}
+              );
+            })}
+            <div />
+            {habits.map((h) => {
+              const set = new Set(h.days);
+              return (
+                <React.Fragment key={h.id}>
+                  {days.map((d) => (
+                    <button key={d} className={`habit-cell ${set.has(d) ? 'done' : ''} ${d === today ? 'today' : ''}`} disabled={d > today} title={d} onClick={() => toggle(h, d)} />
+                  ))}
+                  <div className="habit-streak">
+                    {editing ? (
+                      <button className="icon-btn danger sm" onClick={() => remove(h)} title={t('Sor eltávolítása')}>
+                        ✕
+                      </button>
+                    ) : (
+                      <span title={t('Teljesített napok ebben a hónapban')}>
+                        {h.days.length}
+                        <span className="muted">/{elapsed || daysInMonth}</span>
+                      </span>
+                    )}
+                  </div>
+                </React.Fragment>
+              );
+            })}
+          </div>
+          {!habits.length && <div className="muted center-text sm">{t('Ebben a hónapban még nincs sor. Adj hozzá egyet lent.')}</div>}
         </div>
-        {!habits.length && <div className="muted center-text sm">{t('Ebben a hónapban még nincs sor. Adj hozzá egyet lent.')}</div>}
       </div>
 
       <form onSubmit={add} className="row gap">
