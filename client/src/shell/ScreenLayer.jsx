@@ -1,11 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 
 /*
- * Pins its children (the category rail and the dock) to the visible screen. iOS lays out position: fixed
+ * Pins its children (the header on phones, the category rail and the dock) to the visible screen. iOS lays out position: fixed
  * against the layout viewport, so after a pinch zoom — or when Safari leaves the visual viewport offset after
  * scrolling / the keyboard — they slide away or grow. This layer follows window.visualViewport and undoes the
  * zoom; the children's position: fixed then resolves against the layer (a transformed ancestor).
- * While the keyboard is up (a text field has focus on a touch screen) the layer hides, as native bars do.
+ * While the keyboard is up (a text field has focus on a touch screen) the rail and the dock hide, as native bars do.
  */
 const EDITABLE = 'input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=range]), textarea, select, [contenteditable="true"]';
 
@@ -26,6 +26,10 @@ export default function ScreenLayer({ children }) {
     const schedule = () => (frame ||= requestAnimationFrame(place));
     const touch = matchMedia('(pointer: coarse)');
     const keyboard = () => el.classList.toggle('kb-open', touch.matches && Boolean(document.activeElement?.matches?.(EDITABLE)));
+    // the pinned header no longer takes room in the page: the spacer gets its height
+    const head = el.querySelector('.topbar');
+    const ro = head && new ResizeObserver(() => document.documentElement.style.setProperty('--topbar-h', `${head.offsetTop + head.offsetHeight}px`));
+    if (head) ro.observe(head);
     place();
     vv.addEventListener('resize', schedule);
     vv.addEventListener('scroll', schedule);
@@ -34,6 +38,7 @@ export default function ScreenLayer({ children }) {
     document.addEventListener('focusout', () => setTimeout(keyboard, 50));
     return () => {
       cancelAnimationFrame(frame);
+      ro?.disconnect();
       vv.removeEventListener('resize', schedule);
       vv.removeEventListener('scroll', schedule);
       window.removeEventListener('scroll', schedule);

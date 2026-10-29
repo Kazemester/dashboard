@@ -108,3 +108,7 @@ span.pf-imp-asset { cursor: default; font-size: 12.5px; }
 .pf-warn { padding: 8px 10px; border-radius: var(--radius); background: color-mix(in srgb, #f59e0b 16%, transparent); color: inherit; line-height: 1.4; }
 .pf-notice { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 6px 10px; border-radius: var(--radius); background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); }
 .pf-notice .icon-btn { width: 24px; height: 24px; min-width: 0; padding: 0; }
+.pf-foot { display: flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 4px; }
+.pf-refresh { width: 26px; height: 26px; min-width: 0; padding: 0; font-size: 15px; }
+.pf-refresh .spin { display: inline-block; animation: spin 0.8s linear infinite; }
+.pf-every { margin-left: auto; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: inherit; font: inherit; font-size: 12px; padding: 2px 8px; }

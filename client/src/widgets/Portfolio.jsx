@@ -19,6 +19,7 @@ const signed = (n, unit) => (n == null ? '–' : `${n > 0 ? '+' : n < 0 ? '−' 
 // currency '' = the share's own currency; `auto` marks a price filled in from the live quote
 const emptyRow = (side = 'buy', price = '') => ({ side, qty: '', price, auto: price !== '', currency: '', day: isoDay(new Date()), fee: '' });
 const BASES = [['HUF', 'Ft'], ['EUR', '€'], ['USD', '$']];
+const REFRESH = [1, 3, 5, 15, 30, 60]; // minutes
 // allocation colours: the accent first, then distinct hues that work on light and dark themes
 const PALETTE = ['var(--accent)', '#6366f1', '#f59e0b', '#ec4899', '#0ea5e9', '#84cc16', '#a855f7', '#ef4444'];
 const colour = (i) => PALETTE[i % PALETTE.length];
@@ -561,7 +562,14 @@ function Position({ p, base, open, onToggle, onTrade, onDelete, onReassign, onRe
 export default function Portfolio({ widget, onUpdateConfig }) {
   const refresh = Math.max(1, Number(widget.config.refreshMin) || 3) * 60_000;
   // refetch when the settings change (e.g. the Ft / € / $ toggle) — the URL stays the same
-  const { data, error, reload } = useWidgetData(`/widgets/${widget.id}/portfolio`, { interval: refresh, deps: [JSON.stringify(widget.config)] });
+  const { data, error, reload, loading } = useWidgetData(`/widgets/${widget.id}/portfolio`, { interval: refresh, deps: [JSON.stringify(widget.config)] });
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshNow = async () => {
+    setRefreshing(true);
+    await api.get(`/widgets/${widget.id}/portfolio?fresh=1`).catch(() => {});
+    await reload();
+    setRefreshing(false);
+  };
   const [form, setForm] = useState(null); // null | { asset?, side?, price? } | { import: true }
   const [openKey, setOpenKey] = useState(null);
   const [showClosed, setShowClosed] = useState(false);
@@ -723,6 +731,24 @@ export default function Portfolio({ widget, onUpdateConfig }) {
             </ul>
           )}
         </>
+      )}
+      {!empty && (
+        <div className="pf-foot muted small">
+          <span>
+            {t('Frissítve')} {data.fetchedAt ? new Date(data.fetchedAt).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) : '–'}
+          </span>
+          <button type="button" className="icon-btn pf-refresh" onClick={refreshNow} disabled={refreshing || loading} aria-label={t('Frissítés most')} title={t('Frissítés most')}>
+            <span className={refreshing ? 'spin' : ''}>↻</span>
+          </button>
+          <select className="pf-every" value={Number(widget.config.refreshMin) || 3} onChange={(e) => onUpdateConfig?.({ refreshMin: Number(e.target.value) })} aria-label={t('Frissítés gyakorisága')}>
+            {REFRESH.map((m) => (
+              <option key={m} value={m}>
+                {m === 60 ? t('óránként') : t('{n} percenként', { n: m })}
+              </option>
+            ))}
+            {!REFRESH.includes(Number(widget.config.refreshMin) || 3) && <option value={widget.config.refreshMin}>{t('{n} percenként', { n: widget.config.refreshMin })}</option>}
+          </select>
+        </div>
       )}
     </div>
   );

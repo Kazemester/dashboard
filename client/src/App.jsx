@@ -447,22 +447,28 @@ export default function App() {
     api.put('/settings/profile', next).catch((e) => setError(e.message));
   };
 
+  // phones / tablets: the header is pinned to the screen with the rail and the dock (see ScreenLayer)
+  const topBar = (
+    <TopBar
+      onAi={() => setAiOpen(true)}
+      aiVersion={aiVersion}
+      appearance={appearance}
+      onAppearance={changeAppearance}
+      profile={profile}
+      onProfile={saveProfile}
+      onReveal={revealAnywhere}
+      wide={wide}
+      subtitle={cat ? `${cat.icon} ${cat.name}` : null}
+    />
+  );
+
   return (
     <ShellContext.Provider value={shell}>
       <div className={`app ${editing ? 'is-editing' : ''} ${isDesktop ? 'canvas-mode' : ''}`}>
         <div className="bg-grid" />
         <div className="bg-glow" />
-        <TopBar
-          onAi={() => setAiOpen(true)}
-          aiVersion={aiVersion}
-          appearance={appearance}
-          onAppearance={changeAppearance}
-          profile={profile}
-          onProfile={saveProfile}
-          onReveal={revealAnywhere}
-          wide={wide}
-          subtitle={cat ? `${cat.icon} ${cat.name}` : null}
-        />
+        {isDesktop && topBar}
+        {!isDesktop && <div className="topbar-spacer" />}
 
         {undo && (
           <div className="toast toast-info">
@@ -521,6 +527,7 @@ export default function App() {
         )}
 
         <ScreenLayer>
+          {!isDesktop && topBar}
           <CategoryRail
             categories={categories}
             active={cat ? cat.id : null}

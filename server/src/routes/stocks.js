@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getWidget, cached, HttpError } from '../util.js';
+import { getWidget, cached, invalidate, HttpError } from '../util.js';
 import { MARKETS, RANGES, matchesMarket, expandQuery, rank } from '../services/market/common.js';
 import * as twelvedata from '../services/market/twelvedata.js';
 import * as yahoo from '../services/market/yahoo.js';
@@ -166,15 +166,18 @@ r.get('/widgets/:id/portfolio', async (req, res) => {
   }
   const positions = buildPositions(trades);
   const open = positions.filter((p) => p.qty > 0);
+  // the tile's ↻ button: fetch the prices now instead of waiting for the cache to expire
+  if (req.query.fresh) invalidate(`${w.id}:portfolio:`);
   const [name, p] = providerOf(w.config.provider);
   const ttl = Math.max(1, Number(w.config.refreshMin) || 3) * 60_000 - 5000;
-  const quotes = open.length
-    ? await cached(`${w.id}:portfolio:${name}:${open.map((x) => x.key).join(',')}`, ttl, async () => {
+  const priced = open.length
+    ? await cached(`${w.id}:portfolio:v2:${name}:${open.map((x) => x.key).join(',')}`, ttl, async () => {
         const ids = await Promise.all(open.map((x) => idFor(x.asset, name).catch(() => null)));
         const got = ids.some(Boolean) ? await p.quotes([...new Set(ids.filter(Boolean))]).catch(() => ({})) : {};
-        return Object.fromEntries(open.map((x, i) => [x.key, ids[i] ? got[ids[i]] : { error: 'nincs ár' }]));
+        return { at: new Date().toISOString(), map: Object.fromEntries(open.map((x, i) => [x.key, ids[i] ? got[ids[i]] : { error: 'nincs ár' }])) };
       })
-    : {};
+    : { at: new Date().toISOString(), map: {} };
+  const quotes = priced.map;
   const rates = await fxRates().catch(() => null);
   // amount in `cur` → base currency (rates are per 1 USD)
   const toBase = (amount, cur) => {
@@ -247,7 +250,7 @@ r.get('/widgets/:id/portfolio', async (req, res) => {
     positions: out.filter((o) => o.qty > 0),
     closed: out.filter((o) => o.qty === 0),
     history: snaps.reverse().map((s) => ({ day: s.day, value: s.value })),
-    fetchedAt: new Date().toISOString(),
+    fetchedAt: priced.at, // when the prices were fetched (they are cached for refreshMin)
   });
 });
 

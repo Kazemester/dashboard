@@ -5,6 +5,8 @@ import Budget from './Budget.jsx';
 import Cashflow from './Cashflow.jsx';
 import Portfolio from './Portfolio.jsx';
 
+const REFRESH_OPTIONS = [[1, '1 percenként'], [3, '3 percenként'], [5, '5 percenként'], [15, '15 percenként'], [30, '30 percenként'], [60, 'óránként']];
+
 const expenseTileField = (key, label) => ({
   key,
   label,
@@ -23,7 +25,7 @@ export default {
     defaultConfig: { base: 'HUF', refreshMin: 3 },
     fields: [
       { key: 'base', label: 'Alappénznem', type: 'select', options: [['HUF', 'HUF (forint)'], ['EUR', 'EUR (euró)'], ['USD', 'USD (dollár)']] },
-      { key: 'refreshMin', label: 'Frissítés (perc)', type: 'number', min: 1 },
+      { key: 'refreshMin', label: 'Frissítés', type: 'select', options: REFRESH_OPTIONS, help: 'Ilyen gyakran kérem le az árakat. A TradingView egyes tőzsdéken (pl. BÉT) 15 perccel késve adja az árat.' },
     ],
   },
   kpi: {
