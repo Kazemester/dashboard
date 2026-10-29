@@ -386,7 +386,7 @@ function ImportPanel({ widgetId, onDone, onCancel }) {
           )}
           {err && <div className="w-error sm">{err}</div>}
           <div className="pf-form-foot">
-            <span className="muted small">{busy === 'ai' ? (progress?.total > 1 ? t('Elemzem: {done}/{total} kép kész…', progress) : t('Elemzem…')) + ' ' + t('Helyi modellel képenként 1–3 perc is lehet, hagyd nyitva az oldalt.') : ''}</span>
+            <span className="muted small">{busy === 'ai' ? (progress?.total > 1 ? t('Elemzem: {done}/{total} kép kész…', progress) : t('Elemzem…')) + ' ' + t('Általában pár másodperc; ha szokatlan a kép és AI kell hozzá, képenként pár perc is lehet.') : ''}</span>
             <button type="button" className="btn btn-primary sm" disabled={!shots.length || !!busy} onClick={analyse}>
               {busy === 'ai' ? t('Elemzés…') : t('Elemzés')}
             </button>
@@ -444,7 +444,8 @@ function ImportPanel({ widgetId, onDone, onCancel }) {
   );
 }
 
-function Position({ p, base, open, onToggle, onTrade, onDelete }) {
+function Position({ p, base, open, onToggle, onTrade, onDelete, onReassign, onRemoveAll }) {
+  const [swap, setSwap] = useState(false);
   return (
     <li className={`pf-pos ${open ? 'open' : ''}`}>
       <button type="button" className="pf-pos-main" onClick={onToggle} aria-expanded={open}>
@@ -515,7 +516,14 @@ function Position({ p, base, open, onToggle, onTrade, onDelete }) {
                 − {t('Eladás')}
               </button>
             )}
+            <button type="button" className="btn btn-ghost sm" onClick={() => setSwap((v) => !v)} title={t('Az összes ügyletét egy másik papírhoz rendeli (pl. ha rossz papírt ismert fel)')}>
+              ⇄ {t('Papír cseréje')}
+            </button>
+            <button type="button" className="btn btn-ghost sm danger-text" onClick={onRemoveAll}>
+              {t('Pozíció törlése')}
+            </button>
           </div>
+          {swap && <AssetSearch initial={p.asset.symbol} onPick={(a) => (setSwap(false), onReassign(a))} />}
         </div>
       )}
     </li>
@@ -538,6 +546,16 @@ export default function Portfolio({ widget, onUpdateConfig }) {
   const remove = async (tr) => {
     if (!confirm(t('Törlöd ezt az ügyletet? ({side}, {qty} db)', { side: tr.side === 'sell' ? t('Eladás') : t('Vétel'), qty: fmtQty(tr.qty) }))) return;
     await api.del(`/items/${tr.id}`);
+    reload();
+  };
+  const reassign = async (p, asset) => {
+    await api.post(`/widgets/${widget.id}/portfolio/reassign`, { key: p.key, asset });
+    setOpenKey(`${asset.provider}:${asset.id}`);
+    reload();
+  };
+  const removeAll = async (p) => {
+    if (!confirm(t('Törlöd a(z) {sym} összes ügyletét ({n} db)?', { sym: p.asset.symbol, n: p.trades.length }))) return;
+    await api.post(`/widgets/${widget.id}/items/delete`, { ids: p.trades.map((tr) => tr.id) });
     reload();
   };
   const trade = (p, side) => setForm({ asset: p.asset, side, price: p.price != null ? String(+p.price.toFixed(4)) : '' });
@@ -645,7 +663,7 @@ export default function Portfolio({ widget, onUpdateConfig }) {
       {positions.length > 0 && (
         <ul className="pf-list">
           {positions.map((p) => (
-            <Position key={p.key} p={p} base={base} open={openKey === p.key} onToggle={() => setOpenKey(openKey === p.key ? null : p.key)} onTrade={(side) => trade(p, side)} onDelete={remove} />
+            <Position key={p.key} p={p} base={base} open={openKey === p.key} onToggle={() => setOpenKey(openKey === p.key ? null : p.key)} onTrade={(side) => trade(p, side)} onDelete={remove} onReassign={(a) => reassign(p, a)} onRemoveAll={() => removeAll(p)} />
           ))}
         </ul>
       )}
@@ -657,7 +675,7 @@ export default function Portfolio({ widget, onUpdateConfig }) {
           {showClosed && (
             <ul className="pf-list">
               {data.closed.map((p) => (
-                <Position key={p.key} p={{ ...p, valueBase: p.realizedBase }} base={base} open={openKey === p.key} onToggle={() => setOpenKey(openKey === p.key ? null : p.key)} onTrade={(side) => trade(p, side)} onDelete={remove} />
+                <Position key={p.key} p={{ ...p, valueBase: p.realizedBase }} base={base} open={openKey === p.key} onToggle={() => setOpenKey(openKey === p.key ? null : p.key)} onTrade={(side) => trade(p, side)} onDelete={remove} onReassign={(a) => reassign(p, a)} onRemoveAll={() => removeAll(p)} />
               ))}
             </ul>
           )}

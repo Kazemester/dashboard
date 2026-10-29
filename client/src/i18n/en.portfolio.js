@@ -59,7 +59,7 @@ export default {
   '{n} rész': '{n} parts',
   'Elemzem: {done}/{total} kép kész…': 'Reading: {done}/{total} images done…',
   'Elemzem…': 'Reading…',
-  'Helyi modellel képenként 1–3 perc is lehet, hagyd nyitva az oldalt.': 'A local model can take 1–3 minutes per image — feel free to leave it running.',
+  'Általában pár másodperc; ha szokatlan a kép és AI kell hozzá, képenként pár perc is lehet.': 'Usually a few seconds; an unusual image that needs the AI can take a few minutes each.',
   'ellenőrizd': 'check',
   'A darab × ár nem egyezik a képen látható összeggel ({total}) — ellenőrizd.': 'Quantity × price does not match the amount on the image ({total}) — please check.',
   'Elemzés': 'Analyse',
@@ -74,4 +74,8 @@ export default {
   'Vissza a képekhez': 'Back to the images',
   '{n} ügylet mentése': 'Save {n} trades',
   '{n}. sor: válaszd ki a papírt.': 'Line {n}: choose the asset.',
+  'Papír cseréje': 'Change asset',
+  'Az összes ügyletét egy másik papírhoz rendeli (pl. ha rossz papírt ismert fel)': 'Moves all its trades to another asset (e.g. if the wrong one was recognised)',
+  'Pozíció törlése': 'Delete position',
+  'Törlöd a(z) {sym} összes ügyletét ({n} db)?': 'Delete all {n} trades of {sym}?',
 };

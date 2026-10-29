@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import { Router } from 'express';
 import { q } from '../db.js';
 import { aiConfig, complete } from '../llm.js';
@@ -7,9 +8,11 @@ import { expandQuery, rank } from '../services/market/common.js';
 import { assetKey, providerOf } from './stocks.js';
 
 /*
- * Portfólió import from screenshots: a vision model reads the broker's trade list (Revolut, a bank app,
- * a confirmation e-mail...), the server tidies numbers / dates and matches each line to an instrument.
- * Nothing is saved here — the tile shows the lines for review and the user saves them.
+ * Portfólió import from screenshots of a broker's trade list (Revolut, a bank app, a confirmation e-mail...).
+ * Fast path: Tesseract OCR (a second per image) + a parser for the usual "Buy XAU / 0,0171 units · 1 733 803 Ft"
+ * layout. Otherwise the AI reads the OCR text, and without OCR a vision model reads the image (slow on a CPU).
+ * The server tidies numbers / dates and matches each line to an instrument. Nothing is saved here — the tile
+ * shows the lines for review and the user saves them.
  */
 const r = Router();
 const MAX_IMAGES = 10;
@@ -26,6 +29,68 @@ Rules:
 - currency: ISO code of the price (USD, EUR, HUF, GBP...); $ = USD, € = EUR, Ft = HUF.
 - date: YYYY-MM-DD; if the year is not visible use MM-DD. fee: commission if shown, else 0.
 - Copy what is on the image; never invent trades. If there are no trades, return {"trades":[]}.`;
+
+const TEXT_PROMPT = `Below is text that OCR read from a screenshot of a brokerage / trading app. ${PROMPT.split('\n').slice(1).join('\n').replace(/on the image/g, 'in the text')}
+
+OCR text:
+`;
+
+// ---------- OCR ----------
+let ocrLangs; // undefined = not checked yet, null = no tesseract
+async function tesseractLangs() {
+  if (ocrLangs !== undefined) return ocrLangs;
+  const out = await run('tesseract', ['--list-langs']).catch(() => null);
+  const have = out ? out.split('\n').map((l) => l.trim()) : [];
+  ocrLangs = out == null ? null : ['hun', 'eng'].filter((l) => have.includes(l)).join('+') || 'eng';
+  return ocrLangs;
+}
+
+function run(cmd, args, input) {
+  return new Promise((ok, fail) => {
+    // one thread: Tesseract's OpenMP threads crawl when another process (Ollama) keeps the CPU busy
+    const p = spawn(cmd, args, { stdio: ['pipe', 'pipe', 'ignore'], env: { ...process.env, OMP_THREAD_LIMIT: '1' } });
+    let out = '';
+    const timer = setTimeout(() => p.kill('SIGKILL'), 60_000);
+    p.stdout.on('data', (d) => (out += d));
+    p.on('error', fail);
+    p.on('close', (code) => (clearTimeout(timer), code === 0 ? ok(out) : fail(new Error(`${cmd} exited with ${code}`))));
+    p.stdin.on('error', () => {});
+    p.stdin.end(input);
+  });
+}
+
+async function ocr(dataUrl) {
+  const langs = await tesseractLangs();
+  if (!langs) return null;
+  const buf = Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64');
+  return run('tesseract', ['stdin', 'stdout', '-l', langs], buf).catch(() => null);
+}
+
+// "Buy XAU" / "Market sell Apple" / "Vétel OTP" … then "0,0171 units · 1 733 803,38 Ft" / "2 shares at $213.90"
+const SIDE_LINE = /^(?:market\s+|limit\s+|stop\s+)?(buy|sell|bought|sold|vétel|vásárlás|eladás)\s+(.{1,60})$/i;
+const QTY_PRICE = /(\d[\d\s.,]*?)\s*(?:units?|shares?|db|darab|egység|részvény)\b\s*[^\d€$£]{0,4}\s*([€$£])?\s*(\d[\d\s.,]*\d|\d)\s*(€|\$|£|Ft|HUF|EUR|USD|GBP)?/i;
+const MONEY_TAIL = /\s*[+\-−]?\s*[€$£]?\s*\d[\d\s.,]*\s*(€|\$|£|Ft|HUF|EUR|USD|GBP)?\s*$/;
+
+export function parseOcrTrades(text, today) {
+  const lines = String(text ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
+  const out = [];
+  let day = null;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^(today|ma)$/i.test(line)) day = (today ?? new Date()).toISOString().slice(0, 10);
+    else if (/^(yesterday|tegnap)$/i.test(line)) day = new Date((today ?? new Date()).getTime() - 86_400_000).toISOString().slice(0, 10);
+    else if (line.length <= 30 && !QTY_PRICE.test(line) && !/^\d{1,2}:\d{2}$/.test(line) && parseDay(line, today).day) day = line;
+    const m = line.match(SIDE_LINE);
+    if (!m) continue;
+    const what = m[2].replace(MONEY_TAIL, '').trim();
+    let qp = null;
+    for (let k = i; k <= i + 3 && k < lines.length && !qp; k++) qp = lines[k].match(QTY_PRICE);
+    if (!qp || !what) continue;
+    const sym = /^[A-Z][A-Z0-9.]{0,9}$/.test(what) ? what : null;
+    out.push({ symbol: sym, name: sym ? null : what, side: m[1], quantity: qp[1], price: qp[3], currency: qp[2] || qp[4] || null, date: day });
+  }
+  return out;
+}
 
 // "1 234,56" / "1,234.56" / "1.234,56" / "0,5" → number
 export function parseNum(v) {
@@ -127,16 +192,25 @@ async function findAsset(t, providerName, provider, memo) {
   if (!text) return null;
   const k = `${text}|${t.currency}`;
   if (memo.has(k)) return memo.get(k);
-  const run = async (term) => {
+  const search = async (term, market) => {
     const { queries, prefer } = expandQuery(term, { twelvedata: 'td', yahoo: 'yahoo', tradingview: 'tv' }[providerName]);
-    const hits = (await Promise.all(queries.map((x) => provider.search(x, t.currency === 'HUF' ? 'hu' : undefined).catch(() => [])))).flat();
+    const hits = (await Promise.all(queries.map((x) => provider.search(x, market).catch(() => [])))).flat();
     return rank(hits, term, prefer);
+  };
+  // a forint price usually means a Budapest share — but gold bought in forints is still gold
+  const run = async (term) => {
+    if (t.currency === 'HUF') {
+      const hu = (await search(term, 'hu')).filter((h) => h.region === 'hu');
+      if (hu.length) return hu;
+    }
+    return search(term);
   };
   let hits = t.symbol ? await run(t.symbol) : [];
   if (!hits.length && t.name) hits = await run(t.name);
-  const sameCur = hits.filter((h) => !t.currency || !h.currency || h.currency === t.currency);
-  const exact = (list) => list.find((h) => t.symbol && h.symbol.toUpperCase() === t.symbol);
-  const h = exact(sameCur) || exact(hits) || sameCur[0] || hits[0];
+  // trust the ranking (it knows XAU = gold, not the PHLX XAU index); only swap to the same instrument
+  // listed in the trade's currency (e.g. VWCE on Xetra for a EUR trade)
+  const top = hits[0];
+  const h = top && (hits.find((x) => t.currency && x.currency === t.currency && x.type === top.type && x.symbol.toUpperCase() === top.symbol.toUpperCase()) || top);
   const asset = h ? { provider: h.provider, id: h.id, symbol: h.symbol, name: h.name, type: h.type, exchange: h.exchange, currency: h.currency, region: h.region } : null;
   memo.set(k, asset);
   return asset;
@@ -153,8 +227,30 @@ r.post('/widgets/:id/portfolio/import', async (req, res) => {
   const job = startJob(async (progress) => {
     const found = [];
     const warnings = [];
+    const methods = new Set();
     for (const [i, url] of images.entries()) {
       progress({ done: i, total: images.length });
+      const text = await ocr(url);
+      if (text != null) {
+        const quick = parseOcrTrades(text);
+        if (quick.length) {
+          methods.add('ocr');
+          for (const raw of quick) found.push({ ...normalise(raw), image: i + 1 });
+          continue;
+        }
+        if (text.replace(/\s/g, '').length < 20) {
+          warnings.push(`${i + 1}. kép: nem találtam rajta szöveget.`);
+          continue;
+        }
+        // unusual layout: the text model sorts out the OCR text (much faster than reading the image)
+        methods.add('ai');
+        const msg = await complete([{ role: 'user', content: TEXT_PROMPT + text.slice(0, 6000) }], { temperature: 0, json: true, config: c, timeoutMs: 20 * 60_000 });
+        const parsed = parseJson(msg.content);
+        if (!parsed) warnings.push(`${i + 1}. kép: nem sikerült értelmezni a választ.`);
+        for (const raw of parsed?.trades ?? []) if (raw && typeof raw === 'object') found.push({ ...normalise(raw), image: i + 1 });
+        continue;
+      }
+      methods.add('vision');
       let msg;
       try {
         msg = await complete(
@@ -194,7 +290,7 @@ r.post('/widgets/:id/portfolio/import', async (req, res) => {
     for (const t of unique) t.duplicate = Boolean(t.asset && have.has([assetKey(t.asset), t.day, t.side || 'buy', +Number(t.qty).toFixed(6)].join('|')));
 
     unique.sort((a, b) => String(a.day ?? '').localeCompare(String(b.day ?? '')));
-    return { trades: unique, warnings, model };
+    return { trades: unique, warnings, methods: [...methods] };
   });
   res.status(202).json({ job });
 });

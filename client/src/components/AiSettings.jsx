@@ -173,7 +173,7 @@ export default function AiSettings({ onClose, onSaved }) {
               <span className="label">{t('Képelemző modell')}</span>
               <input className="input" list="ai-models" value={visionModel} onChange={(e) => setVisionModel(e.target.value)} placeholder={preset.startsWith('ollama') ? 'qwen2.5vl:3b' : t('üresen: a fenti modell')} />
               <span className="help">
-                {t('A Portfólió képernyőkép-importjához kell egy képet olvasni tudó modell. Üresen a fenti modellt használom.')}{' '}
+                {t('Nem kötelező: a Portfólió képernyőkép-importja szövegfelismerővel dolgozik, ez csak tartalék. Üresen a fenti modellt használom.')}{' '}
                 {preset === 'ollama-server' && t('A szerveren: docker compose exec ollama ollama pull qwen2.5vl:3b')}
                 {preset === 'ollama' && t('A gépeden: ollama pull qwen2.5vl:3b')}
               </span>

@@ -10,6 +10,8 @@ RUN npm run build
 FROM node:22-alpine
 ENV NODE_ENV=production
 WORKDIR /app
+# OCR for the Portfólió screenshot import (Hungarian + English)
+RUN apk add --no-cache tesseract-ocr tesseract-ocr-data-hun tesseract-ocr-data-eng
 COPY server/package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY server/src ./src

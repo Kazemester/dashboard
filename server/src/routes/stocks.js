@@ -251,4 +251,16 @@ r.get('/widgets/:id/portfolio', async (req, res) => {
   });
 });
 
+// Move every trade of a position to another instrument (e.g. a screenshot import matched the wrong one).
+r.post('/widgets/:id/portfolio/reassign', async (req, res) => {
+  const w = await getWidget(req.params.id, 'portfolio');
+  const { key, asset } = req.body ?? {};
+  if (!key || !asset?.id || !asset?.provider) throw new HttpError(400, 'Hiányzik a papír');
+  const clean = Object.fromEntries(['provider', 'id', 'symbol', 'name', 'type', 'exchange', 'currency', 'region'].map((k) => [k, asset[k] ?? null]));
+  const { rows } = await q("SELECT id, data FROM widget_items WHERE widget_id = $1 AND kind = 'trade'", [w.id]);
+  const ids = rows.filter((x) => assetKey(x.data?.asset) === key).map((x) => x.id);
+  if (ids.length) await q(`UPDATE widget_items SET data = jsonb_set(data, '{asset}', $2::jsonb) WHERE id = ANY($1)`, [ids, JSON.stringify(clean)]);
+  res.json({ moved: ids.length });
+});
+
 export default r;

@@ -80,7 +80,7 @@ export default {
   'Mentés után itt megjelennek a szolgáltató elérhető modelljei. ': 'After saving, the provider’s available models will show up here. ',
   'Lista frissítése': 'Refresh list',
   'Képelemző modell': 'Vision model',
-  'A Portfólió képernyőkép-importjához kell egy képet olvasni tudó modell. Üresen a fenti modellt használom.': 'The Portfolio screenshot import needs a model that can read images. Empty = the model above.',
+  'Nem kötelező: a Portfólió képernyőkép-importja szövegfelismerővel dolgozik, ez csak tartalék. Üresen a fenti modellt használom.': 'Optional: the Portfolio screenshot import uses text recognition (OCR); this is only a fallback. Empty = the model above.',
   'A szerveren: docker compose exec ollama ollama pull qwen2.5vl:3b': 'On the server: docker compose exec ollama ollama pull qwen2.5vl:3b',
   'A gépeden: ollama pull qwen2.5vl:3b': 'On your computer: ollama pull qwen2.5vl:3b',
   'üresen: a fenti modell': 'empty: the model above',
