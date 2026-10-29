@@ -79,6 +79,7 @@ Csak halvány, ritka mozgások, amelyek a processzort alig terhelik. 30%-nál ki
 |---|---|
 | ☁ Időjárás | Aktuális idő + 5 napos előrejelzés (Open-Meteo) |
 | ◍ Világtérkép | OpenStreetMap térkép 19 kapcsolható réteggel, 5 alaptérképpel és helykeresővel (részletek lent). Minden forrás ingyenes, kulcs nélkül |
+| ◔ Portfólió | Befektetéseid élő árfolyamon (részvény, ETF, kripto). Vételeket és eladásokat rögzítesz papíronként, akár több tételt egyszerre (darab, ár, dátum, díj); látod az összértéket alappénznemben, a hozamot, a mai változást, az átlagárat (átlagár-módszer), a realizált nyereséget és az eloszlást. A bot is tud róla („Mennyit ér a portfólióm?”) |
 | ▣ Mutatók | 1–4+ mutatókártya (mint „Total Earnings $799 ↑7%”): kézi érték, a havi kiadás vagy bevétel egy Költségkövetőből (az előző hónap azonos napjaihoz mérve), vagy egy JSON API értéke (az előző naphoz mérve). Az első kártya kiemelt |
 | ◰ Egyenleg | Számláid (bármilyen pénznemben) összesítve egy alappénznemben, változás az előző hónaphoz, számlakártyák. Az összegre koppintva szerkeszthető; „+ Bevétel” / „− Kiadás” gyorsrögzítés a Költségkövetőbe |
 | ▭ Havi keret | A havi költés egy Költségkövetőből a kerethez mérve: sáv, hátralévő napok, naponta még elkölthető összeg |

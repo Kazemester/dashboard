@@ -107,8 +107,23 @@ const READERS = {
   sun: (id) => `/widgets/${id}/sun`,
   brief: (id) => `/widgets/${id}/brief`,
   render: (id) => `/widgets/${id}/renders`,
+  portfolio: (id) => `/widgets/${id}/portfolio`,
+  kpi: (id) => `/widgets/${id}/kpi`,
+  balance: (id) => `/widgets/${id}/balance`,
+  budget: (id) => `/widgets/${id}/budget`,
+  cashflow: (id) => `/widgets/${id}/cashflow`,
+  activity: (id) => `/widgets/${id}/activity?limit=15`,
   system: () => '/system',
 };
+
+// Portfolio as the bot needs it: totals and one line per holding (no trade history, no provider ids).
+const round = (n, d = 2) => (Number.isFinite(n) ? Math.round(n * 10 ** d) / 10 ** d : n);
+function slimPortfolio(d) {
+  if (!d?.positions) return d;
+  const pos = (p) => ({ symbol: p.asset?.symbol, name: p.asset?.name, qty: p.qty, avgCost: round(p.avgCost), price: round(p.price), currency: p.currency, value: round(p.valueBase, 0), returnPct: round(p.unrealizedPct, 1), weightPct: round(p.weight, 1), trades: p.trades?.length });
+  const t = d.totals ?? {};
+  return { base: d.base, value: round(t.value, 0), cost: round(t.cost, 0), unrealized: round(t.unrealized, 0), unrealizedPct: round(t.unrealizedPct, 1), realized: round(t.realized, 0), today: round(t.dayChange, 0), holdings: d.positions.map(pos), closed: d.closed?.map((p) => ({ symbol: p.asset?.symbol, realized: round(p.realized) })) };
+}
 
 function slimMail(d) {
   if (!d?.result) return d;
@@ -458,6 +473,7 @@ function makeExecutor({ catalog, mode, tools }) {
         try {
           content = await selfApi('GET', reader(w.id));
           if (w.type === 'maildigest') content = slimMail(content);
+          if (w.type === 'portfolio') content = slimPortfolio(content);
         } catch (err) {
           content = { error: err.message };
         }
@@ -711,6 +727,7 @@ const TOPICS = {
   rss: /hír|news/i,
   brief: /brief|összefoglal|napi/i,
   activity: /történt|aktivitás|esemény/i,
+  portfolio: /portfóli|befektet|részvény|hozam|osztalék|tőzsde|papír|nyereség|veszteség/i,
   air: /levegő|pollen|szmog|aqi/i,
 };
 async function questionContext(question, budget) {

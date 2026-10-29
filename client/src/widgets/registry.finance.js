@@ -3,6 +3,7 @@ import Kpi from './Kpi.jsx';
 import Balance from './Balance.jsx';
 import Budget from './Budget.jsx';
 import Cashflow from './Cashflow.jsx';
+import Portfolio from './Portfolio.jsx';
 
 const expenseTileField = (key, label) => ({
   key,
@@ -12,6 +13,19 @@ const expenseTileField = (key, label) => ({
 });
 
 export default {
+  portfolio: {
+    name: 'Portfólió',
+    icon: '◔',
+    category: 'money',
+    description: 'Befektetéseid élő árfolyamon: részvények, ETF-ek, kripto. Vételeket és eladásokat rögzítesz (darab, ár, dátum), és látod az értéket, a hozamot, az átlagárat és az eloszlást.',
+    size: { w: 5, h: 9, minW: 3, minH: 6 },
+    component: Portfolio,
+    defaultConfig: { base: 'HUF', refreshMin: 3 },
+    fields: [
+      { key: 'base', label: 'Alappénznem', type: 'select', options: [['HUF', 'HUF (forint)'], ['EUR', 'EUR (euró)'], ['USD', 'USD (dollár)']] },
+      { key: 'refreshMin', label: 'Frissítés (perc)', type: 'number', min: 1 },
+    ],
+  },
   kpi: {
     name: 'Mutatók',
     icon: '▦',

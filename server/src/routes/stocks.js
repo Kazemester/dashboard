@@ -4,6 +4,8 @@ import { MARKETS, RANGES, matchesMarket, expandQuery, rank } from '../services/m
 import * as twelvedata from '../services/market/twelvedata.js';
 import * as yahoo from '../services/market/yahoo.js';
 import * as tradingview from '../services/market/tradingview.js';
+import { q } from '../db.js';
+import { fxRates } from './finance.js';
 
 const PROVIDERS = { twelvedata, tradingview, yahoo };
 const r = Router();
@@ -91,6 +93,135 @@ r.get('/stocks/detail', async (req, res) => {
   const [name, p] = providerOf(req.query.provider);
   const ttl = range === '1d' ? 60_000 : range === '5d' ? 5 * 60_000 : 30 * 60_000;
   res.json({ provider: name, ...(await cached(`stocks:detail:${name}:${id}:${range}`, ttl, () => p.detail(id, range))) });
+});
+
+// ---------- Portfólió: buy / sell trades → positions valued at live prices ----------
+// Trades are widget items (kind 'trade'): day = trade date, value = quantity,
+// data = { side: 'buy'|'sell', price, fee, asset: { provider, id, symbol, name, type, exchange, currency, region } }.
+// Average-cost method: a sale realises (price − average cost) × quantity and leaves the average cost unchanged.
+const assetKey = (a) => `${a?.provider ?? ''}:${a?.id ?? a?.symbol ?? ''}`;
+const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+
+export function buildPositions(trades) {
+  const by = new Map();
+  const sorted = [...trades].sort((a, b) => String(a.day).localeCompare(String(b.day)) || a.id - b.id);
+  for (const t of sorted) {
+    const a = t.data?.asset;
+    if (!a) continue;
+    const k = assetKey(a);
+    const p = by.get(k) ?? { key: k, asset: a, qty: 0, cost: 0, realized: 0, bought: 0, sold: 0, trades: [] };
+    const qty = Math.abs(num(t.value));
+    const price = num(t.data.price);
+    const fee = num(t.data.fee);
+    if (t.data.side === 'sell') {
+      const sell = Math.min(qty, p.qty);
+      const avg = p.qty ? p.cost / p.qty : 0;
+      p.realized += sell * price - fee - sell * avg;
+      p.cost -= sell * avg;
+      p.qty -= sell;
+      p.sold += sell;
+    } else {
+      p.cost += qty * price + fee;
+      p.qty += qty;
+      p.bought += qty;
+    }
+    if (p.qty < 1e-9) (p.qty = 0), (p.cost = 0);
+    p.asset = { ...p.asset, ...a };
+    p.trades.push({ id: t.id, day: t.day, side: t.data.side === 'sell' ? 'sell' : 'buy', qty, price, fee, note: t.data.note ?? '' });
+    by.set(k, p);
+  }
+  return [...by.values()];
+}
+
+r.get('/widgets/:id/portfolio', async (req, res) => {
+  const w = await getWidget(req.params.id, 'portfolio');
+  const base = String(w.config.base || 'HUF').toUpperCase();
+  const { rows: trades } = await q("SELECT id, day, value, data FROM widget_items WHERE widget_id = $1 AND kind = 'trade'", [w.id]);
+  const positions = buildPositions(trades);
+  const open = positions.filter((p) => p.qty > 0);
+  const [name, p] = providerOf(w.config.provider);
+  const ttl = Math.max(1, Number(w.config.refreshMin) || 3) * 60_000 - 5000;
+  const quotes = open.length
+    ? await cached(`${w.id}:portfolio:${name}:${open.map((x) => x.key).join(',')}`, ttl, async () => {
+        const ids = await Promise.all(open.map((x) => idFor(x.asset, name).catch(() => null)));
+        const got = ids.some(Boolean) ? await p.quotes([...new Set(ids.filter(Boolean))]).catch(() => ({})) : {};
+        return Object.fromEntries(open.map((x, i) => [x.key, ids[i] ? got[ids[i]] : { error: 'nincs ár' }]));
+      })
+    : {};
+  const rates = await fxRates().catch(() => null);
+  // amount in `cur` → base currency (rates are per 1 USD)
+  const toBase = (amount, cur) => {
+    const c = String(cur || base).toUpperCase();
+    if (c === base) return amount;
+    if (!rates?.[c] || !rates?.[base]) return null;
+    return (amount / rates[c]) * rates[base];
+  };
+  let value = 0, cost = 0, dayBase = 0, realized = 0, missing = false;
+  const out = positions.map((x) => {
+    const qd = quotes[x.key] ?? {};
+    const currency = (qd.currency || x.asset.currency || base).toUpperCase();
+    const price = x.qty > 0 && Number.isFinite(qd.price) ? qd.price : null;
+    const posValue = price != null ? price * x.qty : null;
+    const valueBase = posValue != null ? toBase(posValue, currency) : null;
+    const costBase = toBase(x.cost, currency);
+    const realizedBase = toBase(x.realized, currency) ?? 0;
+    const unrealized = posValue != null ? posValue - x.cost : null;
+    if (x.qty > 0) {
+      if (valueBase == null) missing = true;
+      else {
+        value += valueBase;
+        cost += costBase ?? 0;
+        if (Number.isFinite(qd.change)) dayBase += toBase(qd.change * x.qty, currency) ?? 0;
+      }
+    }
+    realized += realizedBase;
+    return {
+      key: x.key,
+      asset: x.asset,
+      qty: x.qty,
+      avgCost: x.qty ? x.cost / x.qty : null,
+      cost: x.cost,
+      currency,
+      price,
+      dayChangePct: Number.isFinite(qd.changePct) ? qd.changePct : null,
+      value: posValue,
+      valueBase,
+      unrealized,
+      unrealizedPct: unrealized != null && x.cost ? (unrealized / x.cost) * 100 : null,
+      realized: x.realized,
+      realizedBase,
+      error: x.qty > 0 && price == null ? qd.error || 'nincs ár' : null,
+      trades: x.trades.reverse(),
+    };
+  });
+  for (const o of out) o.weight = o.valueBase != null && value ? (o.valueBase / value) * 100 : null;
+  out.sort((a, b) => (b.valueBase ?? -1) - (a.valueBase ?? -1));
+  // one snapshot of the total per day for the value curve
+  const today = new Date().toISOString().slice(0, 10);
+  if (open.length && !missing) {
+    const up = await q("UPDATE widget_items SET value = $3 WHERE widget_id = $1 AND kind = 'snap' AND day = $2", [w.id, today, value]);
+    if (!up.rowCount) await q("INSERT INTO widget_items (widget_id, kind, day, value) VALUES ($1, 'snap', $2, $3)", [w.id, today, value]);
+  }
+  const { rows: snaps } = await q("SELECT day, value FROM widget_items WHERE widget_id = $1 AND kind = 'snap' ORDER BY day DESC LIMIT 120", [w.id]);
+  const prevValue = value - dayBase;
+  res.json({
+    base,
+    provider: name,
+    totals: {
+      value,
+      cost,
+      unrealized: value - cost,
+      unrealizedPct: cost ? ((value - cost) / cost) * 100 : null,
+      realized,
+      dayChange: dayBase,
+      dayChangePct: prevValue ? (dayBase / prevValue) * 100 : null,
+      missing,
+    },
+    positions: out.filter((o) => o.qty > 0),
+    closed: out.filter((o) => o.qty === 0),
+    history: snaps.reverse().map((s) => ({ day: s.day, value: s.value })),
+    fetchedAt: new Date().toISOString(),
+  });
 });
 
 export default r;
