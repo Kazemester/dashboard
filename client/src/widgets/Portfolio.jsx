@@ -217,7 +217,7 @@ function TradeForm({ widgetId, preset, positions, onDone, onCancel }) {
 }
 
 // ---------- import from screenshots ----------
-const MAX_SLICES = 8;
+const MAX_PARTS = 10; // images sent to the model in one go (the server accepts the same)
 const loadImage = (file) =>
   new Promise((ok, fail) => {
     const img = new Image();
@@ -226,13 +226,15 @@ const loadImage = (file) =>
     img.src = URL.createObjectURL(file);
   });
 
-// Screenshots → JPEGs small enough for a vision model; a long (scrolling) screenshot is cut into overlapping slices.
+// Screenshots → JPEGs small enough for a vision model (fewer pixels = much faster on a CPU-only server).
+// A phone screenshot stays one image; a long scrolling one is cut into overlapping parts.
 async function prepareImages(files) {
-  const SLICE = 1800, OVERLAP = 160;
-  const out = [];
+  const SLICE = 1600, OVERLAP = 140;
+  const photos = [];
   for (const file of files) {
     const img = await loadImage(file);
-    const scale = Math.min(1, 1100 / img.naturalWidth);
+    const out = [];
+    const scale = Math.min(1, 720 / img.naturalWidth);
     const w = Math.round(img.naturalWidth * scale);
     const h = Math.round(img.naturalHeight * scale);
     for (let y = 0; y < h; y += SLICE - OVERLAP) {
@@ -248,8 +250,9 @@ async function prepareImages(files) {
       if (y + sh >= h) break;
     }
     URL.revokeObjectURL(img.src);
+    photos.push({ thumb: out[0], parts: out });
   }
-  return out;
+  return photos;
 }
 
 const reviewRow = (x) => ({
@@ -267,7 +270,8 @@ const reviewRow = (x) => ({
 
 // Screenshots of a broker's trade list → the AI reads the trades → the user checks and fixes them → saved.
 function ImportPanel({ widgetId, onDone, onCancel }) {
-  const [shots, setShots] = useState([]); // data URLs
+  const [shots, setShots] = useState([]); // [{ thumb, parts: [data URL] }] — one per photo
+  const [progress, setProgress] = useState(null);
   const [rows, setRows] = useState(null); // review lines after the analysis
   const [busy, setBusy] = useState(null); // null | 'prep' | 'ai' | 'save'
   const [err, setErr] = useState(null);
@@ -279,11 +283,19 @@ function ImportPanel({ widgetId, onDone, onCancel }) {
     setErr(null);
     setBusy('prep');
     try {
-      const imgs = await prepareImages(list);
+      const photos = await prepareImages(list);
       setShots((s) => {
-        const all = [...s, ...imgs];
-        if (all.length > MAX_SLICES) setErr(t('Egyszerre legfeljebb {n} képrészletet elemzek — a többit hagyd a következő körre.', { n: MAX_SLICES }));
-        return all.slice(0, MAX_SLICES);
+        const all = [];
+        let parts = 0;
+        for (const ph of [...s, ...photos]) {
+          if (parts + ph.parts.length > MAX_PARTS) {
+            setErr(t('Egyszerre legfeljebb {n} képet elemzek — a többit hagyd a következő körre.', { n: MAX_PARTS }));
+            break;
+          }
+          all.push(ph);
+          parts += ph.parts.length;
+        }
+        return all;
       });
     } catch (e) {
       setErr(e.message);
@@ -304,8 +316,9 @@ function ImportPanel({ widgetId, onDone, onCancel }) {
   const analyse = async () => {
     setErr(null);
     setBusy('ai');
+    setProgress(null);
     try {
-      const res = await api.postJob(`/widgets/${widgetId}/portfolio/import`, { images: shots });
+      const res = await api.postJob(`/widgets/${widgetId}/portfolio/import`, { images: shots.flatMap((ph) => ph.parts) }, { timeout: 90 * 60_000, onProgress: setProgress });
       setRows(res.trades.map(reviewRow));
       setInfo([...res.warnings, !res.trades.length && t('Nem találtam ügyletet a képeken.')].filter(Boolean).join(' '));
     } catch (e) {
@@ -360,9 +373,10 @@ function ImportPanel({ widgetId, onDone, onCancel }) {
           </label>
           {shots.length > 0 && (
             <div className="pf-shots">
-              {shots.map((src, i) => (
+              {shots.map((ph, i) => (
                 <span key={i} className="pf-shot">
-                  <img src={src} alt="" />
+                  <img src={ph.thumb} alt="" />
+                  {ph.parts.length > 1 && <span className="pf-shot-parts">{t('{n} rész', { n: ph.parts.length })}</span>}
                   <button type="button" className="icon-btn" onClick={() => setShots((s) => s.filter((_, j) => j !== i))} aria-label={t('Kép eltávolítása')}>
                     ✕
                   </button>
@@ -372,7 +386,7 @@ function ImportPanel({ widgetId, onDone, onCancel }) {
           )}
           {err && <div className="w-error sm">{err}</div>}
           <div className="pf-form-foot">
-            <span className="muted small">{busy === 'ai' ? t('Elemzem a képeket… helyi modellel ez képenként akár egy-két perc is lehet.') : ''}</span>
+            <span className="muted small">{busy === 'ai' ? (progress?.total > 1 ? t('Elemzem: {done}/{total} kép kész…', progress) : t('Elemzem…')) + ' ' + t('Helyi modellel képenként 1–3 perc is lehet, hagyd nyitva az oldalt.') : ''}</span>
             <button type="button" className="btn btn-primary sm" disabled={!shots.length || !!busy} onClick={analyse}>
               {busy === 'ai' ? t('Elemzés…') : t('Elemzés')}
             </button>
@@ -395,6 +409,11 @@ function ImportPanel({ widgetId, onDone, onCancel }) {
                   <span className="pf-imp-asset muted">{t('A képen: {name}', { name: [r.symbol, r.name].filter(Boolean).join(' · ') || '?' })}</span>
                 )}
                 {r.duplicate && <span className="pf-badge">{t('Már rögzítve')}</span>}
+                {r.mismatch && (
+                  <span className="pf-badge warn" title={t('A darab × ár nem egyezik a képen látható összeggel ({total}) — ellenőrizd.', { total: fmtMoney(r.total, r.currency || r.asset?.currency) })}>
+                    {t('ellenőrizd')}
+                  </span>
+                )}
                 {r.guessedYear && (
                   <span className="pf-badge warn" title={t('A képen nem látszott az év — ellenőrizd a dátumot.')}>
                     {t('év?')}

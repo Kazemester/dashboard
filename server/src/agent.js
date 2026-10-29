@@ -34,6 +34,7 @@ async function selfApi(method, path, body) {
       await new Promise((ok) => setTimeout(ok, 1500));
       const r = await selfApi('GET', `/jobs/${data.job}`);
       if (r.state === 'done') return r.result;
+      if (r.state === 'error') throw new Error(r.error);
     }
     throw new Error('Timed out waiting for the result.');
   }

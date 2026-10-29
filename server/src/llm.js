@@ -47,12 +47,16 @@ export async function chat(messages, opts = {}) {
 }
 
 // Full assistant message, including tool_calls when `tools` (OpenAI function-calling format) are given.
-export async function complete(messages, { model, temperature = 0.4, json = false, config, tools } = {}) {
+export async function complete(messages, { model, temperature = 0.4, json = false, config, tools, timeoutMs } = {}) {
   const c = config ?? (await aiConfig());
   if (!c.configured) throw new HttpError(400, NOT_CONFIGURED);
   const body = { model: model || c.model, messages, temperature };
   if (json) body.response_format = { type: 'json_object' };
   if (tools?.length) body.tools = tools;
+  // Local models on a CPU can think for more than 5 minutes before the first byte, and Node's fetch gives up
+  // after 5 minutes without response headers: streaming sends the headers at once.
+  const stream = isLocal(c.baseUrl) && !tools?.length;
+  if (stream) body.stream = true;
 
   let res;
   try {
@@ -64,7 +68,7 @@ export async function complete(messages, { model, temperature = 0.4, json = fals
       },
       body: JSON.stringify(body),
       // local models on a laptop can need a few minutes for a long prompt
-      signal: AbortSignal.timeout(isLocal(c.baseUrl) ? 600_000 : 120_000),
+      signal: AbortSignal.timeout(timeoutMs ?? (isLocal(c.baseUrl) ? 600_000 : 120_000)),
     });
   } catch (err) {
     // Node's fetch also gives up after 5 min without response headers (slow local models)
@@ -90,8 +94,41 @@ export async function complete(messages, { model, temperature = 0.4, json = fals
     }
     throw new HttpError(502, `AI szolgáltató hiba (${res.status}): ${text}${hint}`);
   }
+  if (stream && /event-stream/.test(res.headers.get('content-type') ?? '')) {
+    try {
+      return { role: 'assistant', content: await readStream(res) };
+    } catch (err) {
+      if (err.name === 'TimeoutError' || err.name === 'AbortError') throw new HttpError(504, `Az AI nem válaszolt időben (${c.baseUrl}). Helyi modellnél próbálj kisebb modellt.`);
+      throw err;
+    }
+  }
   const data = await res.json();
   return data.choices?.[0]?.message ?? { role: 'assistant', content: '' };
+}
+
+// OpenAI-style server-sent events → the whole answer text
+async function readStream(res) {
+  const decoder = new TextDecoder();
+  let buf = '', text = '';
+  for await (const chunk of res.body) {
+    buf += decoder.decode(chunk, { stream: true });
+    let nl;
+    while ((nl = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, nl).trim();
+      buf = buf.slice(nl + 1);
+      if (!line.startsWith('data:')) continue;
+      const payload = line.slice(5).trim();
+      if (payload === '[DONE]') return text;
+      try {
+        const d = JSON.parse(payload);
+        if (d.error) throw new HttpError(502, `AI szolgáltató hiba: ${d.error.message ?? d.error}`);
+        text += d.choices?.[0]?.delta?.content ?? '';
+      } catch (err) {
+        if (err instanceof HttpError) throw err;
+      }
+    }
+  }
+  return text;
 }
 
 // Model ids offered by the provider (OpenAI-compatible GET /models — Ollama lists the pulled models).

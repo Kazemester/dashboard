@@ -10,6 +10,7 @@ import { HttpError } from './util.js';
 const jobs = new Map();
 const KEEP_MS = 15 * 60_000;
 
+// `work` gets a progress callback: progress('2/3') shows up in the polls while the job runs.
 export function startJob(work) {
   const now = Date.now();
   for (const [k, j] of jobs) if (now - j.at > KEEP_MS) jobs.delete(k);
@@ -17,7 +18,7 @@ export function startJob(work) {
   const job = { state: 'running', at: now };
   jobs.set(id, job);
   Promise.resolve()
-    .then(work)
+    .then(() => work((p) => (job.progress = p)))
     .then(
       (result) => Object.assign(job, { state: 'done', result, at: Date.now() }),
       (err) => Object.assign(job, { state: 'error', error: err.message, status: err.status || 500, at: Date.now() }),
@@ -29,7 +30,8 @@ export const jobRoutes = Router();
 jobRoutes.get('/jobs/:id', (req, res) => {
   const job = jobs.get(req.params.id);
   if (!job) throw new HttpError(404, 'Ez a kérés már nem ismert (újraindult a szerver?). Küldd el újra.');
-  if (job.state === 'running') return res.json({ state: 'running' });
-  if (job.state === 'error') return res.status(job.status).json({ state: 'error', error: job.error });
+  if (job.state === 'running') return res.json({ state: 'running', progress: job.progress ?? null });
+  // the failure travels in a 200 body: Cloudflare replaces some origin 5xx answers with its own page
+  if (job.state === 'error') return res.json({ state: 'error', error: job.error, status: job.status });
   res.json({ state: 'done', result: job.result });
 });

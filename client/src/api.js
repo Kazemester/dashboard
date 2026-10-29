@@ -37,7 +37,7 @@ async function request(method, url, body) {
 const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
 
 // POST that may answer with { job }: the work runs on the server in the background, poll until it is done.
-async function postJob(url, body, { every = 1500, timeout = 15 * 60_000 } = {}) {
+async function postJob(url, body, { every = 1500, timeout = 15 * 60_000, onProgress } = {}) {
   const first = await request('POST', url, body);
   if (!first?.job) return first;
   const until = Date.now() + timeout;
@@ -54,6 +54,8 @@ async function postJob(url, body, { every = 1500, timeout = 15 * 60_000 } = {}) 
       continue;
     }
     if (r.state === 'done') return r.result;
+    if (r.state === 'error') throw new Error(r.error || `HTTP ${r.status}`);
+    if (r.progress != null) onProgress?.(r.progress);
   }
   throw new Error(t('Az AI nem válaszolt időben. Próbáld újra, vagy válassz kisebb modellt.'));
 }
@@ -61,7 +63,7 @@ async function postJob(url, body, { every = 1500, timeout = 15 * 60_000 } = {}) 
 export const api = {
   get: (url) => request('GET', url),
   post: (url, body = {}) => request('POST', url, body),
-  postJob: (url, body = {}) => postJob(url, body),
+  postJob: (url, body = {}, opts) => postJob(url, body, opts),
   patch: (url, body) => request('PATCH', url, body),
   put: (url, body) => request('PUT', url, body),
   del: (url) => request('DELETE', url),

@@ -12,7 +12,7 @@ import { assetKey, providerOf } from './stocks.js';
  * Nothing is saved here — the tile shows the lines for review and the user saves them.
  */
 const r = Router();
-const MAX_IMAGES = 8;
+const MAX_IMAGES = 10;
 
 const PROMPT = `You read screenshots of brokerage / trading apps and extract executed trades.
 Return JSON only: {"trades":[{"symbol":"AAPL","name":"Apple Inc","side":"buy","quantity":2,"price":213.9,"total":427.8,"currency":"USD","date":"2026-01-02","fee":0}]}
@@ -20,7 +20,9 @@ Rules:
 - One object per executed (filled) buy or sell. Skip cancelled / pending orders, dividends, deposits, withdrawals, interest, fees on their own.
 - symbol: the ticker if visible (AAPL, OTP, VWCE, BTC), else null. name: the company / fund / coin name as shown.
 - side: "buy" or "sell" (Vétel, Vásárlás, Bought, Market buy, Limit buy = buy; Eladás, Sold, Market sell = sell).
-- quantity: number of shares / units. price: price per unit. total: the amount paid or received, if shown. Use plain numbers with a dot as decimal separator.
+- quantity: number of shares / units. price: price per unit. total: the amount paid or received, if shown.
+- The app may use Hungarian number format: comma = decimal separator, space = thousands ("0,017015 units" = 0.017015, "1 733 803,38 Ft" = 1733803.38). Output plain JSON numbers with a dot as decimal separator.
+- A line like "0,0171 units · 1 733 803,38 Ft" + "-30 000 Ft" means quantity 0.0171, price 1733803.38, total 30000.
 - currency: ISO code of the price (USD, EUR, HUF, GBP...); $ = USD, € = EUR, Ft = HUF.
 - date: YYYY-MM-DD; if the year is not visible use MM-DD. fee: commission if shown, else 0.
 - Copy what is on the image; never invent trades. If there are no trades, return {"trades":[]}.`;
@@ -32,7 +34,7 @@ export function parseNum(v) {
   if (!s) return null;
   const lastC = s.lastIndexOf(','), lastD = s.lastIndexOf('.');
   if (lastC >= 0 && lastD >= 0) s = lastC > lastD ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
-  else if (lastC >= 0) s = /^-?\d{1,3}(,\d{3})+$/.test(s) ? s.replace(/,/g, '') : s.replace(/,/g, '.');
+  else if (lastC >= 0) s = /^-?[1-9]\d{0,2}(,\d{3})+$/.test(s) ? s.replace(/,/g, '') : s.replace(/,/g, '.');
   else if (/^-?\d{1,3}(\.\d{3}){2,}$/.test(s)) s = s.replace(/\./g, '');
   const n = Number(s);
   return Number.isFinite(n) ? n : null;
@@ -99,6 +101,8 @@ export function normalise(raw, today) {
   let price = parseNum(raw.price ?? raw.unitPrice);
   const total = parseNum(raw.total ?? raw.amount);
   if (!(price > 0) && total && qty > 0) price = Math.abs(total) / qty;
+  // quantity × price should give the amount on the screenshot — if not, one of them was misread
+  const mismatch = Boolean(total && qty > 0 && price > 0 && Math.abs(qty * price - Math.abs(total)) / Math.abs(total) > 0.03);
   const { day, guessedYear } = parseDay(raw.date ?? raw.day, today);
   const symbol = String(raw.symbol ?? raw.ticker ?? '').trim().toUpperCase().replace(/[^A-Z0-9.:-]/g, '') || null;
   const name = String(raw.name ?? raw.asset ?? '').trim().slice(0, 80) || null;
@@ -112,6 +116,8 @@ export function normalise(raw, today) {
     day,
     guessedYear,
     fee: Math.abs(parseNum(raw.fee ?? raw.commission) ?? 0),
+    total: total ? Math.abs(total) : null,
+    mismatch,
   };
 }
 
@@ -144,15 +150,17 @@ r.post('/widgets/:id/portfolio/import', async (req, res) => {
   const c = await aiConfig();
   const model = c.visionModel || c.model;
 
-  const job = startJob(async () => {
+  const job = startJob(async (progress) => {
     const found = [];
     const warnings = [];
     for (const [i, url] of images.entries()) {
+      progress({ done: i, total: images.length });
       let msg;
       try {
         msg = await complete(
           [{ role: 'user', content: [{ type: 'text', text: PROMPT }, { type: 'image_url', image_url: { url } }] }],
-          { model, temperature: 0, json: true, config: c },
+          // a CPU-only server can need several minutes per image
+          { model, temperature: 0, json: true, config: c, timeoutMs: 20 * 60_000 },
         );
       } catch (err) {
         // text-only models reject image parts with a 400 / 500
