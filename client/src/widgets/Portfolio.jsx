@@ -560,7 +560,8 @@ function Position({ p, base, open, onToggle, onTrade, onDelete, onReassign, onRe
 
 export default function Portfolio({ widget, onUpdateConfig }) {
   const refresh = Math.max(1, Number(widget.config.refreshMin) || 3) * 60_000;
-  const { data, error, reload } = useWidgetData(`/widgets/${widget.id}/portfolio`, { interval: refresh });
+  // refetch when the settings change (e.g. the Ft / € / $ toggle) — the URL stays the same
+  const { data, error, reload } = useWidgetData(`/widgets/${widget.id}/portfolio`, { interval: refresh, deps: [JSON.stringify(widget.config)] });
   const [form, setForm] = useState(null); // null | { asset?, side?, price? } | { import: true }
   const [openKey, setOpenKey] = useState(null);
   const [showClosed, setShowClosed] = useState(false);
