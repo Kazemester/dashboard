@@ -13,6 +13,7 @@ import { t } from './i18n.js';
 import { ShellContext, newCategoryId } from './shell/context.js';
 import CategoryRail from './shell/CategoryRail.jsx';
 import CategoryEditor from './shell/CategoryEditor.jsx';
+import ScreenLayer from './shell/ScreenLayer.jsx';
 import Dock from './shell/Dock.jsx';
 import Assistant from './shell/Assistant.jsx';
 
@@ -519,20 +520,22 @@ export default function App() {
           </main>
         )}
 
-        <CategoryRail
-          categories={categories}
-          active={cat ? cat.id : null}
-          onSelect={selectCategory}
-          onAdd={() => setCatEditor({ startNew: true })}
-          onManage={() => setCatEditor({ startNew: false })}
-        />
-        <Dock
-          editing={editing}
-          onToggleEdit={() => setEditing((e) => !e)}
-          onArrange={isDesktop && visible.length > 1 ? arrangeCanvas : null}
-          onAdd={() => setPicker(true)}
-          onAssistant={wide ? null : () => setAssistantOpen(true)}
-        />
+        <ScreenLayer>
+          <CategoryRail
+            categories={categories}
+            active={cat ? cat.id : null}
+            onSelect={selectCategory}
+            onAdd={() => setCatEditor({ startNew: true })}
+            onManage={() => setCatEditor({ startNew: false })}
+          />
+          <Dock
+            editing={editing}
+            onToggleEdit={() => setEditing((e) => !e)}
+            onArrange={isDesktop && visible.length > 1 ? arrangeCanvas : null}
+            onAdd={() => setPicker(true)}
+            onAssistant={wide ? null : () => setAssistantOpen(true)}
+          />
+        </ScreenLayer>
         {!wide && <Assistant mode="sheet" open={assistantOpen} onClose={() => setAssistantOpen(false)} />}
 
         {picker && (

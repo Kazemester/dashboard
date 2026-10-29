@@ -152,3 +152,8 @@
   .bell-btn { width: 34px; height: 34px; }
 }
 @media (max-width: 899px) and (min-width: 641px) { .hello-sub { display: none; } }
+
+/* rail + dock pinned to the visible screen (see ScreenLayer.jsx) */
+.screen-layer { position: fixed; left: 0; top: 0; width: 100%; height: 100%; z-index: 30; pointer-events: none; transform-origin: 0 0; }
+.screen-layer > * { pointer-events: auto; }
+.screen-layer.kb-open > * { opacity: 0; pointer-events: none; transition: opacity 0.12s; }
