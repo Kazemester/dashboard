@@ -251,6 +251,30 @@ r.get('/widgets/:id/portfolio', async (req, res) => {
   });
 });
 
+// Several trades in one go (screenshot import): all or nothing, one request instead of one per trade.
+r.post('/widgets/:id/portfolio/trades', async (req, res) => {
+  const w = await getWidget(req.params.id, 'portfolio');
+  const list = Array.isArray(req.body?.trades) ? req.body.trades : [];
+  if (!list.length) throw new HttpError(400, 'Nincs mit menteni');
+  if (list.length > 500) throw new HttpError(400, 'Egyszerre legfeljebb 500 ügyletet mentek');
+  const items = list.map((t, i) => {
+    const n = i + 1;
+    const qty = Number(t.qty), price = Number(t.price), fee = Number(t.fee ?? 0);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(t.day))) throw new HttpError(400, `${n}. ügylet: hibás dátum`);
+    if (!(qty > 0) || !(price >= 0) || !(fee >= 0)) throw new HttpError(400, `${n}. ügylet: hibás darab / ár / díj`);
+    if (!t.asset?.id || !t.asset?.provider) throw new HttpError(400, `${n}. ügylet: nincs papír`);
+    const asset = Object.fromEntries(['provider', 'id', 'symbol', 'name', 'type', 'exchange', 'currency', 'region'].map((k) => [k, t.asset[k] ?? null]));
+    const currency = /^[A-Z]{3}$/.test(String(t.currency)) ? t.currency : undefined;
+    return { day: t.day, value: qty, data: { side: t.side === 'sell' ? 'sell' : 'buy', price, fee, currency, asset, source: t.source || undefined } };
+  });
+  await q(
+    `INSERT INTO widget_items (widget_id, kind, day, value, data)
+     SELECT $1, 'trade', (x->>'day')::date, (x->>'value')::float8, x->'data' FROM jsonb_array_elements($2::jsonb) x`,
+    [w.id, JSON.stringify(items)],
+  );
+  res.status(201).json({ saved: items.length, keys: [...new Set(items.map((x) => assetKey(x.data.asset)))] });
+});
+
 // Move every trade of a position to another instrument (e.g. a screenshot import matched the wrong one).
 r.post('/widgets/:id/portfolio/reassign', async (req, res) => {
   const w = await getWidget(req.params.id, 'portfolio');

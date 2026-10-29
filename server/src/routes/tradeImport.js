@@ -187,7 +187,7 @@ export function normalise(raw, today) {
 }
 
 // Ticker / name → instrument of the tile's data source. Prefers listings in the trade's currency.
-async function findAsset(t, providerName, provider, memo) {
+async function findAsset(t, providerName, provider, memo, held) {
   const text = t.symbol || t.name;
   if (!text) return null;
   const k = `${text}|${t.currency}`;
@@ -210,7 +210,9 @@ async function findAsset(t, providerName, provider, memo) {
   // trust the ranking (it knows XAU = gold, not the PHLX XAU index); only swap to the same instrument
   // listed in the trade's currency (e.g. VWCE on Xetra for a EUR trade)
   const top = hits[0];
-  const h = top && (hits.find((x) => t.currency && x.currency === t.currency && x.type === top.type && x.symbol.toUpperCase() === top.symbol.toUpperCase()) || top);
+  // an instrument already in the portfolio wins, so the import adds to that position (XAU → the gold you hold)
+  const mine = hits.slice(0, 10).find((x) => held.has(`${x.provider}:${x.id}`));
+  const h = mine || top && (hits.find((x) => t.currency && x.currency === t.currency && x.type === top.type && x.symbol.toUpperCase() === top.symbol.toUpperCase()) || top);
   const asset = h ? { provider: h.provider, id: h.id, symbol: h.symbol, name: h.name, type: h.type, exchange: h.exchange, currency: h.currency, region: h.region } : null;
   memo.set(k, asset);
   return asset;
@@ -280,12 +282,13 @@ r.post('/widgets/:id/portfolio/import', async (req, res) => {
     const sig = (t) => [t.symbol || t.name, t.side, t.qty, t.price, t.day].join('|');
     const unique = [...new Map(found.map((t) => [sig(t), t])).values()].filter((t) => t.qty || t.price || t.symbol || t.name);
 
+    const { rows } = await q("SELECT day, value, data FROM widget_items WHERE widget_id = $1 AND kind = 'trade'", [w.id]);
     const [providerName, provider] = providerOf(w.config.provider);
     const memo = new Map();
-    for (const t of unique) t.asset = await findAsset(t, providerName, provider, memo).catch(() => null);
+    const held = new Set(rows.map((x) => assetKey(x.data?.asset)));
+    for (const t of unique) t.asset = await findAsset(t, providerName, provider, memo, held).catch(() => null);
 
     // already in the portfolio?
-    const { rows } = await q("SELECT day, value, data FROM widget_items WHERE widget_id = $1 AND kind = 'trade'", [w.id]);
     const have = new Set(rows.map((x) => [assetKey(x.data?.asset), String(x.day).slice(0, 10), x.data?.side === 'sell' ? 'sell' : 'buy', +Number(x.value).toFixed(6)].join('|')));
     for (const t of unique) t.duplicate = Boolean(t.asset && have.has([assetKey(t.asset), t.day, t.side || 'buy', +Number(t.qty).toFixed(6)].join('|')));
 

@@ -269,7 +269,7 @@ const reviewRow = (x) => ({
 });
 
 // Screenshots of a broker's trade list → the AI reads the trades → the user checks and fixes them → saved.
-function ImportPanel({ widgetId, onDone, onCancel }) {
+function ImportPanel({ widgetId, held, onDone, onCancel }) {
   const [shots, setShots] = useState([]); // [{ thumb, parts: [data URL] }] — one per photo
   const [progress, setProgress] = useState(null);
   const [rows, setRows] = useState(null); // review lines after the analysis
@@ -330,6 +330,30 @@ function ImportPanel({ widgetId, onDone, onCancel }) {
   const set = (i, patch) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   const chosen = rows?.filter((r) => r.include) ?? [];
 
+  // sells that exceed what was bought by then (existing trades + the ticked lines) — usually a missing screenshot
+  const oversold = useMemo(() => {
+    if (!rows) return [];
+    const by = new Map();
+    const add = (key, symbol, day, side, qty) => {
+      const e = by.get(key) ?? { symbol, list: [] };
+      e.list.push({ day, side, qty });
+      by.set(key, e);
+    };
+    for (const p of held) for (const tr of p.trades) add(p.key, p.asset.symbol, tr.day, tr.side, tr.qty);
+    for (const r of rows) if (r.include && r.asset && num(r.qty) > 0 && r.day) add(`${r.asset.provider}:${r.asset.id}`, r.asset.symbol, r.day, r.side, num(r.qty));
+    const out = [];
+    for (const { symbol, list } of by.values()) {
+      let bal = 0;
+      for (const x of list.sort((a, b) => String(a.day).localeCompare(String(b.day)) || (a.side === 'sell') - (b.side === 'sell'))) {
+        if (x.side === 'sell' && x.qty > bal + 1e-9) {
+          out.push({ symbol, day: x.day, qty: x.qty, bal });
+          bal = 0;
+        } else bal += x.side === 'sell' ? -x.qty : x.qty;
+      }
+    }
+    return out;
+  }, [rows, held]);
+
   const save = async () => {
     setErr(null);
     const clean = [];
@@ -343,12 +367,11 @@ function ImportPanel({ widgetId, onDone, onCancel }) {
       if (!(price >= 0)) return setErr(t('{n}. sor: adj meg árat.', { n }));
       if (!(fee >= 0)) return setErr(t('{n}. sor: a díj nem szám.', { n }));
       if (!/^\d{4}-\d{2}-\d{2}$/.test(r.day)) return setErr(t('{n}. sor: adj meg dátumot.', { n }));
-      clean.push({ kind: 'trade', day: r.day, value: qty, data: { side: r.side, price, fee, currency: r.currency || r.asset.currency || undefined, asset: r.asset, source: 'screenshot' } });
+      clean.push({ day: r.day, qty, side: r.side, price, fee, currency: r.currency || r.asset.currency || undefined, asset: r.asset, source: 'screenshot' });
     }
     setBusy('save');
     try {
-      for (const item of clean) await api.post(`/widgets/${widgetId}/items`, item);
-      onDone();
+      onDone(await api.post(`/widgets/${widgetId}/portfolio/trades`, { trades: clean }));
     } catch (e) {
       setErr(e.message);
       setBusy(null);
@@ -430,6 +453,11 @@ function ImportPanel({ widgetId, onDone, onCancel }) {
             </div>
           ))}
           {err && <div className="w-error sm">{err}</div>}
+          {oversold.map((o, k) => (
+            <div key={k} className="pf-warn small">
+              {t('{sym}: {day} napon {qty} eladás, de addig csak {bal} vétel látszik. Valószínűleg hiányzik egy korábbi vétel képernyőképe — az eladást a meglévő mennyiségre csökkentem.', { sym: o.symbol, day: o.day, qty: fmtQty(o.qty), bal: fmtQty(o.bal) })}
+            </div>
+          ))}
           <div className="pf-form-foot">
             <button type="button" className="btn btn-ghost sm" onClick={() => (setRows(null), setInfo(null))} disabled={!!busy}>
               ← {t('Vissza a képekhez')}
@@ -536,6 +564,7 @@ export default function Portfolio({ widget, onUpdateConfig }) {
   const [form, setForm] = useState(null); // null | { asset?, side?, price? } | { import: true }
   const [openKey, setOpenKey] = useState(null);
   const [showClosed, setShowClosed] = useState(false);
+  const [notice, setNotice] = useState(null);
   const positions = useMemo(() => data?.positions ?? [], [data]);
 
   if (error) return <div className="w-error">{error}</div>;
@@ -612,14 +641,27 @@ export default function Portfolio({ widget, onUpdateConfig }) {
           </div>
         </>
       )}
+      {notice && (
+        <div className="pf-notice small" role="status">
+          ✓ {notice}
+          <button type="button" className="icon-btn" onClick={() => setNotice(null)} aria-label={t('Bezárás')}>
+            ✕
+          </button>
+        </div>
+      )}
       {totals.missing && <div className="muted small">{t('Néhány papírnak most nincs ára, ezek nincsenek benne az összegben.')}</div>}
 
       {form?.import ? (
         <ImportPanel
           widgetId={widget.id}
+          held={[...positions, ...data.closed]}
           onCancel={() => setForm(null)}
-          onDone={() => {
+          onDone={(res) => {
             setForm(null);
+            setNotice(t('{n} ügylet elmentve.', { n: res.saved }));
+            // open the position the trades went to, even when it is among the closed ones
+            if (res.keys?.length === 1) setOpenKey(res.keys[0]);
+            if (res.keys?.some((k) => data.closed.some((p) => p.key === k))) setShowClosed(true);
             reload();
           }}
         />

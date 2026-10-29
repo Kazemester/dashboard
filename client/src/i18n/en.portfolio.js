@@ -78,4 +78,6 @@ export default {
   'Az összes ügyletét egy másik papírhoz rendeli (pl. ha rossz papírt ismert fel)': 'Moves all its trades to another asset (e.g. if the wrong one was recognised)',
   'Pozíció törlése': 'Delete position',
   'Törlöd a(z) {sym} összes ügyletét ({n} db)?': 'Delete all {n} trades of {sym}?',
+  '{sym}: {day} napon {qty} eladás, de addig csak {bal} vétel látszik. Valószínűleg hiányzik egy korábbi vétel képernyőképe — az eladást a meglévő mennyiségre csökkentem.': '{sym}: a sale of {qty} on {day}, but only {bal} was bought by then. A screenshot of an earlier purchase is probably missing — the sale will be capped at the holding.',
+  '{n} ügylet elmentve.': '{n} trades saved.',
 };
