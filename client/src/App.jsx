@@ -276,6 +276,15 @@ export default function App() {
     [cat, selectCategory, revealTile, safeCanvas],
   );
 
+  // opened from a push notification: /?w=<tile id> scrolls to that tile
+  useEffect(() => {
+    if (!loaded) return;
+    const id = new URLSearchParams(location.search).get('w');
+    if (!id) return;
+    history.replaceState(null, '', location.pathname);
+    setTimeout(() => revealAnywhere(id), 300);
+  }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const onReveal = (e) => e.detail?.id && revealAnywhere(e.detail.id);
     window.addEventListener('nexus:reveal', onReveal);

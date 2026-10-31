@@ -22,9 +22,10 @@ export default {
     description: 'Befektetéseid élő árfolyamon: részvények, ETF-ek, kripto. Vételeket és eladásokat rögzítesz (darab, ár, dátum), és látod az értéket, a hozamot, az átlagárat és az eloszlást.',
     size: { w: 5, h: 9, minW: 3, minH: 6 },
     component: Portfolio,
-    defaultConfig: { base: 'HUF', refreshMin: 3 },
+    defaultConfig: { base: 'HUF', refreshMin: 3, alertPct: 0 },
     fields: [
       { key: 'base', label: 'Alappénznem', type: 'select', options: [['HUF', 'HUF (forint)'], ['EUR', 'EUR (euró)'], ['USD', 'USD (dollár)']] },
+      { key: 'alertPct', label: 'Árriasztás a telefonra', type: 'select', options: [[0, 'Ki'], [3, 'Napi ±3% mozgásnál'], [5, 'Napi ±5% mozgásnál'], [10, 'Napi ±10% mozgásnál']], help: 'Push-értesítést küld, ha egy papír vagy az egész portfólió napi változása eléri ezt (papíronként naponta egyszer). A csengőben kapcsold be az értesítéseket.' },
       { key: 'refreshMin', label: 'Frissítés', type: 'select', options: REFRESH_OPTIONS, help: 'Ilyen gyakran kérem le az árakat. A TradingView egyes tőzsdéken (pl. BÉT) 15 perccel késve adja az árat.' },
     ],
   },

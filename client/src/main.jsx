@@ -8,6 +8,7 @@ import './theme-glass.css';
 import App from './App.jsx';
 import { applyAppearance, cachedAppearance } from './theme.js';
 import { useLang } from './i18n.js';
+import { registerServiceWorker } from './push.js';
 
 // Start in the last used colours (the saved appearance from the DB is applied once loaded).
 applyAppearance(cachedAppearance());
@@ -19,3 +20,4 @@ function Root() {
 }
 
 createRoot(document.getElementById('root')).render(<Root />);
+registerServiceWorker();

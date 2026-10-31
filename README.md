@@ -176,6 +176,19 @@ A tetején helykereső és a **☰ Rétegek** gomb. A kapcsolók és az alaptér
 - A régebbi presetekkel létrehozott csempék automatikusan átállnak az új szolgáltatóra, nem kell őket újra felvenni.
 - Az árak tájékoztató jellegűek, kereskedési döntéshez ne erre támaszkodj.
 
+### Telepíthető app és értesítések a telefonra (PWA + push)
+A dashboard telepíthető appként is fut, és push-értesítést küld:
+1. iPhone-on Safariban nyisd meg a címet → Megosztás → **Főképernyőhöz adás**. (iOS 16.4 vagy újabb kell.)
+2. A kezdőképernyőn lévő **NEXUS** ikonról nyisd meg (értesítés csak így működik), csengő → **📲 Értesítések a telefonra** → Engedélyezés. Jön egy próba-értesítés.
+3. Mit küld (5 percenként néz rá, mindent csak egyszer, 22 és 7 óra között semmit — ami reggel is érvényes, az 7-kor megy ki):
+   - teendők: holnap esedékes, ma esedékes, lejárt;
+   - Visszaszámláló események aznap, naptári bejegyzés egy órával előtte;
+   - Költségkövető: közel a kerethez / túllépve;
+   - Portfólió árriasztás: a csempe ⚙ beállításaiban **Árriasztás a telefonra** (napi ±3 / 5 / 10%), papíronként naponta egyszer.
+4. Az értesítésre koppintva a dashboard annál a csempénél nyílik meg.
+
+A kulcsok (VAPID) első induláskor automatikusan létrejönnek az adatbázisban. Időzóna: `PUSH_TZ` (alapból `Europe/Budapest`).
+
 ### Home Assistant bekötése
 
 1. HA → Profil → Biztonság → **Long-lived access tokens** → Token létrehozása

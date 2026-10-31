@@ -153,6 +153,11 @@ async function dayRate(day, from, to) {
 
 r.get('/widgets/:id/portfolio', async (req, res) => {
   const w = await getWidget(req.params.id, 'portfolio');
+  res.json(await portfolioData(w, { fresh: Boolean(req.query.fresh) }));
+});
+
+// The tile's numbers; the push scheduler uses it for price alerts.
+export async function portfolioData(w, { fresh = false } = {}) {
   const base = String(w.config.base || 'HUF').toUpperCase();
   const { rows: trades } = await q("SELECT id, day, value, data FROM widget_items WHERE widget_id = $1 AND kind = 'trade'", [w.id]);
   for (const t of trades) {
@@ -167,7 +172,7 @@ r.get('/widgets/:id/portfolio', async (req, res) => {
   const positions = buildPositions(trades);
   const open = positions.filter((p) => p.qty > 0);
   // the tile's ↻ button: fetch the prices now instead of waiting for the cache to expire
-  if (req.query.fresh) invalidate(`${w.id}:portfolio:`);
+  if (fresh) invalidate(`${w.id}:portfolio:`);
   const [name, p] = providerOf(w.config.provider);
   const ttl = Math.max(1, Number(w.config.refreshMin) || 3) * 60_000 - 5000;
   const priced = open.length
@@ -234,7 +239,7 @@ r.get('/widgets/:id/portfolio', async (req, res) => {
   }
   const { rows: snaps } = await q("SELECT day, value FROM widget_items WHERE widget_id = $1 AND kind = 'snap' ORDER BY day DESC LIMIT 120", [w.id]);
   const prevValue = value - dayBase;
-  res.json({
+  return {
     base,
     provider: name,
     totals: {
@@ -251,8 +256,8 @@ r.get('/widgets/:id/portfolio', async (req, res) => {
     closed: out.filter((o) => o.qty === 0),
     history: snaps.reverse().map((s) => ({ day: s.day, value: s.value })),
     fetchedAt: priced.at, // when the prices were fetched (they are cached for refreshMin)
-  });
-});
+  };
+}
 
 // Several trades in one go (screenshot import): all or nothing, one request instead of one per trade.
 r.post('/widgets/:id/portfolio/trades', async (req, res) => {

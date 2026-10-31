@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { getLang, t } from '../i18n.js';
+import PushToggle from './PushToggle.jsx';
 
 const ICON = { todo: '☐', event: '★', calendar: '◷', habit: '◈', money: '¤' };
 const SEEN = 'nexus-seen-notifications';
@@ -94,6 +95,7 @@ export default function Notifications({ onReveal }) {
               </li>
             ))}
           </ul>
+          <PushToggle />
         </div>
       )}
     </div>

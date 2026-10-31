@@ -20,6 +20,7 @@ import homeassistant from './routes/homeassistant.js';
 import brief from './routes/brief.js';
 import stocks from './routes/stocks.js';
 import tradeImport from './routes/tradeImport.js';
+import push, { initPush } from './push.js';
 import map from './routes/map.js';
 import finance from './routes/finance.js';
 import activity from './routes/activity.js';
@@ -88,7 +89,7 @@ app.get('/api/status', async (_req, res) => {
   res.json({ llm: ai.configured, model: ai.model });
 });
 
-for (const router of [dashboard, habits, progress, pomodoro, calendar, feeds, chatRoutes, mail, items, system, markets, env, homeassistant, brief, stocks, tradeImport, map, finance, activity, assistant, notifications, jobRoutes, ai, render]) {
+for (const router of [dashboard, habits, progress, pomodoro, calendar, feeds, chatRoutes, mail, items, system, markets, env, homeassistant, brief, stocks, tradeImport, push, map, finance, activity, assistant, notifications, jobRoutes, ai, render]) {
   app.use('/api', router);
 }
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
@@ -108,4 +109,5 @@ const port = Number(process.env.PORT) || 3000;
 await migrate();
 await recoverRenders();
 startMailScheduler();
+await initPush();
 app.listen(port, () => console.log(`NEXUS dashboard listening on :${port}`));

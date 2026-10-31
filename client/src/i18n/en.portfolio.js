@@ -94,4 +94,10 @@ export default {
   'más ár?': 'price?',
   'A(z) {sym} mai ára {now}, a képen {img} — biztos ez a papír? Koppints a nevére a cseréhez.': "{sym} trades at {now} today but {img} on the image — is this the right asset? Tap its name to change it.",
   'Az átlagár ({avg}) nagyon messze van a mai ártól ({now}). Ha nem ezt a papírt vetted (pl. tőkeáttételes ETF a részvény helyett), javítsd: ⇄ Papír cseréje.': 'The average cost ({avg}) is far from today\'s price ({now}). If this is not what you bought (e.g. a leveraged ETF instead of the share), fix it with ⇄ Change asset.',
+  'Árriasztás a telefonra': 'Price alert on the phone',
+  'Ki': 'Off',
+  'Napi ±3% mozgásnál': 'Daily move of ±3%',
+  'Napi ±5% mozgásnál': 'Daily move of ±5%',
+  'Napi ±10% mozgásnál': 'Daily move of ±10%',
+  'Push-értesítést küld, ha egy papír vagy az egész portfólió napi változása eléri ezt (papíronként naponta egyszer). A csengőben kapcsold be az értesítéseket.': 'Sends a push notification when an asset or the whole portfolio moves this much in a day (once a day per asset). Turn notifications on in the bell.',
 };

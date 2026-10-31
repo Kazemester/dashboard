@@ -11,8 +11,9 @@ const r = Router();
 const pad = (n) => String(n).padStart(2, '0');
 const isoDay = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-r.get('/notifications', async (req, res) => {
-  const en = req.query.lang === 'en';
+// Also used by the push scheduler (push.js), which sends the important ones to the phone.
+export async function gatherNotifications(lang = 'hu') {
+  const en = lang === 'en';
   const L = (hu, eng) => (en ? eng : hu);
   const now = new Date();
   const today = isoDay(now);
@@ -119,7 +120,11 @@ r.get('/notifications', async (req, res) => {
 
   const rank = { danger: 0, warn: 1, info: 2 };
   out.sort((a, b) => rank[a.level] - rank[b.level] || String(a.when).localeCompare(String(b.when)));
-  res.json(out.slice(0, 50));
+  return out.slice(0, 50);
+}
+
+r.get('/notifications', async (req, res) => {
+  res.json(await gatherNotifications(req.query.lang));
 });
 
 export default r;
