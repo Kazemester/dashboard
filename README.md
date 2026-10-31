@@ -189,6 +189,15 @@ A dashboard telepíthető appként is fut, és push-értesítést küld:
 
 A kulcsok (VAPID) első induláskor automatikusan létrejönnek az adatbázisban. Időzóna: `PUSH_TZ` (alapból `Europe/Budapest`).
 
+### iPhone Parancsok (Siri, Egészség app, megosztás menü)
+A csengő panel alján: **📱 iPhone Parancsok** — lépésről lépésre leírás, a kulccsal együtt. Négy kész recept:
+- **„Hé Siri, kérdezd a dashboardot”** → `POST /api/hook/ask {text}`: a dashboard AI válaszát Siri felolvassa (lassú helyi modellnél a válasz értesítésben jön).
+- **„Mi a mai napom”** → `GET /api/hook/summary`: azonnali összefoglaló AI nélkül (teendők, események, nyitott szokások) — jó az ébresztő leállításához kötve.
+- **Egészség app minden este** → `POST /api/hook/health {steps, sleep, weight, kcal, hr, km}`: az **Egészség** csempébe (az első küldés kirakja), a lépéscél elérésekor egy szokást is kipipál.
+- **Megosztás menü** → `POST /api/hook/capture {text, url}`: teendő az első Teendők csempébe.
+
+Minden hívás `X-Nexus-Token` fejlécet kér (a kulcs az útmutatóban, cserélhető). Cloudflare Access mögött a Parancsok egy **service tokennel** jutnak be (`CF-Access-Client-Id` / `CF-Access-Client-Secret`, Access policy: Service Auth).
+
 ### Home Assistant bekötése
 
 1. HA → Profil → Biztonság → **Long-lived access tokens** → Token létrehozása

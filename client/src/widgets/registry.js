@@ -34,6 +34,7 @@ import Brief from './Brief.jsx';
 import Stocks from './Stocks.jsx';
 import WorldMap from './WorldMap.jsx';
 import financeTiles from './registry.finance.js';
+import Health from './Health.jsx';
 import activityTiles from './registry.activity.js';
 
 export const CATEGORIES = {
@@ -264,6 +265,19 @@ export const REGISTRY = {
     component: Todo,
     defaultConfig: { hideDone: false },
     fields: [{ key: 'hideDone', label: 'Kész feladatok', type: 'checkbox', checkLabel: 'Elrejtés' }],
+  },
+  health: {
+    name: 'Egészség',
+    icon: '♥',
+    category: 'life',
+    description: 'Lépés, alvás, súly, energia az iPhone Egészség appjából — egy Parancs automatizálás küldi át minden este. A lépéscél elérésekor egy szokást is kipipálhat.',
+    size: { w: 4, h: 7, minW: 3, minH: 5 },
+    component: Health,
+    defaultConfig: { stepsGoal: 8000, stepsHabit: '' },
+    fields: [
+      { key: 'stepsGoal', label: 'Napi lépéscél', type: 'number', min: 0 },
+      { key: 'stepsHabit', label: 'Szokás kipipálása a cél elérésekor', type: 'text', placeholder: 'pl. Séta', help: 'A Szokáskövető egyik sorának pontos neve. Üresen nem pipál.' },
+    ],
   },
   notes: {
     name: 'Jegyzet',

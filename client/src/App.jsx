@@ -14,6 +14,7 @@ import { ShellContext, newCategoryId } from './shell/context.js';
 import CategoryRail from './shell/CategoryRail.jsx';
 import CategoryEditor from './shell/CategoryEditor.jsx';
 import ScreenLayer from './shell/ScreenLayer.jsx';
+import ShortcutsGuide from './shell/ShortcutsGuide.jsx';
 import Dock from './shell/Dock.jsx';
 import Assistant from './shell/Assistant.jsx';
 
@@ -78,6 +79,12 @@ export default function App() {
   const canvasApi = useRef(null);
   const isDesktop = useIsDesktop();
   const [aiOpen, setAiOpen] = useState(false);
+  const [shortcuts, setShortcuts] = useState(null); // iPhone Shortcuts guide: null | { focus }
+  useEffect(() => {
+    const open = (e) => setShortcuts({ focus: e.detail?.focus });
+    window.addEventListener('nexus:shortcuts', open);
+    return () => window.removeEventListener('nexus:shortcuts', open);
+  }, []);
   const [aiVersion, setAiVersion] = useState(0); // bump to refresh AI status in the header
   const [undo, setUndo] = useState(null); // previous canvas after "Rendezés"
   const [rev, setRev] = useState({}); // per-tile remount counter (content changed by the chat bot)
@@ -577,6 +584,7 @@ export default function App() {
             }}
           />
         )}
+        {shortcuts && <ShortcutsGuide focus={shortcuts.focus} onClose={() => setShortcuts(null)} />}
         {aiOpen && <AiSettings onClose={() => setAiOpen(false)} onSaved={() => setAiVersion((v) => v + 1)} />}
         {configuring && (
           <ConfigModal

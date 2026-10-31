@@ -166,3 +166,18 @@
 .push-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .push-row .small { margin-right: auto; }
 .push-on { align-self: flex-start; }
+
+/* iPhone Shortcuts guide */
+.sc-modal { max-width: 640px; display: flex; flex-direction: column; gap: 12px; }
+.sc-key { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px; border: 1px solid var(--line-strong); border-radius: var(--radius); }
+.sc-copy { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+.sc-copy code { font-family: var(--font-mono); font-size: 12px; padding: 2px 6px; border-radius: 6px; background: var(--faint); overflow-wrap: anywhere; }
+.sc-recipe { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.sc-recipe.open { border-color: var(--line-strong); }
+.sc-recipe-head { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px; background: transparent; border: 0; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.sc-recipe-body { padding: 0 12px 12px; font-size: 13.5px; line-height: 1.5; }
+.sc-recipe-body p { margin: 6px 0; }
+.sc-list { margin: 6px 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.sc-list code { font-family: var(--font-mono); font-size: 12px; }
+.sc-open { align-self: flex-start; font-size: 12.5px; }
+.todo-link { margin-left: 6px; color: var(--accent); text-decoration: none; font-size: 13px; }

@@ -76,6 +76,9 @@ export default function PushToggle() {
         </div>
       )}
       {msg && <p className="muted small">{msg}</p>}
+      <button type="button" className="link-btn sc-open" onClick={() => window.dispatchEvent(new CustomEvent('nexus:shortcuts'))}>
+        📱 {t('iPhone Parancsok: Siri, Egészség, megosztás')}
+      </button>
     </div>
   );
 }

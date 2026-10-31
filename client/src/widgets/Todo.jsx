@@ -57,6 +57,11 @@ export default function Todo({ widget, editing }) {
           <li key={i.id} className={i.data.done ? 'done' : ''}>
             <button className="todo-check" onClick={() => update(i.id, { data: { done: !i.data.done } })} aria-label={t('Kész')} />
             <span className="todo-text">{i.data.text}</span>
+            {i.data.link && (
+              <a className="todo-link" href={i.data.link} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title={i.data.link}>
+                ↗
+              </a>
+            )}
             {!i.data.done && dueLabel(i.data.due)}
             {editing || i.data.done ? (
               <button className="icon-btn danger sm" onClick={() => remove(i.id)}>

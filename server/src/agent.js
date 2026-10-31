@@ -109,6 +109,7 @@ const READERS = {
   brief: (id) => `/widgets/${id}/brief`,
   render: (id) => `/widgets/${id}/renders`,
   portfolio: (id) => `/widgets/${id}/portfolio`,
+  health: (id) => `/widgets/${id}/items?kind=health&from=${daysAgo(14)}`,
   kpi: (id) => `/widgets/${id}/kpi`,
   balance: (id) => `/widgets/${id}/balance`,
   budget: (id) => `/widgets/${id}/budget`,
@@ -119,6 +120,9 @@ const READERS = {
 
 // Portfolio as the bot needs it: totals and one line per holding (no trade history, no provider ids).
 const round = (n, d = 2) => (Number.isFinite(n) ? Math.round(n * 10 ** d) / 10 ** d : n);
+// Egészség rows → { day, steps, sleep, … } (the raw items carry ids and sort keys)
+const slimHealth = (rows) => (Array.isArray(rows) ? rows.map(({ day, data }) => ({ day, ...Object.fromEntries(Object.entries(data ?? {}).filter(([k]) => k !== 'at')) })) : rows);
+
 function slimPortfolio(d) {
   if (!d?.positions) return d;
   const pos = (p) => ({ symbol: p.asset?.symbol, name: p.asset?.name, qty: p.qty, avgCost: round(p.avgCost), price: round(p.price), currency: p.currency, value: round(p.valueBase, 0), returnPct: round(p.unrealizedPct, 1), weightPct: round(p.weight, 1), trades: p.trades?.length });
@@ -475,6 +479,7 @@ function makeExecutor({ catalog, mode, tools }) {
           content = await selfApi('GET', reader(w.id));
           if (w.type === 'maildigest') content = slimMail(content);
           if (w.type === 'portfolio') content = slimPortfolio(content);
+          if (w.type === 'health') content = slimHealth(content);
         } catch (err) {
           content = { error: err.message };
         }
@@ -729,6 +734,7 @@ const TOPICS = {
   brief: /brief|összefoglal|napi/i,
   activity: /történt|aktivitás|esemény/i,
   portfolio: /portfóli|befektet|részvény|hozam|osztalék|tőzsde|papír|nyereség|veszteség/i,
+  health: /lépés|lépt|alv|aludt|súly|fogy|hízt|kalória|kcal|pulzus|egészség|edzés|séta|steps|sleep|weight/i,
   air: /levegő|pollen|szmog|aqi/i,
 };
 async function questionContext(question, budget) {
