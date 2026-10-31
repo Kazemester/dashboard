@@ -1,0 +1,20 @@
+{
+  "name": "nexus-dashboard-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "imapflow": "^1.0.0",
+    "mailparser": "^3.7.0",
+    "node-ical": "^0.27.3",
+    "pg": "^8.13.0",
+    "rss-parser": "^3.13.0",
+    "web-push": "^3.6.7"
+  }
+}

@@ -1,0 +1,155 @@
+/* =================== Vision theme: frosted glass on a soft backdrop (visionOS-like) ===================
+ * Active when <html data-style="glass"> (themes 'vision' and 'visiondark' in theme.js). Everything here only
+ * re-skins existing components; the layout stays the same as in the sci-fi themes.
+ */
+:root[data-style='glass'] {
+  --radius: 12px;
+  --radius-lg: 22px;
+  --font-ui: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+  --glass: rgba(255, 255, 255, 0.36);
+  --glass-strong: rgba(255, 255, 255, 0.72);
+  --glass-edge: rgba(255, 255, 255, 0.6);
+  --glass-shadow: 0 12px 40px rgba(70, 48, 28, 0.14), 0 2px 6px rgba(70, 48, 28, 0.06);
+  --panel: var(--glass);
+  --surface: rgba(250, 247, 243, 0.86);
+  --line: rgba(40, 30, 20, 0.08);
+  --line-strong: rgba(40, 30, 20, 0.14);
+  --faint: rgba(40, 30, 20, 0.05);
+  --accent-soft: color-mix(in srgb, var(--accent) 13%, transparent);
+  --accent-dim: color-mix(in srgb, var(--accent) 45%, transparent);
+  --ok: #1f9d6b;
+  --scene: radial-gradient(1100px 700px at 12% 8%, #f6efe6 0%, rgba(246, 239, 230, 0) 60%),
+    radial-gradient(900px 650px at 88% 12%, #c6b29c 0%, rgba(198, 178, 156, 0) 60%),
+    radial-gradient(1000px 800px at 70% 95%, #8f7a66 0%, rgba(143, 122, 102, 0) 62%),
+    radial-gradient(800px 600px at 5% 90%, #b49f88 0%, rgba(180, 159, 136, 0) 60%),
+    linear-gradient(160deg, #e8dfd3 0%, #cdbda9 55%, #a99480 100%);
+}
+:root[data-style='glass'][data-scheme='dark'] {
+  --glass: rgba(44, 46, 54, 0.46);
+  --glass-strong: rgba(36, 38, 46, 0.86);
+  --glass-edge: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 14px 44px rgba(0, 0, 0, 0.45);
+  --surface: rgba(30, 31, 38, 0.92);
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --faint: rgba(255, 255, 255, 0.05);
+  --ok: #4ade80;
+  --scene: radial-gradient(1100px 700px at 12% 8%, #2b2f3a 0%, rgba(43, 47, 58, 0) 60%),
+    radial-gradient(900px 650px at 88% 12%, #1f3a3a 0%, rgba(31, 58, 58, 0) 60%),
+    radial-gradient(1000px 800px at 70% 95%, #3a2a3f 0%, rgba(58, 42, 63, 0) 62%),
+    linear-gradient(160deg, #15161b 0%, #1b1d24 55%, #101115 100%);
+}
+
+/* ---- backdrop ---- */
+:root[data-style='glass'] body { background: var(--scene); background-attachment: fixed; font-size: 15px; }
+:root[data-style='glass'] .bg-glow, :root[data-style='glass'] .bg-grid { display: none; }
+:root[data-style='glass'] .canvas-viewport { background-image: radial-gradient(circle, rgba(0, 0, 0, 0.06) 1px, transparent 1.4px); background-size: inherit; }
+:root[data-style='glass'][data-scheme='dark'] .canvas-viewport { background-image: radial-gradient(circle, rgba(255, 255, 255, 0.06) 1px, transparent 1.4px); }
+:root[data-style='glass'] ::selection { background: var(--accent-soft); }
+:root[data-style='glass'] ::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
+
+/* the frosted material */
+:root[data-style='glass'] .tile,
+:root[data-style='glass'] .topbar,
+:root[data-style='glass'] .rail,
+:root[data-style='glass'] .dock,
+:root[data-style='glass'] .canvas-ui {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  backdrop-filter: blur(26px) saturate(170%);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+:root[data-style='glass'][data-scheme='dark'] .tile,
+:root[data-style='glass'][data-scheme='dark'] .topbar,
+:root[data-style='glass'][data-scheme='dark'] .rail,
+:root[data-style='glass'][data-scheme='dark'] .dock { box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.06); }
+
+/* ---- header: a floating glass bar like the reference ---- */
+:root[data-style='glass'] .topbar { margin: 12px 16px 0; padding: 10px 14px 10px 10px; border-radius: 999px; position: sticky; top: 12px; }
+:root[data-style='glass'] .canvas-mode .topbar { position: relative; top: 0; }
+:root[data-style='glass'] .hello-title { font-weight: 600; letter-spacing: -0.01em; font-size: 17px; }
+:root[data-style='glass'] .hello-sub { font-family: var(--font-ui); letter-spacing: 0; font-size: 12px; }
+:root[data-style='glass'] .avatar { background: var(--glass-strong); border-color: var(--glass-edge); color: var(--text); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
+:root[data-style='glass'] .asst-form { background: var(--glass-strong); border-color: var(--glass-edge); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04); }
+:root[data-style='glass'] .bell-btn { background: var(--glass-strong); border-color: var(--glass-edge); }
+:root[data-style='glass'] .lang-switch { border-color: var(--glass-edge); border-radius: 999px; background: var(--glass-strong); }
+:root[data-style='glass'] .lang-switch button { letter-spacing: 0.04em; }
+
+/* ---- tiles ---- */
+:root[data-style='glass'] .tile { border-radius: var(--radius-lg); }
+:root[data-style='glass'] .canvas-world .tile { background: var(--glass); }
+:root[data-style='glass'] .tile::before { display: none; }
+:root[data-style='glass'] .tile:hover { border-color: var(--glass-edge); }
+:root[data-style='glass'] .tile-head { padding: 16px 18px 6px; }
+:root[data-style='glass'] .tile-title { font-family: var(--font-ui); font-size: 15px; font-weight: 600; letter-spacing: -0.01em; text-transform: none; color: var(--text); }
+:root[data-style='glass'] .tile-body { padding: 4px 18px 18px; }
+:root[data-style='glass'] .is-editing .tile { border-style: dashed; border-color: var(--accent-dim); }
+:root[data-style='glass'] .tile-live::after { opacity: 0.35; }
+
+/* ---- type ---- */
+:root[data-style='glass'] .eyebrow,
+:root[data-style='glass'] .label,
+:root[data-style='glass'] .msg-who,
+:root[data-style='glass'] .clock-date { font-family: var(--font-ui); letter-spacing: 0.01em; text-transform: none; font-size: 12.5px; }
+:root[data-style='glass'] .big-num { font-family: var(--font-ui); font-weight: 600; letter-spacing: -0.025em; }
+:root[data-style='glass'] .empty h2 { font-family: var(--font-ui); letter-spacing: 0; font-size: 22px; font-weight: 600; }
+
+/* ---- controls ---- */
+:root[data-style='glass'] .btn { font-family: var(--font-ui); font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none; border-radius: 999px; padding: 8px 16px; }
+:root[data-style='glass'] .btn.sm { font-size: 12.5px; padding: 5px 12px; }
+:root[data-style='glass'] .btn-primary { background: #1c1c1e; border-color: #1c1c1e; color: #fff; }
+:root[data-style='glass'] .btn-primary:hover { background: #000; color: #fff; }
+:root[data-style='glass'][data-scheme='dark'] .btn-primary { background: #f2f2f5; border-color: #f2f2f5; color: #111; }
+:root[data-style='glass'] .btn-ghost { background: var(--glass-strong); border-color: transparent; color: var(--text); }
+:root[data-style='glass'] .btn-ghost:hover { border-color: var(--line-strong); color: var(--text); }
+:root[data-style='glass'] .btn-active { background: var(--accent); color: #fff; border-color: var(--accent); }
+:root[data-style='glass'] .icon-btn { border-radius: 50%; }
+:root[data-style='glass'] .icon-btn:hover { background: var(--faint); }
+:root[data-style='glass'] .input { font-family: var(--font-ui); font-size: 14px; background: var(--glass-strong); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+:root[data-style='glass'] .input.sm { padding: 6px 10px; font-size: 13.5px; }
+:root[data-style='glass'] .input:focus { border-color: var(--accent-dim); box-shadow: 0 0 0 3px var(--accent-soft); }
+:root[data-style='glass'] .chip { font-family: var(--font-ui); font-size: 12.5px; letter-spacing: 0; border-radius: 999px; padding: 4px 11px; }
+:root[data-style='glass'] .chip-on { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ---- overlays ---- */
+:root[data-style='glass'] .overlay { background: rgba(40, 30, 20, 0.22); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+:root[data-style='glass'][data-scheme='dark'] .overlay { background: rgba(0, 0, 0, 0.45); }
+:root[data-style='glass'] .drawer,
+:root[data-style='glass'] .modal,
+:root[data-style='glass'] .pop,
+:root[data-style='glass'] .theme-pop,
+:root[data-style='glass'] .sheet {
+  background: var(--surface);
+  -webkit-backdrop-filter: blur(30px) saturate(170%);
+  backdrop-filter: blur(30px) saturate(170%);
+  border: 1px solid var(--glass-edge);
+  box-shadow: 0 24px 60px rgba(40, 28, 16, 0.22);
+}
+:root[data-style='glass'] .modal { border-radius: 24px; }
+:root[data-style='glass'] .drawer { border-radius: 24px 0 0 24px; }
+:root[data-style='glass'] .drawer-head h2 { font-weight: 600; letter-spacing: -0.01em; }
+:root[data-style='glass'] .cat-card { border-radius: 14px; border-bottom: 0; padding: 12px 10px; }
+:root[data-style='glass'] .cat-name { font-weight: 600; letter-spacing: 0; }
+:root[data-style='glass'] .toast { border-radius: 999px; font-family: var(--font-ui); }
+
+/* ---- rail & dock ---- */
+:root[data-style='glass'] .rail-item.on { background: var(--glass-strong); color: var(--text); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12); }
+:root[data-style='glass'][data-scheme='dark'] .rail-item.on { background: rgba(255, 255, 255, 0.16); }
+:root[data-style='glass'] .rail-n { background: var(--glass-strong); border-color: var(--glass-edge); }
+:root[data-style='glass'] .dock-btn { font-family: var(--font-ui); font-size: 13.5px; letter-spacing: 0; text-transform: none; color: var(--text); opacity: 0.75; }
+:root[data-style='glass'] .dock-btn:hover { opacity: 1; background: var(--faint); }
+:root[data-style='glass'] .dock-btn.on { opacity: 1; background: var(--glass-strong); color: var(--text); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1); }
+:root[data-style='glass'] .dock-add { background: var(--glass-strong); color: var(--text); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12); }
+:root[data-style='glass'] .canvas-ui { border-radius: 14px; }
+:root[data-style='glass'] .zoom-ctrl { border-radius: 999px; }
+:root[data-style='glass'] .asst-send { background: #1c1c1e; color: #fff; }
+:root[data-style='glass'][data-scheme='dark'] .asst-send { background: #f2f2f5; color: #111; }
+:root[data-style='glass'] .asst-bubble { background: var(--glass-strong); border-color: var(--glass-edge); }
+:root[data-style='glass'] .asst-msg.user .asst-bubble { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* the rail and the dock float over tiles: a denser glass keeps them readable */
+:root[data-style='glass'] { --glass-bar: rgba(248, 244, 239, 0.94); }
+:root[data-style='glass'][data-scheme='dark'] { --glass-bar: rgba(30, 31, 38, 0.94); }
+:root[data-style='glass'] .rail, :root[data-style='glass'] .dock, :root[data-style='glass'] .topbar { background: var(--glass-bar); }
