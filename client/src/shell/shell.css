@@ -108,6 +108,23 @@
   .rail-ic { font-size: 16px; }
   .deck { padding-right: 68px; padding-bottom: 110px; }
 }
+/* landscape phone (or any short window): a horizontal bar under the header, icon + name per category */
+@media (orientation: landscape) and (max-height: 560px) {
+  .rail {
+    top: calc(var(--topbar-h, 72px) + 8px); left: 50%; right: auto; bottom: auto; transform: translateX(-50%);
+    flex-direction: row; max-height: none; max-width: calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right));
+    padding: 4px; border-radius: 999px;
+  }
+  .rail-list { flex-direction: row; overflow-x: auto; overflow-y: hidden; }
+  .rail-tools { flex-direction: row; border-top: 0; border-left: 1px solid var(--line); padding: 0 0 0 4px; }
+  .rail-item { width: auto; height: 34px; padding: 0 12px; flex-direction: row; gap: 6px; border-radius: 999px; }
+  .rail-ic { font-size: 14px; }
+  .rail-lb, .rail-item:hover .rail-lb { display: block; position: static; transform: none; max-width: 120px; padding: 0; font-size: 12.5px; line-height: 1; background: none; border: 0; color: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rail-tool { padding: 0 10px; }
+  .rail-tool .rail-lb, .rail-tool:hover .rail-lb { display: none; }
+  .rail-n { position: static; margin-left: 1px; }
+  .deck { padding-right: 16px; padding-top: 50px; }
+}
 
 /* ---- bottom dock ---- */
 .dock {
