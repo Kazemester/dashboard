@@ -317,7 +317,10 @@ select.input option { background: var(--surface); color: var(--text); }
 .news-meta { font-family: var(--font-mono); font-size: 9.5px; color: var(--muted); letter-spacing: 0.04em; }
 
 /* ---------- api ---------- */
-.api-widget { height: 100%; display: flex; flex-direction: column; justify-content: center; position: relative; }
+.api-widget { height: 100%; display: flex; flex-direction: column; position: relative; }
+/* centred while it fits; a long list starts at the top instead of overflowing above it (justify-content: center
+   pushes the first items out of reach of scrolling) */
+.api-widget > :not(.api-refresh) { margin-block: auto; }
 .api-value { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .api-suffix { font-size: 0.45em; color: var(--muted); margin-left: 4px; }
 .api-refresh { position: absolute; right: 0; bottom: -6px; background: none; border: none; cursor: pointer; font-family: var(--font-mono); font-size: 9.5px; }
@@ -541,7 +544,9 @@ select.input option { background: var(--surface); color: var(--text); }
 .sm-num { font-size: 24px; }
 
 /* quote */
-.quote { height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 8px; cursor: pointer; }
+.quote { height: 100%; display: flex; flex-direction: column; gap: 8px; cursor: pointer; }
+.quote > :first-child { margin-top: auto; }
+.quote > :last-child { margin-bottom: auto; }
 .quote blockquote { margin: 0; font-size: 18px; font-weight: 300; line-height: 1.35; }
 .quote cite { font-family: var(--font-mono); font-size: 10px; font-style: normal; letter-spacing: 0.1em; color: var(--muted); }
 
