@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNow } from '../hooks.js';
 import { api } from '../api.js';
 import ThemePicker from './ThemePicker.jsx';
@@ -20,6 +20,26 @@ export default function TopBar({ onAi, aiVersion, appearance, onAppearance, prof
     api.get('/status').then(setStatus).catch(() => setStatus(null));
   }, [aiVersion]);
 
+  // --topbar-h = where the header ends on screen: the phone spacer and the landscape category bar sit below it.
+  // Measured by the header itself, so a remount (portrait ↔ landscape moves it) never leaves a stale 0.
+  const head = useRef(null);
+  useEffect(() => {
+    const el = head.current;
+    if (!el) return undefined;
+    const set = () => {
+      const b = Math.round(el.getBoundingClientRect().bottom);
+      if (el.isConnected && el.offsetHeight > 0 && b > 0) document.documentElement.style.setProperty('--topbar-h', `${b}px`);
+    };
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    window.addEventListener('resize', set);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', set);
+    };
+  }, []);
+
   const name = profile?.name?.trim();
   const askName = () => {
     const next = prompt(t('Hogyan szólítsalak?'), name ?? '');
@@ -27,7 +47,7 @@ export default function TopBar({ onAi, aiVersion, appearance, onAppearance, prof
   };
 
   return (
-    <header className="topbar">
+    <header className="topbar" ref={head}>
       <button className="hello" onClick={askName} title={t('Név megadása')}>
         <span className="avatar" aria-hidden>
           {name ? name[0].toUpperCase() : '◉'}

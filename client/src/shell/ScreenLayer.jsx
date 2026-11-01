@@ -38,10 +38,6 @@ export default function ScreenLayer({ children }) {
     };
     const touch = matchMedia('(pointer: coarse)');
     const keyboard = () => el.classList.toggle('kb-open', touch.matches && Boolean(document.activeElement?.matches?.(EDITABLE)));
-    // the pinned header no longer takes room in the page: the spacer gets its height
-    const head = el.querySelector('.topbar');
-    const ro = head && new ResizeObserver(() => document.documentElement.style.setProperty('--topbar-h', `${head.offsetTop + head.offsetHeight}px`));
-    if (head) ro.observe(head);
     place();
     vv.addEventListener('resize', schedule);
     vv.addEventListener('scroll', schedule);
@@ -52,7 +48,6 @@ export default function ScreenLayer({ children }) {
     return () => {
       cancelAnimationFrame(frame);
       clearTimeout(settle);
-      ro?.disconnect();
       vv.removeEventListener('resize', schedule);
       vv.removeEventListener('scroll', schedule);
       window.removeEventListener('scroll', schedule);
