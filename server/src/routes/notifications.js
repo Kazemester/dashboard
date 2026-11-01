@@ -127,4 +127,21 @@ r.get('/notifications', async (req, res) => {
   res.json(await gatherNotifications(req.query.lang));
 });
 
+// "Read" bell items, shared by every device: the app icon badge counts the rest (see push.js).
+async function seenIds() {
+  const { rows } = await q("SELECT value FROM settings WHERE key = 'bell_seen'");
+  return Array.isArray(rows[0]?.value) ? rows[0].value : [];
+}
+export async function unseenCount() {
+  const seen = new Set(await seenIds());
+  return (await gatherNotifications('hu')).filter((n) => !seen.has(n.id)).length;
+}
+r.get('/notifications/seen', async (_req, res) => res.json(await seenIds()));
+r.post('/notifications/seen', async (req, res) => {
+  const add = (Array.isArray(req.body?.ids) ? req.body.ids : []).map(String).filter((x) => x.length < 300);
+  const next = [...new Set([...(await seenIds()), ...add])].slice(-500);
+  await q("INSERT INTO settings (key, value) VALUES ('bell_seen', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [JSON.stringify(next)]);
+  res.json({ ok: true, unseen: await unseenCount() });
+});
+
 export default r;

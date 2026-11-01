@@ -29,7 +29,24 @@ export default function Notifications({ onReveal }) {
   useEffect(() => {
     load();
     const iv = setInterval(() => !document.hidden && load(), 5 * 60_000);
-    return () => clearInterval(iv);
+    // coming back to the app (e.g. after tapping a notification): fresh list and badge
+    const vis = () => !document.hidden && load();
+    document.addEventListener('visibilitychange', vis);
+    // read state is shared with the other devices (and the app icon badge) through the server
+    api
+      .get('/notifications/seen')
+      .then((ids) => {
+        setSeen((cur) => {
+          const local = [...cur].filter((x) => !ids.includes(x));
+          if (local.length) api.post('/notifications/seen', { ids: local }).catch(() => {});
+          return new Set([...ids, ...cur]);
+        });
+      })
+      .catch(() => {});
+    return () => {
+      clearInterval(iv);
+      document.removeEventListener('visibilitychange', vis);
+    };
   }, [load]);
   useEffect(() => {
     if (!open) return undefined;
@@ -45,9 +62,15 @@ export default function Notifications({ onReveal }) {
   }, [open, load]);
 
   const unseen = items.filter((n) => !seen.has(n.id)).length;
+  // the same number on the home screen icon (installed app; needs notification permission on iPhone)
+  useEffect(() => {
+    if (!('setAppBadge' in navigator)) return;
+    (unseen > 0 ? navigator.setAppBadge(unseen) : navigator.clearAppBadge()).catch(() => {});
+  }, [unseen]);
   const markAll = () => {
     const next = new Set([...seen, ...items.map((n) => n.id)].slice(-500));
     setSeen(next);
+    api.post('/notifications/seen', { ids: items.map((n) => n.id) }).catch(() => {});
     try {
       localStorage.setItem(SEEN, JSON.stringify([...next]));
     } catch {
@@ -81,6 +104,10 @@ export default function Notifications({ onReveal }) {
                   className={`bell-item lvl-${n.level} ${seen.has(n.id) ? 'seen' : ''}`}
                   onClick={() => {
                     setOpen(false);
+                    if (!seen.has(n.id)) {
+                      setSeen((cur) => new Set([...cur, n.id]));
+                      api.post('/notifications/seen', { ids: [n.id] }).catch(() => {});
+                    }
                     if (n.widgetId) onReveal(n.widgetId);
                   }}
                 >

@@ -13,14 +13,16 @@ self.addEventListener('push', (event) => {
   } catch {
     data = { title: 'NEXUS', body: event.data?.text() ?? '' };
   }
+  // the red number on the home screen icon (iOS 16.4+, Chromium): unread bell items
+  const badge = 'setAppBadge' in self.navigator && Number.isFinite(data.badge) ? (data.badge > 0 ? self.navigator.setAppBadge(data.badge) : self.navigator.clearAppBadge()).catch(() => {}) : null;
   event.waitUntil(
-    self.registration.showNotification(data.title || 'NEXUS', {
+    Promise.all([badge, self.registration.showNotification(data.title || 'NEXUS', {
       body: data.body || '',
       tag: data.tag,
       icon: '/icons/icon-192.png',
       badge: '/icons/badge-96.png',
       data: { url: data.url || '/' },
-    }),
+    })]),
   );
 });
 

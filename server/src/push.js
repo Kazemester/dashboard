@@ -2,7 +2,7 @@ import { Router } from 'express';
 import webpush from 'web-push';
 import { q } from './db.js';
 import { HttpError } from './util.js';
-import { gatherNotifications } from './routes/notifications.js';
+import { gatherNotifications, unseenCount } from './routes/notifications.js';
 import { portfolioData } from './routes/stocks.js';
 
 /*
@@ -44,12 +44,14 @@ async function ensureTables() {
 }
 
 // payload: { title, body, url?, tag? } → every subscription (or one). Gone subscriptions are removed.
+// Each push carries the number of unread bell items: the service worker puts it on the app icon.
 export async function sendPush(payload, { endpoint } = {}) {
   await vapid();
+  const badge = await unseenCount().catch(() => undefined);
   const { rows } = endpoint ? await q('SELECT * FROM push_subscriptions WHERE endpoint = $1', [endpoint]) : await q('SELECT * FROM push_subscriptions');
   let sent = 0;
   for (const s of rows) {
-    const body = typeof payload === 'function' ? payload(s.lang) : payload;
+    const body = { badge, ...(typeof payload === 'function' ? payload(s.lang) : payload) };
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, JSON.stringify(body), { TTL: 6 * 3600, urgency: 'normal' });
       sent++;
