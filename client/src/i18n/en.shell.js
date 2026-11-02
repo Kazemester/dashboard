@@ -63,4 +63,7 @@ export default {
   'Bekapcsolva. Küldök egy próbát…': 'On. Sending a test…',
   'Elküldve — pár másodpercen belül meg kell jelennie.': 'Sent — it should appear within a few seconds.',
   'Nem sikerült bekapcsolni: {msg}': 'Could not turn on: {msg}',
+  'Reggeli összefoglaló': 'Morning summary',
+  'Időpont': 'Time',
+  '— az ikonon lévő számot is frissíti': '— also updates the number on the app icon',
 };

@@ -164,6 +164,47 @@ async function portfolioPushes() {
   }
 }
 
+// ---------- morning summary ----------
+// iOS updates the icon badge only when a push arrives (no silent pushes for web apps), and habits or already
+// pushed to-dos never send one: a daily summary keeps the badge right and starts the day.
+const DEFAULT_PREFS = { daily: true, hour: 8 };
+export async function pushPrefs() {
+  const { rows } = await q("SELECT value FROM settings WHERE key = 'push_prefs'");
+  return { ...DEFAULT_PREFS, ...(rows[0]?.value ?? {}) };
+}
+
+async function dailySummary(now) {
+  const prefs = await pushPrefs();
+  if (!prefs.daily || hourIn(now) < Number(prefs.hour)) return;
+  const today = dayIn(now);
+  const { rows } = await q("SELECT value FROM settings WHERE key = 'bell_seen'");
+  const seen = new Set(Array.isArray(rows[0]?.value) ? rows[0].value : []);
+  const lists = { hu: await gatherNotifications('hu'), en: await gatherNotifications('en') };
+  if (!lists.hu.some((n) => !seen.has(n.id))) return; // nothing to tell (the badge is already clear)
+  if (!(await once(`daily:${today}`))) return;
+  await sendPush((lang) => {
+    const en = lang === 'en';
+    const items = (lists[lang] ?? lists.hu).filter((n) => !seen.has(n.id));
+    const todos = items.filter((n) => n.kind === 'todo').length;
+    const habit = items.find((n) => n.kind === 'habit');
+    const parts = [];
+    if (todos) parts.push(en ? `${todos} to-do(s) due` : `${todos} teendő esedékes`);
+    for (const n of items.filter((x) => x.kind === 'event' || x.kind === 'calendar').slice(0, 2)) parts.push(`${n.title} (${n.detail.toLowerCase()})`);
+    if (items.some((n) => n.kind === 'money')) parts.push(en ? 'budget alert' : 'keret-figyelmeztetés');
+    if (habit) parts.push(habit.title.toLowerCase());
+    return { title: en ? 'Today' : 'Mai nap', body: parts.join(' · ') || (en ? `${items.length} item(s) in the bell` : `${items.length} tétel a csengőben`), url: '/', tag: 'daily' };
+  });
+}
+
+r.get('/push/prefs', async (_req, res) => res.json(await pushPrefs()));
+r.put('/push/prefs', async (req, res) => {
+  const next = { ...(await pushPrefs()) };
+  if (req.body?.daily !== undefined) next.daily = Boolean(req.body.daily);
+  if (req.body?.hour !== undefined) next.hour = Math.min(12, Math.max(7, Math.round(Number(req.body.hour)) || 8));
+  await q("INSERT INTO settings (key, value) VALUES ('push_prefs', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [JSON.stringify(next)]);
+  res.json(next);
+});
+
 let running = false;
 export async function pushTick(now = new Date()) {
   if (running) return;
@@ -175,6 +216,7 @@ export async function pushTick(now = new Date()) {
     if (h >= 22 || h < 7) return; // quiet hours: still-relevant items go out at 7:00
     await bellPushes();
     await portfolioPushes();
+    await dailySummary(now);
     await q("DELETE FROM push_sent WHERE sent_at < now() - interval '30 days'");
   } catch (err) {
     console.error('[push scheduler]', err.message);

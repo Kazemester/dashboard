@@ -186,6 +186,7 @@ A dashboard telepíthető appként is fut, és push-értesítést küld:
    - Költségkövető: közel a kerethez / túllépve;
    - Portfólió árriasztás: a csempe ⚙ beállításaiban **Árriasztás a telefonra** (napi ±3 / 5 / 10%), papíronként naponta egyszer.
 4. Az értesítésre koppintva a dashboard annál a csempénél nyílik meg.
+5. Az app ikonján a piros szám az olvasatlan csengő-tételeket mutatja. iOS-en ez csak push érkezésekor (vagy az app megnyitásakor) frissülhet, ezért van **reggeli összefoglaló** (alapból 8:00, a csengő paneljében állítható): „Mai nap: 2 teendő esedékes · 3 szokás vár”.
 
 A kulcsok (VAPID) első induláskor automatikusan létrejönnek az adatbázisban. Időzóna: `PUSH_TZ` (alapból `Europe/Budapest`).
 

@@ -7,6 +7,14 @@ import { currentSubscription, disablePush, enablePush, isIOS, isStandalone, push
 export default function PushToggle() {
   const [state, setState] = useState('checking'); // checking | off | on | busy | ios-install | unsupported | denied
   const [msg, setMsg] = useState(null);
+  const [prefs, setPrefs] = useState(null); // { daily, hour }
+  useEffect(() => {
+    if (state === 'on' && !prefs) api.get('/push/prefs').then(setPrefs).catch(() => {});
+  }, [state, prefs]);
+  const savePrefs = async (patch) => {
+    setPrefs((p) => ({ ...p, ...patch }));
+    setPrefs(await api.put('/push/prefs', patch).catch(() => prefs));
+  };
 
   useEffect(() => {
     (async () => {
@@ -74,6 +82,20 @@ export default function PushToggle() {
             {t('Kikapcsolás')}
           </button>
         </div>
+      )}
+      {state === 'on' && prefs && (
+        <label className="push-daily small">
+          <input type="checkbox" checked={prefs.daily} onChange={(e) => savePrefs({ daily: e.target.checked })} />
+          <span>{t('Reggeli összefoglaló')}</span>
+          <select value={prefs.hour} onChange={(e) => savePrefs({ hour: Number(e.target.value) })} disabled={!prefs.daily} aria-label={t('Időpont')}>
+            {[7, 8, 9, 10, 11, 12].map((h) => (
+              <option key={h} value={h}>
+                {h}:00
+              </option>
+            ))}
+          </select>
+          <span className="muted">{t('— az ikonon lévő számot is frissíti')}</span>
+        </label>
       )}
       {msg && <p className="muted small">{msg}</p>}
       <button type="button" className="link-btn sc-open" onClick={() => window.dispatchEvent(new CustomEvent('nexus:shortcuts'))}>
