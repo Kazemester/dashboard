@@ -27,10 +27,15 @@ async function request(method, url, body) {
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch {
-    throw await networkError();
+    throw Object.assign(await networkError(), { transient: true });
   }
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(data?.error || (PROXY_STATUS[res.status] ? t(PROXY_STATUS[res.status]) : `HTTP ${res.status}`));
+  if (!res.ok) {
+    const err = new Error(data?.error || (PROXY_STATUS[res.status] ? t(PROXY_STATUS[res.status]) : `HTTP ${res.status}`));
+    // the proxy's own answer (server restarting / unreachable), not an error from the dashboard: worth a retry
+    err.transient = !data && [502, 503, 504, 521, 522, 523, 524, 530].includes(res.status);
+    throw err;
+  }
   return data;
 }
 

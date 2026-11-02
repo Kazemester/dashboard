@@ -19,6 +19,7 @@ export function useWidgetData(url, { interval = 0, deps = [], live = true } = {}
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const latest = useRef(0); // id of the newest request; older responses are ignored
+  const [retryAt, setRetryAt] = useState(0); // a server restart / dropped connection: try again by itself
 
   const reload = useCallback(async () => {
     const id = ++latest.current;
@@ -34,7 +35,10 @@ export function useWidgetData(url, { interval = 0, deps = [], live = true } = {}
         setError(null);
       }
     } catch (e) {
-      if (id === latest.current) setError(e.message);
+      if (id === latest.current) {
+        setError(e.message);
+        if (e.transient) setRetryAt(Date.now());
+      }
     } finally {
       if (id === latest.current) setLoading(false);
     }
@@ -49,6 +53,12 @@ export function useWidgetData(url, { interval = 0, deps = [], live = true } = {}
       if (t) clearInterval(t);
     };
   }, [reload, interval]);
+
+  useEffect(() => {
+    if (!retryAt) return undefined;
+    const t = setTimeout(reload, 20_000);
+    return () => clearTimeout(t);
+  }, [retryAt, reload]);
 
   return { data, error, loading, reload, setData };
 }
