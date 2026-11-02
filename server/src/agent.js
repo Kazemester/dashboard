@@ -154,11 +154,14 @@ const TOOLS = {
     fn('list_tile_types', 'List the tile types that can be added, with their settings fields.'),
   ],
   write: [
-    fn('add_todo', 'Add a to-do item to a Teendők (todo) tile.', {
-      text: { type: 'string' },
+    fn('add_todo', 'Add one or more to-do items to a Teendők (todo) tile. With "category" they go to the to-do tile of that category (a new one is made there if it has none).', {
+      text: { type: 'string', description: 'one to-do' },
+      items: { type: 'array', items: { type: 'string' }, description: 'several to-dos at once' },
       due: { type: 'string', description: 'optional due date YYYY-MM-DD' },
-      tile: { type: 'string', description: 'tile title or id; only needed when there are several todo tiles' },
-    }, ['text']),
+      tile: { type: 'string', description: 'tile title or id (optional)' },
+      category: { type: 'string', description: 'category name, e.g. Work (optional)' },
+      list_title: { type: 'string', description: 'title for a new to-do tile, if one has to be made' },
+    }),
     fn('complete_todo', 'Mark a to-do item done (or not done).', {
       item: { type: 'string', description: 'the to-do text (or part of it), or its id' },
       done: { type: 'boolean', description: 'default true' },
@@ -383,7 +386,7 @@ function makeExecutor({ catalog, mode, tools }) {
     const all = widgets.filter((x) => x.type === type);
     if (all.length === 1) return all[0];
     if (!all.length) throw new Error(`There is no ${typeName(type)} tile. Nothing was changed. Ask the user whether to add one (add_tile type "${type}").`);
-    throw new Error(`There are several ${typeName(type)} tiles: ${all.map((x) => x.title).join(', ')}. Pass tile.`);
+    throw new Error(L(`Több ${typeName(type)} csempe is van: ${all.map((x) => x.title).join(', ')}. Add meg, melyikbe (tile).`, `There are several ${typeName(type)} tiles: ${all.map((x) => x.title).join(', ')}. Pass tile.`));
   }
   // The settings field of a tile type that holds a list (links, events, sources, targets).
   const listField = (type) => catalog?.[type]?.fields?.find((f) => f.type === 'list');
@@ -393,12 +396,46 @@ function makeExecutor({ catalog, mode, tools }) {
     actions.push(label);
   };
 
+  // The to-do tile of a category (made there when it has none; the category too if it does not exist yet).
+  async function todoTileIn(category, title) {
+    const { widgets, categories } = await loadState();
+    const c = category ? pickOrNull(categories, String(category), (x) => x.name) : null;
+    const inCat = c ? widgets.filter((x) => x.type === 'todo' && c.tiles.includes(x.id)) : [];
+    if (inCat.length) return (title && inCat.find((x) => x.title.toLowerCase().includes(String(title).toLowerCase()))) || inCat[0];
+    const made = await handlers.add_tile({ type: 'todo', title: title || L('Teendők', 'To-dos') });
+    if (category) await handlers.set_tile_category({ tile: made.id, category: c?.name ?? String(category) });
+    return (await loadState()).widgets.find((x) => x.id === made.id);
+  }
+
   const handlers = {
-    async add_todo({ text, due, tile, tile_id }) {
-      const w = await tileOf('todo', tile ?? tile_id);
-      const item = await selfApi('POST', `/widgets/${w.id}/items`, { kind: 'todo', data: { text: String(text).trim(), done: false, ...(/^\d{4}-\d{2}-\d{2}$/.test(due ?? '') ? { due } : {}) } });
-      content(w.id, L(`Teendő felvéve: ${text}`, `To-do added: ${text}`));
-      return { ok: true, item_id: item.id, tile: w.title };
+    async add_todo({ text, items, due, tile, tile_id, category, list_title }) {
+      const texts = [...(Array.isArray(items) ? items : typeof items === 'string' ? items.split(/\n|;/) : []), ...(text ? [text] : [])]
+        .map((x) => String(typeof x === 'object' && x ? x.text ?? '' : x).replace(/^[-•*\d.)\s]+/, '').trim())
+        .filter(Boolean)
+        .slice(0, 30);
+      if (!texts.length) throw new Error(L('Hiányzik a teendő szövege.', 'Missing the to-do text.'));
+      let w;
+      if (tile ?? tile_id) {
+        // small models pass the category as the tile ("tile": "Work")
+        w = await tileOf('todo', tile ?? tile_id).catch(async (err) => {
+          const { categories } = await loadState();
+          if (pickOrNull(categories, String(tile ?? tile_id), (x) => x.name)) return todoTileIn(tile ?? tile_id, list_title);
+          throw err;
+        });
+      } else if (category) w = await todoTileIn(category, list_title);
+      else {
+        const all = (await loadState()).widgets.filter((x) => x.type === 'todo');
+        if (!all.length) w = await todoTileIn(null, list_title);
+        // several lists (Teendők, Vásárlás…) and none named: the general one, not an error
+        else w = all.length === 1 ? all[0] : all.find((x) => /^(teend|to-?do|feladat)/i.test(x.title)) ?? all[0];
+      }
+      const ids = [];
+      for (const t of texts) {
+        const item = await selfApi('POST', `/widgets/${w.id}/items`, { kind: 'todo', data: { text: t, done: false, ...(/^\d{4}-\d{2}-\d{2}$/.test(due ?? '') ? { due } : {}) } });
+        ids.push(item.id);
+      }
+      content(w.id, texts.length === 1 ? L(`Teendő felvéve: ${texts[0]}`, `To-do added: ${texts[0]}`) : L(`${texts.length} teendő felvéve (${w.title})`, `${texts.length} to-dos added (${w.title})`));
+      return { ok: true, added: texts.length, item_ids: ids, tile: w.title };
     },
     async complete_todo({ item, item_id, done = true }) {
       const { rows } = await q("SELECT i.id, i.data, i.widget_id FROM widget_items i JOIN widgets w ON w.id = i.widget_id WHERE w.type = 'todo' AND i.kind = 'todo'");
@@ -823,6 +860,8 @@ function parsePlan(text) {
   }
 }
 async function planWithJson({ history, persona, model, catalog, exec, state, tools }) {
+  // "make a to-do list from my mail summary": the planner must see the summary to fill in the items
+  const context = await questionContext(lastUserText(history), 2500).catch(() => '');
   const writeTools = tools.filter((t) => !['list_tiles', 'read_tile', 'list_tile_types', 'tile_api'].includes(t.function.name));
   const types = catalog ? Object.entries(catalog).map(([t, d]) => `${t}=${d.name}[${(d.fields ?? []).map((f) => f.key).join(',')}]`).join('; ') : '';
   const tiles = state.widgets.map((w) => `${w.title} (${w.type})`).join('; ') || '(none)';
@@ -835,7 +874,9 @@ async function planWithJson({ history, persona, model, catalog, exec, state, too
     `Tools:\n${writeTools.map(briefTool).join('\n')}`,
     types ? `Tile types (id=Name[settings]): ${types}` : '',
     `Current tiles: ${tiles}. Refer to existing tiles by their title. Today is ${isoDay()}.`,
-    'Choosing the tool: the PRICE or exchange RATE of a currency pair (USD/HUF), share, gold or crypto → add_stock (the Valutaváltó tile is only a converter calculator). A NEW tile → add_tile. Turn an existing tile into ANOTHER KIND of tile → replace_tile. Change a setting of a tile that stays what it is → update_tile. Theme, colours, animations on/off → set_appearance. An entry in a tile\'s list (links, countdown events…) → add_list_item. A to-do → add_todo. Put a tile into a category / group → set_tile_category. Answer format example: {"tool":"add_todo","arguments":{"text":"Tejet venni"},"reply":"Felvettem a teendőt."}',
+    state.categories?.length ? `Categories: ${state.categories.map((c) => c.name).join(', ')}.` : '',
+    context ? `Contents of the tiles the message is about (use them when the user refers to them, e.g. "from my mail summary"):\n${context}` : '',
+    'Choosing the tool: the PRICE or exchange RATE of a currency pair (USD/HUF), share, gold or crypto → add_stock (the Valutaváltó tile is only a converter calculator). A NEW tile → add_tile. Turn an existing tile into ANOTHER KIND of tile → replace_tile. Change a setting of a tile that stays what it is → update_tile. Theme, colours, animations on/off → set_appearance. An entry in a tile\'s list (links, countdown events…) → add_list_item. A to-do → add_todo (several → "items", into a category → "category"). Put a tile into a category / group → set_tile_category. Answer format examples: {"tool":"add_todo","arguments":{"text":"Tejet venni"},"reply":"Felvettem a teendőt."} {"tool":"add_todo","arguments":{"items":["Számla befizetése","Válasz Péternek"],"category":"Work"},"reply":"Felvettem 2 teendőt a Work kategóriába."}',
     hu ? HU_HINT : curLang === 'en' ? EN_HINT : 'Write "reply" in the language of the user.',
   ].filter(Boolean).join('\n\n');
   const msgs = [{ role: 'system', content: sys }, ...history.slice(-6).map(({ role, content }) => ({ role, content }))];
