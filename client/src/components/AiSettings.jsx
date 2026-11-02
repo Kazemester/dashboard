@@ -143,7 +143,7 @@ export default function AiSettings({ onClose, onSaved }) {
                   </>
                 )}
                 {preset === 'ollama' && t('Telepítsd az Ollamát a gépedre, majd: ollama pull llama3.1 — a levelek így nem hagyják el a gépet.')}
-                {preset === 'ollama-server' && t('A dashboarddal együtt Dockerben futó Ollama: docker compose --profile ollama up -d, majd docker compose exec ollama ollama pull qwen2.5:3b')}
+                {preset === 'ollama-server' && t('A dashboarddal együtt Dockerben futó Ollama: docker compose --profile ollama up -d, majd docker compose exec ollama ollama pull qwen2.5:7b (4 magon / 16+ GB RAM-mal; 2 magon a qwen2.5:3b gyorsabb)')}
               </span>
             </label>
             <label className="form-row">
@@ -171,10 +171,10 @@ export default function AiSettings({ onClose, onSaved }) {
             </label>
             <label className="form-row">
               <span className="label">{t('Képelemző modell')}</span>
-              <input className="input" list="ai-models" value={visionModel} onChange={(e) => setVisionModel(e.target.value)} placeholder={preset.startsWith('ollama') ? 'qwen2.5vl:3b' : t('üresen: a fenti modell')} />
+              <input className="input" list="ai-models" value={visionModel} onChange={(e) => setVisionModel(e.target.value)} placeholder={t('üresen: nem kell (a képimport szövegfelismerővel megy)')} />
               <span className="help">
                 {t('Nem kötelező: a Portfólió képernyőkép-importja szövegfelismerővel dolgozik, ez csak tartalék. Üresen a fenti modellt használom.')}{' '}
-                {preset === 'ollama-server' && t('A szerveren: docker compose exec ollama ollama pull qwen2.5vl:3b')}
+                {preset === 'ollama-server' && t('Ha mégis kell: docker compose exec ollama ollama pull qwen2.5vl:3b')}
                 {preset === 'ollama' && t('A gépeden: ollama pull qwen2.5vl:3b')}
               </span>
             </label>
