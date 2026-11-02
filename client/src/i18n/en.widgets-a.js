@@ -263,4 +263,10 @@ export default {
   'HIBA: {msg}': 'ERROR: {msg}',
   'Írj ide bármit…': 'Write anything here…',
   '{n} SZÓ': '{n} WORDS',
+  '{n} teendő felvéve: {tile}': '{n} to-dos added: {tile}',
+  '{n} már rajta volt': '{n} were already there',
+  'Nincs új teendő, mind rajta van már a listán.': 'Nothing new, all are already on the list.',
+  'Hova': 'Where',
+  'Fő teendőlista': 'Main to-do list',
+  '→ Teendők közé': '→ To my to-dos',
 };

@@ -7,6 +7,7 @@ import { getWidget, HttpError } from '../util.js';
 import { logMail } from '../activity.js';
 import { startJob } from '../jobs.js';
 import { resolveSecrets } from '../secrets.js';
+import { mailTodos } from '../agent.js';
 
 const r = Router();
 
@@ -251,6 +252,17 @@ r.get('/widgets/:id/mail', async (req, res) => {
   // older runs were stored before readable() existed
   if (d?.result?.mails) d.result.mails = d.result.mails.map((m) => ({ ...m, text: readable(m.text) }));
   res.json(d ?? null);
+});
+
+// The summary's action items → to-dos (into the to-do tile of a category, made there if needed).
+r.post('/widgets/:id/mail/todos', async (req, res) => {
+  const w = await getWidget(req.params.id, 'maildigest');
+  const category = typeof req.body?.category === 'string' && req.body.category.trim() ? req.body.category.trim() : null;
+  try {
+    res.json(await mailTodos({ widget: w.id, category }));
+  } catch (err) {
+    throw new HttpError(400, err.message);
+  }
 });
 
 // ---------- ask the bot about the fetched emails ----------

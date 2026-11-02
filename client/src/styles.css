@@ -941,3 +941,5 @@ select.input option { background: var(--surface); color: var(--text); }
 @media (max-width: 640px) { .lang-switch button { padding: 5px 6px; font-size: 10px; letter-spacing: .06em; } }
 @media (max-width: 640px) { .theme-label { display: none; } .theme-btn { gap: 0; } }
 .wm-dom { color: var(--muted); font-size: 11.5px; }
+.mail-totodo { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 6px 0 10px; }
+.mail-totodo select { width: auto; max-width: 60%; }

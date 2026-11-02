@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useWidgetData } from '../hooks.js';
 import AiError from '../components/AiHint.jsx';
+import { announce } from './Chat.jsx';
 import { t, locale } from '../i18n.js';
 
 const SUGGESTIONS = ['Mi a legfontosabb?', 'Van fizetendő számlám vagy határidőm?', 'Kinek kell válaszolnom?', 'Melyik levél reklám vagy spam?'];
@@ -9,7 +10,47 @@ const SUGGESTIONS = ['Mi a legfontosabb?', 'Van fizetendő számlám vagy határ
 const when = (d) => (d ? new Date(d).toLocaleString(locale(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
 const sender = (from) => (from || '').replace(/<[^>]*>/g, '').trim() || from;
 
-function Summary({ r, onAsk }) {
+// The summary's action items → a to-do list (the general one, or the to-do tile of a category).
+function ToTodos({ widgetId }) {
+  const [cats, setCats] = useState(null);
+  const [cat, setCat] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  useEffect(() => {
+    api.get('/dashboard').then((d) => setCats(d.categories ?? [])).catch(() => setCats([]));
+  }, []);
+  const go = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await api.post(`/widgets/${widgetId}/mail/todos`, { category: cat || null });
+      setMsg(r.added ? t('{n} teendő felvéve: {tile}', { n: r.added, tile: r.tile }) + (r.skipped ? ` · ${t('{n} már rajta volt', { n: r.skipped })}` : '') : r.note || t('Nincs új teendő, mind rajta van már a listán.'));
+      // other tiles (the to-do list, a new tile in a category) show the change
+      announce({ changed: r.changed, layoutChanged: r.layoutChanged });
+    } catch (e) {
+      setMsg(e.message);
+    }
+    setBusy(false);
+  };
+  return (
+    <div className="mail-totodo">
+      <select className="input sm" value={cat} onChange={(e) => setCat(e.target.value)} aria-label={t('Hova')}>
+        <option value="">{t('Fő teendőlista')}</option>
+        {(cats ?? []).map((c) => (
+          <option key={c.id} value={c.name}>
+            {c.icon} {c.name}
+          </option>
+        ))}
+      </select>
+      <button className="btn btn-primary sm" onClick={go} disabled={busy}>
+        {busy ? '…' : t('→ Teendők közé')}
+      </button>
+      {msg && <span className="muted sm">{msg}</span>}
+    </div>
+  );
+}
+
+function Summary({ r, onAsk, widgetId }) {
   const empty = !r.headline && !r.important?.length && !r.todos?.length;
   return (
     <div className="mail-body">
@@ -44,6 +85,7 @@ function Summary({ r, onAsk }) {
           </ul>
         </>
       )}
+      {(r.todos?.length > 0 || r.important?.some((m) => m.action)) && <ToTodos widgetId={widgetId} />}
       {r.categories?.length > 0 && (
         <div className="chips">
           {r.categories.map((c, i) => (
@@ -255,7 +297,7 @@ export default function MailDigest({ widget }) {
 
       <div className="mail-tab">
         {tab === 'summary' &&
-          (r ? <Summary r={r} onAsk={askFromTab} /> : <div className="muted sm">{t('Nyomd meg a Futtatás gombot: a bot letölti az olvasatlan leveleket, és összefoglalja őket.')}</div>)}
+          (r ? <Summary r={r} onAsk={askFromTab} widgetId={widget.id} /> : <div className="muted sm">{t('Nyomd meg a Futtatás gombot: a bot letölti az olvasatlan leveleket, és összefoglalja őket.')}</div>)}
         {tab === 'mails' && (mails.length ? <MailList mails={mails} onAsk={askFromTab} /> : <div className="muted sm">{t('Nincs letöltött levél.')}</div>)}
         {tab === 'ask' && <Ask widget={widget} hasMails={mails.length > 0} pending={pending} onPendingDone={() => setPending(null)} />}
       </div>

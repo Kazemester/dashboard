@@ -162,6 +162,9 @@ const TOOLS = {
       category: { type: 'string', description: 'category name, e.g. Work (optional)' },
       list_title: { type: 'string', description: 'title for a new to-do tile, if one has to be made' },
     }),
+    fn('todos_from_mail', 'Turn the action items of the latest Mail bot summary into to-dos (optionally into the to-do tile of a category).', {
+      category: { type: 'string', description: 'category name, e.g. Work (optional)' },
+    }),
     fn('complete_todo', 'Mark a to-do item done (or not done).', {
       item: { type: 'string', description: 'the to-do text (or part of it), or its id' },
       done: { type: 'boolean', description: 'default true' },
@@ -363,7 +366,7 @@ async function ownerOf(path) {
 let curLang = 'hu';
 const L = (hu, en) => (curLang === 'en' ? en : hu);
 
-function makeExecutor({ catalog, mode, tools }) {
+function makeExecutor({ catalog, mode, tools, userText = '' }) {
   const actions = []; // human-readable log shown under the answer
   const pending = []; // removals waiting for the user's confirmation
   const created = []; // tiles added in this turn ({ id, title }): the client scrolls to them and offers a 'show' button
@@ -414,6 +417,12 @@ function makeExecutor({ catalog, mode, tools }) {
         .filter(Boolean)
         .slice(0, 30);
       if (!texts.length) throw new Error(L('Hiányzik a teendő szövege.', 'Missing the to-do text.'));
+      // small models copy the request itself ("A leveleim összefoglalójából készíts…") as the to-do
+      const fold2 = (x) => fold(x).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+      const asked2 = fold2(userText);
+      // (the copy starts where the request starts and keeps its command verb; a real to-do after "Vegyél fel:" does not)
+      if (asked2 && texts.some((x) => { const f = fold2(x); return f.length > 12 && (f.includes(asked2) || (asked2.indexOf(f) >= 0 && asked2.indexOf(f) <= 3 && COMMAND.test(x))); }))
+        throw new Error(L('Ez a felhasználó kérésének a szövege, nem egy teendő. A teendők tartalmát a kérés tárgyából vedd (pl. levelekből: todos_from_mail), vagy kérdezz vissza.', 'That is the text of the request, not a to-do. Take the to-dos from what the request refers to (mails: todos_from_mail) or ask back.'));
       let w;
       if (tile ?? tile_id) {
         // small models pass the category as the tile ("tile": "Work")
@@ -436,6 +445,27 @@ function makeExecutor({ catalog, mode, tools }) {
       }
       content(w.id, texts.length === 1 ? L(`Teendő felvéve: ${texts[0]}`, `To-do added: ${texts[0]}`) : L(`${texts.length} teendő felvéve (${w.title})`, `${texts.length} to-dos added (${w.title})`));
       return { ok: true, added: texts.length, item_ids: ids, tile: w.title };
+    },
+    async todos_from_mail({ category, tile, widget }) {
+      const { widgets } = await loadState();
+      const mailTiles = widgets.filter((x) => x.type === 'maildigest');
+      if (!mailTiles.length) throw new Error(L('Nincs Mail bot csempe.', 'There is no Mail bot tile.'));
+      const ids = widget ? [widget] : mailTiles.map((x) => x.id);
+      const { rows } = await q('SELECT result FROM mail_digests WHERE widget_id = ANY($1) ORDER BY id DESC LIMIT 1', [ids]);
+      const r = rows[0]?.result;
+      if (!r) throw new Error(L('Még nincs levél-összefoglaló: futtasd a Mail botot.', 'No mail summary yet: run the Mail bot.'));
+      // the summary's own to-do list; else the actions of the important mails
+      let items = (r.todos ?? []).map((x) => String(x).trim()).filter(Boolean);
+      if (!items.length) items = (r.important ?? []).filter((x) => x.action).map((x) => [x.action, x.subject && `(${x.subject})`].filter(Boolean).join(' '));
+      if (!items.length) return { ok: true, added: 0, note: L('Az összefoglalóban nincs teendő.', 'The summary has no action items.') };
+      const w = category || tile ? await (category ? todoTileIn(category) : tileOf('todo', tile)) : (await loadState()).widgets.filter((x) => x.type === 'todo').find((x) => /^(teend|to-?do|feladat)/i.test(x.title)) ?? (await todoTileIn(null));
+      // skip the ones already on that list
+      const { rows: have } = await q("SELECT data->>'text' AS text FROM widget_items WHERE widget_id = $1 AND kind = 'todo'", [w.id]);
+      const known = new Set(have.map((x) => fold(x.text ?? '')));
+      const fresh = items.filter((x) => !known.has(fold(x)));
+      for (const t of fresh) await selfApi('POST', `/widgets/${w.id}/items`, { kind: 'todo', data: { text: t.slice(0, 300), done: false, source: 'mail' } });
+      content(w.id, L(`${fresh.length} teendő a levelekből → ${w.title}`, `${fresh.length} to-dos from mail → ${w.title}`));
+      return { ok: true, added: fresh.length, skipped: items.length - fresh.length, tile: w.title, items: fresh };
     },
     async complete_todo({ item, item_id, done = true }) {
       const { rows } = await q("SELECT i.id, i.data, i.widget_id FROM widget_items i JOIN widgets w ON w.id = i.widget_id WHERE w.type = 'todo' AND i.kind = 'todo'");
@@ -813,6 +843,9 @@ const metaOf = (exec, extra = {}) => ({
 });
 
 // What the user last asked (history may end with the bot's own nudges in older runs; skip those).
+// "…from my mails / the mail summary…" + to-do (not "add a to-do: write a mail to Péter")
+const MAIL_SOURCE = /levelei|levelek|levélből|levelből|mailjei|mailek|e-?mailekb|inbox|my (e-?)?mails|from (the |my )?(e-?)?mail|mail (summary|digest)|(levél|level|mail)[\s\S]{0,20}összefoglal/i;
+const MAIL_TODOS = { test: (t) => MAIL_SOURCE.test(t) && /teend|to-?do|feladat|tennival/i.test(t) };
 const lastUserText = (history) => [...history].reverse().find((m) => m.role === 'user')?.content ?? '';
 // Imperative verbs (Hungarian prefixes / English words): the user wants something DONE, not explained.
 const COMMAND = /(^|[\s,.;:!?(])(adj|add|tedd|tegy|rakj|rakd|rak\b|vegy|vedd|kapcsol|állít|írj|írd|pipál|jelöld|mozg|húzd|told|nagyít|kicsiny|cser|módosít|hozz létre|készít|csinálj|töröl|távolít|helyez|nyiss|nyisd|legyen|frissít|indíts|küldd|ments|nevezd)|\b(add|create|put|set|turn|switch|change|remove|delete|make|move|resize|tick|replace|insert|place)\b/i;
@@ -906,6 +939,14 @@ async function planWithJson({ history, persona, model, catalog, exec, state, too
   return { error: lastError };
 }
 
+// The Mail bot tile's "→ Teendők" button (routes/mail.js).
+export async function mailTodos({ widget, category }) {
+  curLang = 'hu';
+  const exec = makeExecutor({ mode: 'full' });
+  const r = await exec.run('todos_from_mail', { widget, ...(category ? { category } : {}) });
+  return { ...r, changed: [...exec.changed], layoutChanged: exec.layoutChanged };
+}
+
 /**
  * Run one chat turn with dashboard access.
  * @returns {{ answer, meta: { actions, pending, changed, layoutChanged, readOnly? } }}
@@ -916,7 +957,7 @@ export async function agentTurn({ history, persona, model, catalog, mode, lang }
   const cfg = await aiConfig();
   const local = isLocal(cfg.baseUrl);
   const tools = toolsFor(mode, local);
-  const exec = makeExecutor({ catalog, mode, tools });
+  const exec = makeExecutor({ catalog, mode, tools, userText: lastUserText(history) });
   const messages = [{ role: 'system', content: systemPrompt({ persona, state, catalog, mode, local, hu: curLang === 'hu' }) }, ...history.slice(-12)];
   const resultLimit = local ? 3000 : 9000;
   let planned = false;
@@ -931,6 +972,22 @@ export async function agentTurn({ history, persona, model, catalog, mode, lang }
     if (fb?.error) return { answer: `${L('Nem sikerült', 'Failed')}: ${fb.error}`, meta: metaOf(exec) };
     return null;
   };
+
+  // "make to-dos from my mails (into Work)": done by code from the Mail bot summary, no model needed
+  const said = lastUserText(history);
+  if (mode === 'full' && MAIL_TODOS.test(said) && COMMAND.test(said)) {
+    const fa = fold(said);
+    const cat = state.categories?.find((c) => c.name && fa.includes(fold(c.name)));
+    try {
+      const r = await exec.run('todos_from_mail', cat ? { category: cat.name } : {});
+      const answer = r.added
+        ? L(`Kész: ${r.added} teendőt vettem fel a levelekből a(z) „${r.tile}” listára${cat ? ` (${cat.name})` : ''}${r.skipped ? `, ${r.skipped} már rajta volt` : ''}.`, `Done: ${r.added} to-dos from your mails on “${r.tile}”${r.skipped ? `, ${r.skipped} were already there` : ''}.`)
+        : r.note || L(`Nincs új teendő: mind rajta van már a(z) „${r.tile}” listán.`, `Nothing new: all are already on “${r.tile}”.`);
+      return { answer, meta: metaOf(exec) };
+    } catch (err) {
+      return { answer: `${L('Nem sikerült', 'Failed')}: ${err.message}`, meta: metaOf(exec) };
+    }
+  }
 
   // A small local model, asked a question (no command): no tools at all. It gets the contents of the tiles the
   // question is about and only has to answer — it cannot wander off calling random tools, and it is faster.
