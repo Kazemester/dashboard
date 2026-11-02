@@ -100,4 +100,7 @@ export default {
   'Napi ±5% mozgásnál': 'Daily move of ±5%',
   'Napi ±10% mozgásnál': 'Daily move of ±10%',
   'Push-értesítést küld, ha egy papír vagy az egész portfólió napi változása eléri ezt (papíronként naponta egyszer). A csengőben kapcsold be az értesítéseket.': 'Sends a push notification when an asset or the whole portfolio moves this much in a day (once a day per asset). Turn notifications on in the bell.',
+  'Megnyitás': 'Opens with',
+  'Egy papírnál rögtön a részletek (grafikon, adatok)': 'The details (chart, figures) when it has one symbol',
+  'Mindig a lista': 'Always the list',
 };

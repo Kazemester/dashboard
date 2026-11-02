@@ -234,6 +234,15 @@ export default function Stocks({ widget, onUpdateConfig }) {
   const { data, error, reload } = useWidgetData(symbols.length ? `/widgets/${widget.id}/stocks` : null, { interval: symbols.length ? refresh : 0, deps: [symbols.length, widget.config.provider] });
   const [mode, setMode] = useState(symbols.length ? 'list' : 'search');
   const [selected, setSelected] = useState(null);
+  // a tile with a single symbol opens on its chart and stats (setting "view": auto | list)
+  const autoOpened = useRef(false);
+  useEffect(() => {
+    const only = data?.items?.length === 1 ? data.items[0] : null;
+    if (autoOpened.current || (widget.config.view ?? 'auto') !== 'auto' || symbols.length !== 1 || !only || only.error) return;
+    autoOpened.current = true;
+    setSelected(only);
+    setMode((m) => (m === 'list' ? 'detail' : m));
+  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const has = (r) => symbols.some((s) => s.provider === r.provider && s.id === r.id);
   const add = async (r) => {

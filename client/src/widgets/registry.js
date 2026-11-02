@@ -539,6 +539,7 @@ export const REGISTRY = {
         ],
         help: 'TradingView: kulcs nélkül, minden piac (BÉT, indexek, arany, deviza, kripto); a grafikon a TradingView beágyazott widgetje. Twelve Data: ingyenes kulcs (twelvedata.com → SECRET_TWELVEDATA_KEY a .env-be), saját grafikon és görbék, de percenként 8 lekérés, és a nem amerikai tőzsdék egy része fizetős. Yahoo: kulcs nélkül, de sok helyen (EU, felhő) blokkol.',
       },
+      { key: 'view', label: 'Megnyitás', type: 'select', options: [['auto', 'Egy papírnál rögtön a részletek (grafikon, adatok)'], ['list', 'Mindig a lista']] },
       { key: 'defaultMarket', label: 'Alapértelmezett piac a keresőben', type: 'select', options: [['all', 'Mind'], ['us', 'USA'], ['eu', 'Európa'], ['hu', 'BÉT'], ['asia', 'Ázsia'], ['index', 'Indexek'], ['commodity', 'Nyersanyag'], ['fx', 'Deviza'], ['crypto', 'Kripto'], ['etf', 'ETF']] },
       { key: 'refreshMin', label: 'Frissítés (perc)', type: 'number', min: 1, help: 'Twelve Data ingyenes csomagnál 10+ perc ajánlott (napi 800 kérés).' },
     ],
