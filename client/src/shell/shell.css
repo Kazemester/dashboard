@@ -95,9 +95,12 @@
 .rail-n { position: absolute; top: 2px; right: 1px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px; font-style: normal; font-size: 9px; line-height: 15px; font-family: var(--font-mono); background: var(--surface); color: var(--muted); border: 1px solid var(--line-strong); }
 .rail-item.on .rail-n { color: var(--accent); }
 .rail-tool .rail-ic { font-size: 18px; }
-/* desktop: the name appears as a label to the left on hover */
-@media (hover: hover) and (min-width: 768px) {
-  .rail-item:hover .rail-lb { display: block; position: absolute; right: calc(100% + 10px); top: 50%; transform: translateY(-50%); white-space: nowrap; padding: 4px 10px; font-size: 12.5px; border-radius: 999px; background: var(--surface); color: var(--text); border: 1px solid var(--line-strong); pointer-events: none; }
+/* desktop: icon with its name underneath, like on the phone (a long name is cut, the full one is the tooltip) */
+@media (min-width: 768px) {
+  .rail { border-radius: 30px; padding: 8px 5px; max-height: calc(100vh - 170px); } /* clear of the header and the zoom buttons */
+  .rail-item { width: 60px; height: 54px; border-radius: 18px; gap: 4px; }
+  .rail-lb { display: block; max-width: 56px; font-size: 10px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rail-ic { font-size: 16px; }
 }
 /* phone: lower right, in reach of the thumb, with a tiny label under each icon */
 @media (max-width: 767px) {
