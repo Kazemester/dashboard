@@ -54,7 +54,7 @@ function useAssistant() {
  * iOS Safari (and the home-screen app) does not shrink the layout for the on-screen keyboard: a sheet fixed to
  * the bottom stays behind it. The visual viewport does shrink, so we lift the sheet by the hidden part.
  */
-function useKeyboardInset(active) {
+export function useKeyboardInset(active) {
   useEffect(() => {
     const vv = window.visualViewport;
     if (!active || !vv) return undefined;

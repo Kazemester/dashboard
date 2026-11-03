@@ -1,5 +1,6 @@
 import { q } from './db.js';
 import { complete, isLocal, aiConfig } from './llm.js';
+import { addRule } from './rules.js';
 
 // The chat tile's "dashboard access": the model gets tools to read tile contents and to change the
 // dashboard. Content changes go through the app's own REST API (same validation as the UI); tile
@@ -110,6 +111,7 @@ const READERS = {
   render: (id) => `/widgets/${id}/renders`,
   portfolio: (id) => `/widgets/${id}/portfolio`,
   health: (id) => `/widgets/${id}/items?kind=health&from=${daysAgo(14)}`,
+  review: () => '/reviews',
   kpi: (id) => `/widgets/${id}/kpi`,
   balance: (id) => `/widgets/${id}/balance`,
   budget: (id) => `/widgets/${id}/budget`,
@@ -162,6 +164,9 @@ const TOOLS = {
       category: { type: 'string', description: 'category name, e.g. Work (optional)' },
       list_title: { type: 'string', description: 'title for a new to-do tile, if one has to be made' },
     }),
+    fn('add_rule', 'Create a notification rule from the user\'s sentence ("Szólj, ha az arany 3%-ot esik"): price moves, spending limits, mails, weather, habits not done.', {
+      text: { type: 'string', description: "the user's request in their words" },
+    }, ['text']),
     fn('todos_from_mail', 'Turn the action items of the latest Mail bot summary into to-dos (optionally into the to-do tile of a category).', {
       category: { type: 'string', description: 'category name, e.g. Work (optional)' },
     }),
@@ -365,6 +370,7 @@ async function ownerOf(path) {
 // Language of the current chat turn (the UI language): texts shown to the user come in Hungarian or English.
 let curLang = 'hu';
 const L = (hu, en) => (curLang === 'en' ? en : hu);
+let turnConfig; // the provider of the current turn (main, or the external one for commands)
 
 function makeExecutor({ catalog, mode, tools, userText = '' }) {
   const actions = []; // human-readable log shown under the answer
@@ -445,6 +451,11 @@ function makeExecutor({ catalog, mode, tools, userText = '' }) {
       }
       content(w.id, texts.length === 1 ? L(`Teendő felvéve: ${texts[0]}`, `To-do added: ${texts[0]}`) : L(`${texts.length} teendő felvéve (${w.title})`, `${texts.length} to-dos added (${w.title})`));
       return { ok: true, added: texts.length, item_ids: ids, tile: w.title };
+    },
+    async add_rule({ text }) {
+      const r = await addRule(text);
+      actions.push(L(`Szabály: ${r.summary}`, `Rule: ${r.summary}`));
+      return { ok: true, rule: r.summary };
     },
     async todos_from_mail({ category, tile, widget }) {
       const { widgets } = await loadState();
@@ -802,6 +813,7 @@ const TOPICS = {
   activity: /történt|aktivitás|esemény/i,
   portfolio: /portfóli|befektet|részvény|hozam|osztalék|tőzsde|papír|nyereség|veszteség/i,
   health: /lépés|lépt|alv|aludt|súly|fogy|hízt|kalória|kcal|pulzus|egészség|edzés|séta|steps|sleep|weight/i,
+  review: /heti|a hét|hetem|áttekint|hogy telt|week/i,
   air: /levegő|pollen|szmog|aqi/i,
 };
 async function questionContext(question, budget) {
@@ -844,6 +856,9 @@ const metaOf = (exec, extra = {}) => ({
 
 // What the user last asked (history may end with the bot's own nudges in older runs; skip those).
 // "…from my mails / the mail summary…" + to-do (not "add a to-do: write a mail to Péter")
+const RULE_START = /^\s*(szólj|szolj|figyelmeztess|értesíts|ertesits|jelezz|jelezd|küldj (egy )?értesítést|notify me|alert me|warn me|tell me)\b[\s\S]*\b(ha|amikor|when|if)\b/i;
+const RULE_END = /^\s*(ha|amikor|if|when)\b[\s\S]*\b(szólj|szolj|figyelmeztess|értesíts|ertesits|jelezz|notify me|alert me|let me know)\b/i;
+const RULE_REQ = { test: (t) => RULE_START.test(t) || RULE_END.test(t) };
 const MAIL_SOURCE = /levelei|levelek|levélből|levelből|mailjei|mailek|e-?mailekb|inbox|my (e-?)?mails|from (the |my )?(e-?)?mail|mail (summary|digest)|(levél|level|mail)[\s\S]{0,20}összefoglal/i;
 const MAIL_TODOS = { test: (t) => MAIL_SOURCE.test(t) && /teend|to-?do|feladat|tennival/i.test(t) };
 const lastUserText = (history) => [...history].reverse().find((m) => m.role === 'user')?.content ?? '';
@@ -915,7 +930,7 @@ async function planWithJson({ history, persona, model, catalog, exec, state, too
   const msgs = [{ role: 'system', content: sys }, ...history.slice(-6).map(({ role, content }) => ({ role, content }))];
   let lastError = null;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const raw = (await complete(msgs, { model, json: true, temperature: 0.1 })).content ?? '';
+    const raw = (await complete(msgs, { model, json: true, temperature: 0.1, config: turnConfig })).content ?? '';
     const plan = parsePlan(raw);
     const retry = attempt === 0 && !lastError;
     if (!plan && retry) {
@@ -954,7 +969,9 @@ export async function mailTodos({ widget, category }) {
 export async function agentTurn({ history, persona, model, catalog, mode, lang }) {
   curLang = lang === 'en' ? 'en' : 'hu';
   const state = await loadState();
-  const cfg = await aiConfig();
+  // a command can go to the external / strong model (AI settings), a question stays on the main one
+  const cfg = await aiConfig(mode === 'full' && COMMAND.test(lastUserText(history)) ? 'command' : undefined);
+  turnConfig = cfg;
   const local = isLocal(cfg.baseUrl);
   const tools = toolsFor(mode, local);
   const exec = makeExecutor({ catalog, mode, tools, userText: lastUserText(history) });
@@ -972,6 +989,16 @@ export async function agentTurn({ history, persona, model, catalog, mode, lang }
     if (fb?.error) return { answer: `${L('Nem sikerült', 'Failed')}: ${fb.error}`, meta: metaOf(exec) };
     return null;
   };
+
+  // "Szólj, ha …" / "Figyelmeztess, ha …": a rule (rules.js parses it), the push scheduler watches it
+  if (mode === 'full' && RULE_REQ.test(lastUserText(history))) {
+    try {
+      const r = await exec.run('add_rule', { text: lastUserText(history) });
+      return { answer: L(`Rendben, figyelem: ${r.rule}. Értesítést küldök, ha bekövetkezik (a csengő → ⚡ Szabályok alatt látod és törölheted).`, `OK, watching: ${r.rule}. You will get a notification when it happens.`), meta: metaOf(exec) };
+    } catch (err) {
+      return { answer: `${L('Nem sikerült szabályt készíteni', 'Could not make a rule')}: ${err.message}`, meta: metaOf(exec) };
+    }
+  }
 
   // "make to-dos from my mails (into Work)": done by code from the Mail bot summary, no model needed
   const said = lastUserText(history);
@@ -995,7 +1022,7 @@ export async function agentTurn({ history, persona, model, catalog, mode, lang }
   if (local && mode !== 'off' && !COMMAND.test(asked) && process.env.AGENT_FORCE_JSON !== '1') {
     const ctx = await questionContext(asked, 5000);
     const sys = `${systemPrompt({ persona, state, catalog, mode: 'read', local, hu: curLang === 'hu' })}\n\nThe tile contents that belong to the user's question:\n${ctx}\n\nAnswer the user's message from these contents, briefly and naturally. If the answer is not in them, say so. Do not invent mails, events or numbers. If the user wants something changed, ask them to say it as a command (e.g. „Tedd ki…”, „Vegyél fel…”).`;
-    const msg = await complete([{ role: 'system', content: sys }, ...history.slice(-8)], { model, temperature: 0.3 });
+    const msg = await complete([{ role: 'system', content: sys }, ...history.slice(-8)], { model, temperature: 0.3, config: turnConfig });
     return { answer: msg.content?.trim() || L('(nincs válasz)', '(no answer)'), meta: metaOf(exec) };
   }
 
@@ -1008,7 +1035,7 @@ export async function agentTurn({ history, persona, model, catalog, mode, lang }
 
   try {
     for (let step = 0; step < MAX_STEPS; step++) {
-      const msg = await complete(messages, { model, tools, temperature: 0.2 });
+      const msg = await complete(messages, { model, tools, temperature: 0.2, config: turnConfig });
       const calls = msg.tool_calls ?? [];
       if (!calls.length) {
         let answer = msg.content?.trim();
@@ -1053,7 +1080,7 @@ export async function agentTurn({ history, persona, model, catalog, mode, lang }
     }
     const snap = await snapshot(local ? 5000 : 20000);
     const sys = `${systemPrompt({ persona, state, catalog, mode: 'read', local, hu: curLang === 'hu' })}\n\nThis model cannot use tools. Current tile contents:\n${snap}\n\nYou cannot change anything; if asked to, say that this model can't do it and suggest a model with tool support (e.g. qwen2.5 / qwen3 / llama3.1 in Ollama, or a cloud model).`;
-    const msg = await complete([{ role: 'system', content: sys }, ...history.slice(-12)], { model, temperature: 0.3 });
+    const msg = await complete([{ role: 'system', content: sys }, ...history.slice(-12)], { model, temperature: 0.3, config: turnConfig });
     let answer = msg.content || L('(nincs válasz)', '(no answer)');
     if (CLAIM.test(answer)) answer = `${answer}\n\n${L('⚠ Ez a modell nem tud eszközt használni, ezért semmit nem változtatott a dashboardon.', '⚠ This model cannot use tools, so it changed nothing on the dashboard.')}`;
     return { answer, meta: { actions: [], pending: [], created: [], changed: [], layoutChanged: false, readOnly: true } };

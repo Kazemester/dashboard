@@ -19,8 +19,23 @@ async function saved() {
 // Local servers (Ollama, LM Studio) don't need a key.
 export const isLocal = (url) => /\/\/(localhost|127\.0\.0\.1|host\.docker\.internal|ollama)(:|\/)/i.test(url);
 
-export async function aiConfig() {
+// Optional second ("external / strong") model, e.g. Gemini, GPT, Claude via API key, used for some purposes:
+//   route.command    — the assistant changing the dashboard (tools)
+//   route.background — rules, quick capture, morning brief, weekly review, mail summary
+// purpose 'chat' (questions) always uses the main model.
+export async function strongConfig() {
+  const s = (await saved()).strong ?? {};
+  if (!s.baseUrl || !s.model) return null;
+  const baseUrl = s.baseUrl.replace(/\/$/, '');
+  return { baseUrl, apiKey: s.apiKey || '', model: s.model, visionModel: '', isLocal: isLocal(baseUrl), configured: Boolean(s.apiKey) || isLocal(baseUrl), keySource: s.apiKey ? 'db' : null, strong: true };
+}
+
+export async function aiConfig(purpose) {
   const s = await saved();
+  if (purpose === 'command' || purpose === 'background') {
+    const st = s.strong?.route?.[purpose] ? await strongConfig() : null;
+    if (st?.configured) return st;
+  }
   const baseUrl = (s.baseUrl || process.env.LLM_BASE_URL || DEFAULT_BASE).replace(/\/$/, '');
   const apiKey = s.apiKey || process.env.LLM_API_KEY || '';
   const model = s.model || process.env.LLM_MODEL || DEFAULT_MODEL;
@@ -40,15 +55,21 @@ export async function llmConfigured() {
   return (await aiConfig()).configured;
 }
 
+// Bearer works everywhere OpenAI-compatible; Anthropic's own endpoints (model list) also want x-api-key.
+const authHeaders = (c) => (c.apiKey ? { Authorization: `Bearer ${c.apiKey}`, ...(/anthropic\.com/.test(c.baseUrl) ? { 'x-api-key': c.apiKey, 'anthropic-version': '2023-06-01' } : {}) } : {});
+
 export const NOT_CONFIGURED = 'Nincs AI kulcs beállítva. Fejléc → AI gomb → add meg a szolgáltatót és az API kulcsot.';
 
 export async function chat(messages, opts = {}) {
+  if (opts.purpose && !opts.config) opts = { ...opts, config: await aiConfig(opts.purpose) };
   return (await complete(messages, opts)).content ?? '';
 }
 
 // Full assistant message, including tool_calls when `tools` (OpenAI function-calling format) are given.
-export async function complete(messages, { model, temperature = 0.4, json = false, config, tools, timeoutMs } = {}) {
-  const c = config ?? (await aiConfig());
+export async function complete(messages, { model, temperature = 0.4, json = false, config, tools, timeoutMs, purpose } = {}) {
+  const c = config ?? (await aiConfig(purpose));
+  // a per-tile model name (Chat, Brief) belongs to the main provider: not sent to the external one
+  if (c.strong) model = undefined;
   if (!c.configured) throw new HttpError(400, NOT_CONFIGURED);
   const body = { model: model || c.model, messages, temperature };
   if (json) body.response_format = { type: 'json_object' };
@@ -64,7 +85,7 @@ export async function complete(messages, { model, temperature = 0.4, json = fals
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(c.apiKey ? { Authorization: `Bearer ${c.apiKey}` } : {}),
+        ...authHeaders(c),
       },
       body: JSON.stringify(body),
       // local models on a laptop can need a few minutes for a long prompt
@@ -135,10 +156,11 @@ async function readStream(res) {
 export async function listModels(config) {
   const c = config ?? (await aiConfig());
   const res = await fetch(`${c.baseUrl}/models`, {
-    headers: c.apiKey ? { Authorization: `Bearer ${c.apiKey}` } : {},
+    headers: authHeaders(c),
     signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) throw new HttpError(502, `A modell-lista nem kérhető le (${res.status})`);
   const data = await res.json();
-  return (data.data ?? data.models ?? []).map((m) => m.id ?? m.name).filter(Boolean).sort();
+  // Gemini lists "models/gemini-2.5-flash" but expects "gemini-2.5-flash"
+  return (data.data ?? data.models ?? []).map((m) => String(m.id ?? m.name ?? '').replace(/^models\//, '')).filter(Boolean).sort();
 }

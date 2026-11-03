@@ -4,6 +4,10 @@ import { q } from './db.js';
 import { HttpError } from './util.js';
 import { gatherNotifications, unseenCount } from './routes/notifications.js';
 import { portfolioData } from './routes/stocks.js';
+import { runRules } from './rules.js';
+import { makeBrief } from './routes/brief.js';
+import { makeReview } from './reviews.js';
+import { llmConfigured } from './llm.js';
 
 /*
  * Web Push to the installed app (PWA; on iPhone iOS 16.4+, opened from the home screen).
@@ -167,7 +171,8 @@ async function portfolioPushes() {
 // ---------- morning summary ----------
 // iOS updates the icon badge only when a push arrives (no silent pushes for web apps), and habits or already
 // pushed to-dos never send one: a daily summary keeps the badge right and starts the day.
-const DEFAULT_PREFS = { daily: true, hour: 8 };
+// daily: the morning push; ai: written by the AI (a JARVIS-style brief); weekly: the weekly review (day 0 = Sunday)
+const DEFAULT_PREFS = { daily: true, hour: 8, ai: true, weekly: true, weeklyDay: 0, weeklyHour: 19 };
 export async function pushPrefs() {
   const { rows } = await q("SELECT value FROM settings WHERE key = 'push_prefs'");
   return { ...DEFAULT_PREFS, ...(rows[0]?.value ?? {}) };
@@ -180,8 +185,17 @@ async function dailySummary(now) {
   const { rows } = await q("SELECT value FROM settings WHERE key = 'bell_seen'");
   const seen = new Set(Array.isArray(rows[0]?.value) ? rows[0].value : []);
   const lists = { hu: await gatherNotifications('hu'), en: await gatherNotifications('en') };
-  if (!lists.hu.some((n) => !seen.has(n.id))) return; // nothing to tell (the badge is already clear)
+  const ai = prefs.ai && (await llmConfigured());
+  if (!ai && !lists.hu.some((n) => !seen.has(n.id))) return; // nothing to tell (the badge is already clear)
   if (!(await once(`daily:${today}`))) return;
+  if (ai) {
+    try {
+      await morningBrief();
+      return;
+    } catch (err) {
+      console.error('[push] morning brief', err.message);
+    }
+  }
   await sendPush((lang) => {
     const en = lang === 'en';
     const items = (lists[lang] ?? lists.hu).filter((n) => !seen.has(n.id));
@@ -196,11 +210,51 @@ async function dailySummary(now) {
   });
 }
 
+// The AI morning brief: written from the tiles (routes/brief.js), shown on the Brief tiles too, pushed in short.
+async function morningBrief() {
+  const { rows: tiles } = await q("SELECT id, config FROM widgets WHERE type = 'brief' ORDER BY created_at");
+  const { rows: prof } = await q("SELECT value FROM settings WHERE key = 'profile'");
+  const name = prof[0]?.value?.name?.trim();
+  const cfg = tiles[0]?.config ?? { address: name || 'Uram' };
+  const value = await makeBrief(cfg);
+  for (const t of tiles)
+    await q(
+      `INSERT INTO widget_state (widget_id, value, updated_at) VALUES ($1, $2, now())
+       ON CONFLICT (widget_id) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+      [t.id, JSON.stringify(value)],
+    );
+  await q("INSERT INTO settings (key, value) VALUES ('morning_brief', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [JSON.stringify(value)]);
+  await sendPush({ title: 'Jó reggelt', body: short(value.text, 300), url: tiles[0] ? `/?w=${encodeURIComponent(tiles[0].id)}` : '/', tag: 'daily' });
+}
+// the first sentences that fit (a notification shows a few lines)
+const short = (text, max) => {
+  const t = String(text ?? '').replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+  return end > max / 3 ? cut.slice(0, end + 1) : `${cut.replace(/\s+\S*$/, '')}…`;
+};
+
+async function weeklyReview(now) {
+  const prefs = await pushPrefs();
+  if (!prefs.weekly) return;
+  const dow = new Date(`${dayIn(now)}T12:00:00Z`).getUTCDay();
+  if (dow !== Number(prefs.weeklyDay) || hourIn(now) < Number(prefs.weeklyHour)) return;
+  if (!(await once(`weekly:${dayIn(now)}`))) return;
+  const { rows } = await q("SELECT id FROM widgets WHERE type = 'review' ORDER BY created_at LIMIT 1");
+  const review = await makeReview();
+  await sendPush({ title: 'Heti áttekintés', body: short(review.text, 300), url: rows[0] ? `/?w=${encodeURIComponent(rows[0].id)}` : '/', tag: 'weekly' });
+}
+
 r.get('/push/prefs', async (_req, res) => res.json(await pushPrefs()));
 r.put('/push/prefs', async (req, res) => {
   const next = { ...(await pushPrefs()) };
   if (req.body?.daily !== undefined) next.daily = Boolean(req.body.daily);
   if (req.body?.hour !== undefined) next.hour = Math.min(12, Math.max(7, Math.round(Number(req.body.hour)) || 8));
+  if (req.body?.ai !== undefined) next.ai = Boolean(req.body.ai);
+  if (req.body?.weekly !== undefined) next.weekly = Boolean(req.body.weekly);
+  if (req.body?.weeklyDay !== undefined) next.weeklyDay = Math.min(6, Math.max(0, Math.round(Number(req.body.weeklyDay)) || 0));
+  if (req.body?.weeklyHour !== undefined) next.weeklyHour = Math.min(21, Math.max(7, Math.round(Number(req.body.weeklyHour)) || 19));
   await q("INSERT INTO settings (key, value) VALUES ('push_prefs', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [JSON.stringify(next)]);
   res.json(next);
 });
@@ -216,7 +270,9 @@ export async function pushTick(now = new Date()) {
     if (h >= 22 || h < 7) return; // quiet hours: still-relevant items go out at 7:00
     await bellPushes();
     await portfolioPushes();
+    await runRules({ send: (p) => sendPush(p), once });
     await dailySummary(now);
+    await weeklyReview(now).catch((err) => console.error('[push] weekly review', err.message));
     await q("DELETE FROM push_sent WHERE sent_at < now() - interval '30 days'");
   } catch (err) {
     console.error('[push scheduler]', err.message);

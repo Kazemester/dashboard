@@ -199,6 +199,15 @@ A csengő panel alján: **📱 iPhone Parancsok** — lépésről lépésre leí
 
 Minden hívás `X-Nexus-Token` fejlécet kér (a kulcs az útmutatóban, cserélhető). Cloudflare Access mögött a Parancsok egy **service tokennel** jutnak be (`CF-Access-Client-Id` / `CF-Access-Client-Secret`, Access policy: Service Auth).
 
+### Szabályok, gyors rögzítés, reggeli és heti AI-összefoglaló
+- **⚡ Szabályok** (csengő panel → „Szabályok”, vagy az asszisztensnek: „Szólj, ha…”): magyarul leírt figyelők — árfolyam (napi esés/emelkedés %, ár fölé/alá), kiadási keret (nap/hét/hónap, kategóriánként), levél (feladó/tárgy), időjárás (eső, hó, hőmérséklet ma/holnap), szokás (ha adott óráig nincs kipipálva). Az AI csak egyszer, létrehozáskor értelmezi; utána a szerver 5 percenként AI nélkül ellenőrzi és push-t küld (mindent egyszer).
+- **⚡ Gyors rögzítés** (alsó sáv ⚡ gombja, Siri / megosztás menü): egy mondat → az AI eldönti, hova kerül: bevásárlólista, kiadás (összeg, kategória), teendő (dátummal), jegyzet, hangulat, szokás-pipa.
+- **Reggeli összefoglaló**: a beállított órában (alap 8:00) az AI megírja a napot (időjárás, naptár, teendők, levelek) és push-ban küldi; a JARVIS brief csempén is megjelenik. A csengőben kikapcsolható, vagy AI nélküli rövid változatra állítható.
+- **Heti áttekintés**: vasárnap este (állítható) az AI összefoglalja a hetet a szokások, hangulat, kiadások, egészség-adatok és a portfólió alapján, összeveti az előző héttel, és ad egy javaslatot — **Heti áttekintés** csempe + push.
+
+### Külső AI modell (Gemini, GPT, Claude, Grok, Mistral, Groq, DeepSeek, OpenRouter)
+Az AI ablakban az alap modell mellé beállítható egy **külső / erős modell** API-kulccsal, és megadható, mire használja: **parancsok** (az asszisztens módosítja a dashboardot) és/vagy **háttérmunka** (szabályok, gyors rögzítés, reggeli és heti összefoglaló, levelek). A kérdések az alap (pl. helyi) modellen maradnak. Az előfizetések (ChatGPT Plus, Claude Pro, X Premium, Cursor) nem adnak API-hozzáférést és külső alkalmazásba nem lehet velük belépni — API-kulcs kell; a **Google AI Studio (Gemini)** és a **Groq** kulcsa ingyenes kerettel is jár.
+
 ### Home Assistant bekötése
 
 1. HA → Profil → Biztonság → **Long-lived access tokens** → Token létrehozása

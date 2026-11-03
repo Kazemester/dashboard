@@ -6,13 +6,14 @@ import { agentTurn } from '../agent.js';
 import { HttpError } from '../util.js';
 import { gatherNotifications } from './notifications.js';
 import { sendPush } from '../push.js';
+import { capture } from '../capture.js';
 
 /*
  * Endpoints for iPhone Shortcuts (Parancsok) and other automations:
  *   POST /api/hook/ask      { text }            → the dashboard AI answers (for Siri to read out)
  *   GET  /api/hook/summary                      → today in a few sentences, no AI (instant)
  *   POST /api/hook/health   { date?, steps, … } → Egészség tile (+ ticks a habit when the step goal is met)
- *   POST /api/hook/capture  { text, url? }      → a to-do from the share sheet
+ *   POST /api/hook/capture  { text, url? }      → quick capture (sorted into to-do / shopping / expense / note…), a link → to-do
  * Every call needs the hook token (X-Nexus-Token header). Behind Cloudflare Access the Shortcut also sends a
  * service token (CF-Access-Client-Id / -Secret), see the guide in the app.
  */
@@ -143,6 +144,12 @@ r.post('/hook/capture', needToken, async (req, res) => {
   const text = String(req.body?.text ?? '').trim();
   const url = String(req.body?.url ?? '').trim();
   if (!text && !url) throw new HttpError(400, 'Üres');
+  // a sentence (dictated or shared text) is sorted like the ⚡ quick capture; a bare link stays a to-do
+  const isLink = /^https?:\/\/\S+$/.test(text || url);
+  if (!isLink) {
+    const r2 = await capture(text, { source: 'shortcut' });
+    return res.type('text/plain').send(`Felvettem — ${r2.message}`);
+  }
   const { rows } = await q("SELECT id, title FROM widgets WHERE type = 'todo' ORDER BY created_at LIMIT 1");
   if (!rows[0]) throw new HttpError(404, 'Nincs Teendők csempe — tegyél ki egyet.');
   const item = { text: (text || url).slice(0, 300), done: false, ...(url && /^https?:\/\//.test(url) ? { link: url } : {}), source: 'shortcut' };

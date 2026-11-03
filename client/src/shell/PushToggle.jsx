@@ -97,7 +97,36 @@ export default function PushToggle() {
           <span className="muted">{t('— az ikonon lévő számot is frissíti')}</span>
         </label>
       )}
+      {state === 'on' && prefs && prefs.daily && (
+        <label className="push-daily small">
+          <input type="checkbox" checked={prefs.ai !== false} onChange={(e) => savePrefs({ ai: e.target.checked })} />
+          <span>{t('AI írja meg (időjárás, naptár, teendők, levelek)')}</span>
+        </label>
+      )}
+      {state === 'on' && prefs && (
+        <label className="push-daily small">
+          <input type="checkbox" checked={prefs.weekly !== false} onChange={(e) => savePrefs({ weekly: e.target.checked })} />
+          <span>{t('Heti áttekintés')}</span>
+          <select value={prefs.weeklyDay ?? 0} onChange={(e) => savePrefs({ weeklyDay: Number(e.target.value) })} disabled={prefs.weekly === false} aria-label={t('Nap')}>
+            {[t('vasárnap'), t('hétfő'), t('kedd'), t('szerda'), t('csütörtök'), t('péntek'), t('szombat')].map((d, i) => (
+              <option key={i} value={i}>
+                {d}
+              </option>
+            ))}
+          </select>
+          <select value={prefs.weeklyHour ?? 19} onChange={(e) => savePrefs({ weeklyHour: Number(e.target.value) })} disabled={prefs.weekly === false} aria-label={t('Időpont')}>
+            {[8, 10, 12, 15, 17, 18, 19, 20, 21].map((h) => (
+              <option key={h} value={h}>
+                {h}:00
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       {msg && <p className="muted small">{msg}</p>}
+      <button type="button" className="link-btn sc-open" onClick={() => window.dispatchEvent(new CustomEvent('nexus:rules'))}>
+        ⚡ {t('Szabályok: „Szólj, ha…”')}
+      </button>
       <button type="button" className="link-btn sc-open" onClick={() => window.dispatchEvent(new CustomEvent('nexus:shortcuts'))}>
         📱 {t('iPhone Parancsok: Siri, Egészség, megosztás')}
       </button>

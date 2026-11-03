@@ -120,35 +120,7 @@ r.post('/widgets/:id/brief/run', async (req, res) => {
   const w = await getWidget(req.params.id, 'brief');
   // background job: gathering the data and a slow local model can outlast the proxy's request limit (jobs.js)
   const job = startJob(async () => {
-    const cfg = w.config;
-    const ctx = await gather(cfg);
-    let text;
-    let ai = false;
-    if (await llmConfigured()) {
-      const persona =
-        `You are J.A.R.V.I.S., a calm, dry-witted personal assistant. Address the user as "${cfg.address || 'Uram'}". ` +
-        `Write a short spoken-style daily briefing in ${cfg.language || 'Hungarian'} from the JSON context: ` +
-        'greeting fitting the time of day, weather and what to wear/bring, schedule, the 3 most important things to focus on, ' +
-        'gentle reminders (habits, deadlines, countdowns), one closing line. Max ~150 words, no markdown headings, ' +
-        'use short paragraphs. Never invent facts that are not in the context.' +
-        (cfg.instructions ? `\nExtra instructions: ${cfg.instructions}` : '');
-      try {
-        text = await chat(
-          [
-            { role: 'system', content: persona },
-            // small models drift into English after an English-keyed JSON: say the language last, too
-          { role: 'user', content: `${JSON.stringify(ctx)}\n\n${/^(hu|hungarian|magyar)/i.test(cfg.language || 'Hungarian') ? 'Írd meg a briefet MAGYARUL.' : `Write the briefing in ${cfg.language}.`}` },
-          ],
-          { model: cfg.model || undefined, temperature: 0.6 },
-        );
-        ai = true;
-      } catch (err) {
-        text = `${fallback(ctx)}\n\n(AI hiba: ${err.message})`;
-      }
-    } else {
-      text = fallback(ctx);
-    }
-    const value = { text, ai, context: ctx, generatedAt: new Date().toISOString() };
+    const value = await makeBrief(w.config);
     await q(
       `INSERT INTO widget_state (widget_id, value, updated_at) VALUES ($1, $2, now())
        ON CONFLICT (widget_id) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
@@ -159,5 +131,37 @@ r.post('/widgets/:id/brief/run', async (req, res) => {
   });
   res.status(202).json({ job });
 });
+
+// The briefing text (AI when configured, plain otherwise). Also used by the morning push (push.js).
+export async function makeBrief(cfg = {}) {
+  const ctx = await gather(cfg);
+  let text;
+  let ai = false;
+  if (await llmConfigured()) {
+    const persona =
+      `You are J.A.R.V.I.S., a calm, dry-witted personal assistant. Address the user as "${cfg.address || 'Uram'}". ` +
+      `Write a short spoken-style daily briefing in ${cfg.language || 'Hungarian'} from the JSON context: ` +
+      'greeting fitting the time of day, weather and what to wear/bring, schedule, the 3 most important things to focus on, ' +
+      'gentle reminders (habits, deadlines, countdowns), one closing line. Max ~150 words, no markdown headings, ' +
+      'use short paragraphs. Never invent facts that are not in the context.' +
+      (cfg.instructions ? `\nExtra instructions: ${cfg.instructions}` : '');
+    try {
+      text = await chat(
+        [
+          { role: 'system', content: persona },
+          // small models drift into English after an English-keyed JSON: say the language last, too
+        { role: 'user', content: `${JSON.stringify(ctx)}\n\n${/^(hu|hungarian|magyar)/i.test(cfg.language || 'Hungarian') ? 'Írd meg a briefet MAGYARUL.' : `Write the briefing in ${cfg.language}.`}` },
+        ],
+        { model: cfg.model || undefined, temperature: 0.6, purpose: 'background' },
+      );
+      ai = true;
+    } catch (err) {
+      text = `${fallback(ctx)}\n\n(AI hiba: ${err.message})`;
+    }
+  } else {
+    text = fallback(ctx);
+  }
+  return { text, ai, context: ctx, generatedAt: new Date().toISOString() };
+}
 
 export default r;

@@ -7,12 +7,132 @@ import { t } from '../i18n.js';
 const PRESETS = [
   { id: 'xai', name: 'xAI Grok', baseUrl: 'https://api.x.ai/v1', model: 'grok-4', keyUrl: 'https://console.x.ai', needsKey: true },
   { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini', keyUrl: 'https://platform.openai.com/api-keys', needsKey: true },
+  { id: 'gemini', name: 'Google Gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.5-flash', keyUrl: 'https://aistudio.google.com/apikey', needsKey: true, free: true },
+  { id: 'anthropic', name: 'Claude (Anthropic)', baseUrl: 'https://api.anthropic.com/v1', model: 'claude-haiku-5-5', keyUrl: 'https://console.anthropic.com/settings/keys', needsKey: true },
+  { id: 'groq', name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile', keyUrl: 'https://console.groq.com/keys', needsKey: true, free: true },
+  { id: 'mistral', name: 'Mistral', baseUrl: 'https://api.mistral.ai/v1', model: 'mistral-small-latest', keyUrl: 'https://console.mistral.ai/api-keys', needsKey: true },
+  { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat', keyUrl: 'https://platform.deepseek.com/api_keys', needsKey: true },
   { id: 'openrouter', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', model: 'x-ai/grok-4', keyUrl: 'https://openrouter.ai/keys', needsKey: true },
   { id: 'ollama', name: 'Ollama (helyi, ingyenes)', baseUrl: 'http://host.docker.internal:11434/v1', model: 'llama3.1', needsKey: false },
   { id: 'ollama-server', name: 'Ollama (a szerveren)', baseUrl: 'http://ollama:11434/v1', model: 'qwen2.5:3b', needsKey: false },
   { id: 'custom', name: 'Egyéni', baseUrl: '', model: '', needsKey: true },
 ];
 const presetOf = (url) => PRESETS.find((p) => p.baseUrl && url?.startsWith(p.baseUrl))?.id ?? 'custom';
+const CLOUD = PRESETS.filter((p) => p.needsKey);
+
+/*
+ * The external / strong model: an API-key provider used for commands (the assistant changing the dashboard) and
+ * background work (rules, quick capture, morning brief, weekly review, mail summary); questions stay on the main
+ * model. Consumer subscriptions (ChatGPT Plus, Claude Pro, X Premium…) give no API access, so a key is needed.
+ */
+function StrongModel({ cur, onSaved }) {
+  const [preset, setPreset] = useState(presetOf(cur.baseUrl) === 'custom' && !cur.baseUrl ? 'gemini' : presetOf(cur.baseUrl));
+  const first = PRESETS.find((x) => x.id === 'gemini');
+  const [baseUrl, setBaseUrl] = useState(cur.baseUrl || first.baseUrl);
+  const [model, setModel] = useState(cur.model || (cur.baseUrl ? '' : first.model));
+  const [key, setKey] = useState('');
+  const [route, setRoute] = useState(cur.route ?? { command: true, background: true });
+  const [models, setModels] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const p = PRESETS.find((x) => x.id === preset);
+  useEffect(() => {
+    if (cur.configured) api.get('/settings/ai/models?which=strong').then(setModels).catch(() => {});
+  }, [cur.configured]);
+  const pick = (id) => {
+    const x = PRESETS.find((y) => y.id === id);
+    setPreset(id);
+    if (x.baseUrl) setBaseUrl(x.baseUrl);
+    if (x.model) setModel(x.model);
+    setModels(null);
+  };
+  const save = async (test, patch = {}) => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const saved = await api.put('/settings/ai', { strong: { baseUrl, model, route, ...(key ? { apiKey: key } : {}), ...patch } });
+      setKey('');
+      onSaved(saved);
+      if (saved.strong.configured) api.get('/settings/ai/models?which=strong').then(setModels).catch(() => {});
+      if (test) {
+        const res = await api.post('/settings/ai/test?which=strong');
+        setMsg({ ok: true, text: t('Működik ✓ ({ms} ms) — válasz: „{answer}”', { ms: res.ms, answer: res.answer }) });
+      } else setMsg({ ok: true, text: t('Mentve.') });
+    } catch (e) {
+      setMsg({ ok: false, text: e.message });
+    }
+    setBusy(false);
+  };
+  const off = () => save(false, { baseUrl: '', model: '', apiKey: null, route: { command: false, background: false } });
+  return (
+    <section className="ai-strong">
+      <div className="ai-strong-head">
+        <b>{t('Külső / erős modell')}</b> <span className="muted small">{t('(nem kötelező)')}</span>
+      </div>
+      <p className="help">{t('Egy felhős modell API-kulccsal a nehezebb munkára, a kérdések maradhatnak a fenti (pl. helyi) modellen. Az előfizetések (ChatGPT Plus, Claude Pro, X Premium) nem adnak API-hozzáférést, ide API-kulcs kell — a Gemini és a Groq kulcsa ingyenes kerettel is jár.')}</p>
+      <div className="chips">
+        {CLOUD.map((x) => (
+          <button key={x.id} type="button" className={`chip ${preset === x.id ? 'chip-on' : ''}`} onClick={() => pick(x.id)}>
+            {t(x.name)}
+            {x.free ? ' ★' : ''}
+          </button>
+        ))}
+      </div>
+      <label className="form-row">
+        <span className="label">{t('API cím')}</span>
+        <input className="input" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://…/v1" />
+      </label>
+      <label className="form-row">
+        <span className="label">{t('API kulcs')}</span>
+        <input className="input" type="password" autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} placeholder={cur.hasKey ? t('elmentve ({hint}) — írd be az újat a cseréhez', { hint: cur.keyHint }) : t('a szolgáltató API-kulcsa')} />
+        {p?.keyUrl && (
+          <span className="help">
+            {t('Kulcs létrehozása:')}{' '}
+            <a href={p.keyUrl} target="_blank" rel="noreferrer" className="accent-text">
+              {p.keyUrl.replace('https://', '')} ↗
+            </a>
+            {p.free ? ` · ${t('ingyenes kerettel')}` : ''}
+          </span>
+        )}
+      </label>
+      <label className="form-row">
+        <span className="label">{t('Modell')}</span>
+        <input className="input" list="ai-strong-models" value={model} onChange={(e) => setModel(e.target.value)} />
+        <datalist id="ai-strong-models">{(models ?? []).map((m) => <option key={m} value={m} />)}</datalist>
+        {models?.length > 0 && (
+          <div className="chips ai-models">
+            {models.slice(0, 18).map((m) => (
+              <button key={m} type="button" className={`chip ${m === model ? 'chip-on' : ''}`} onClick={() => setModel(m)}>
+                {m}
+              </button>
+            ))}
+          </div>
+        )}
+      </label>
+      <div className="form-row">
+        <span className="label">{t('Mire használja')}</span>
+        <label className="ai-check">
+          <input type="checkbox" checked={route.command} onChange={(e) => setRoute({ ...route, command: e.target.checked })} /> {t('Parancsok: az asszisztens módosítja a dashboardot')}
+        </label>
+        <label className="ai-check">
+          <input type="checkbox" checked={route.background} onChange={(e) => setRoute({ ...route, background: e.target.checked })} /> {t('Háttérmunka: szabályok, gyors rögzítés, reggeli és heti összefoglaló, levelek')}
+        </label>
+        <span className="help">{t('A kérdések mindig a fenti modellhez mennek. Ami ide megy, az a szolgáltatóhoz kerül (pl. levelek tartalma).')}</span>
+      </div>
+      {msg && <div className={msg.ok ? 'ai-msg ok' : 'w-error'}>{msg.text}</div>}
+      <div className="row gap">
+        {cur.baseUrl && (
+          <button type="button" className="btn btn-ghost sm" onClick={off} disabled={busy}>
+            {t('Kikapcsolás')}
+          </button>
+        )}
+        <button type="button" className="btn btn-primary sm" onClick={() => save(true)} disabled={busy}>
+          {busy ? t('Mentés…') : t('Külső modell mentése és kipróbálása')}
+        </button>
+      </div>
+    </section>
+  );
+}
 
 export default function AiSettings({ onClose, onSaved }) {
   const backdrop = useBackdropClose(onClose);
@@ -194,6 +314,7 @@ export default function AiSettings({ onClose, onSaved }) {
             {busy === 'test' ? t('Kipróbálás…') : t('Mentés és kipróbálás')}
           </button>
         </div>
+        {cur && <StrongModel cur={cur.strong ?? {}} onSaved={(saved) => (setCur(saved), onSaved?.(saved))} />}
       </div>
     </div>
   );

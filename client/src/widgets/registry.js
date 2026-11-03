@@ -35,6 +35,7 @@ import Stocks from './Stocks.jsx';
 import WorldMap from './WorldMap.jsx';
 import financeTiles from './registry.finance.js';
 import Health from './Health.jsx';
+import Review from './Review.jsx';
 import activityTiles from './registry.activity.js';
 
 export const CATEGORIES = {
@@ -265,6 +266,15 @@ export const REGISTRY = {
     component: Todo,
     defaultConfig: { hideDone: false },
     fields: [{ key: 'hideDone', label: 'Kész feladatok', type: 'checkbox', checkLabel: 'Elrejtés' }],
+  },
+  review: {
+    name: 'Heti áttekintés',
+    icon: '◷',
+    category: 'ai',
+    description: 'Vasárnap esténként az AI megírja, hogyan telt a heted: szokások, hangulat, kiadások, egészség, portfólió — összehasonlítva az előző héttel, egy javaslattal.',
+    size: { w: 5, h: 8, minW: 3, minH: 5 },
+    component: Review,
+    fields: [],
   },
   health: {
     name: 'Egészség',

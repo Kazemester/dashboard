@@ -164,7 +164,7 @@ export default function ShortcutsGuide({ focus, onClose }) {
           <p className="muted small">{t('Az első küldés magától kirakja az Egészség csempét. A csempe ⚙ beállításaiban megadhatod a lépéscélt és egy szokást, amit a cél elérésekor kipipál. Az egységeket (lépés, óra, kg) a szerver levágja, magyar tizedesvesszővel is jó.')}</p>
         </Recipe>
 
-        <Recipe title={t('4. Megosztás menü → teendő')} open={open === 'capture'} onToggle={() => toggle('capture')}>
+        <Recipe title={t('4. Megosztás menü és Siri → gyors rögzítés')} open={open === 'capture'} onToggle={() => toggle('capture')}>
           <ol className="sc-list">
             <li>
               {t('Új parancs, név')}: <b>{t('Dashboardba')}</b> → {t('ⓘ → Megjelenítés a megosztási lapon; bemenet: Szöveg, URL-ek')}
@@ -174,7 +174,7 @@ export default function ShortcutsGuide({ focus, onClose }) {
               <b>{t('Értesítés megjelenítése')}</b>: {t('URL tartalma')}
             </li>
           </ol>
-          <p className="muted small">{t('Bármely appban Megosztás → Dashboardba: a szöveg vagy link teendőként bekerül az első Teendők csempébe (a link ↗ ikonnal nyitható).')}</p>
+          <p className="muted small">{t('Bármely appban Megosztás → Dashboardba, vagy „Hé Siri, Dashboardba” után diktálva: az AI eldönti, hova kerül (bevásárlólista, kiadás, teendő dátummal, jegyzet, hangulat, szokás). Egy puszta link teendő lesz ↗ ikonnal. Siri-hez tegyél a parancs elejére egy „Szöveg diktálása” lépést, és azt küldd text-ként.')}</p>
         </Recipe>
       </div>
     </div>

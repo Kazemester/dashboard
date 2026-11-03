@@ -15,6 +15,8 @@ import CategoryRail from './shell/CategoryRail.jsx';
 import CategoryEditor from './shell/CategoryEditor.jsx';
 import ScreenLayer from './shell/ScreenLayer.jsx';
 import ShortcutsGuide from './shell/ShortcutsGuide.jsx';
+import RulesPanel from './shell/RulesPanel.jsx';
+import CaptureSheet from './shell/CaptureSheet.jsx';
 import Dock from './shell/Dock.jsx';
 import Assistant from './shell/Assistant.jsx';
 
@@ -80,6 +82,13 @@ export default function App() {
   const isDesktop = useIsDesktop();
   const [aiOpen, setAiOpen] = useState(false);
   const [shortcuts, setShortcuts] = useState(null); // iPhone Shortcuts guide: null | { focus }
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [captureOpen, setCaptureOpen] = useState(false);
+  useEffect(() => {
+    const open = () => setRulesOpen(true);
+    window.addEventListener('nexus:rules', open);
+    return () => window.removeEventListener('nexus:rules', open);
+  }, []);
   useEffect(() => {
     const open = (e) => setShortcuts({ focus: e.detail?.focus });
     window.addEventListener('nexus:shortcuts', open);
@@ -558,6 +567,7 @@ export default function App() {
             onArrange={isDesktop && visible.length > 1 ? arrangeCanvas : null}
             onAdd={() => setPicker(true)}
             onAssistant={wide ? null : () => setAssistantOpen(true)}
+            onCapture={() => setCaptureOpen(true)}
           />
         </ScreenLayer>
         {!wide && <Assistant mode="sheet" open={assistantOpen} onClose={() => setAssistantOpen(false)} />}
@@ -585,6 +595,8 @@ export default function App() {
             }}
           />
         )}
+        {rulesOpen && <RulesPanel onClose={() => setRulesOpen(false)} />}
+        {captureOpen && <CaptureSheet onClose={() => setCaptureOpen(false)} />}
         {shortcuts && <ShortcutsGuide focus={shortcuts.focus} onClose={() => setShortcuts(null)} />}
         {aiOpen && <AiSettings onClose={() => setAiOpen(false)} onSaved={() => setAiVersion((v) => v + 1)} />}
         {configuring && (

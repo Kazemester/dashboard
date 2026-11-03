@@ -204,3 +204,21 @@
 .push-daily { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .push-daily input { width: 16px; height: 16px; accent-color: var(--accent); }
 .push-daily select { border: 1px solid var(--line); border-radius: 999px; background: transparent; color: inherit; font: inherit; padding: 1px 6px; }
+
+/* ⚡ quick capture */
+.dock-capture { font-size: 16px; padding: 0 12px; }
+.capture-sheet { gap: 10px; }
+.capture-form { display: flex; gap: 8px; }
+.capture-form .input { flex: 1; min-width: 0; font-size: 16px; }
+.capture-help { margin: 0; line-height: 1.4; }
+/* ⚡ rules */
+.rules-modal { max-width: 620px; display: flex; flex-direction: column; gap: 12px; }
+.rules-modal .help { margin: 0; }
+.rules-add { display: flex; gap: 8px; }
+.rules-add .input { flex: 1; min-width: 0; }
+.rules-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.rules-list li { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); }
+.rules-list li.off { opacity: 0.55; }
+.rules-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.rules-actions { display: flex; gap: 4px; align-items: center; flex: none; }
+@media (max-width: 560px) { .rules-list li { flex-direction: column; } }

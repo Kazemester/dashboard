@@ -191,7 +191,7 @@ async function translateDigest(result, model) {
       { role: 'system', content: 'Translate every string value of the JSON object to Hungarian. Keep the keys, numbers, names, email subjects and the structure unchanged. Reply with the JSON object only.' },
       { role: 'user', content: JSON.stringify({ headline: result.headline, important: result.important, todos: result.todos }) },
     ],
-    { json: true, model, temperature: 0.1 },
+    { json: true, model, temperature: 0.1, purpose: 'background' },
   );
   const t = normalizeDigest(raw);
   return { ...result, headline: t.headline || result.headline, important: t.important.length === result.important.length ? t.important.map((x, i) => ({ ...result.important[i], why: x.why, action: x.action })) : result.important, todos: t.todos.length ? t.todos : result.todos };
@@ -214,7 +214,7 @@ export async function runDigest(widget) {
           { role: 'system', content: PROMPT + (cfg.language || 'Hungarian') + extra },
           { role: 'user', content: compact(mails, await budgetFor()) + langReminder(cfg.language) },
         ],
-        { json: true, model: cfg.model || undefined, temperature: 0.2 },
+        { json: true, model: cfg.model || undefined, temperature: 0.2, purpose: 'background' },
       );
       result = groundDigest(normalizeDigest(raw), mails);
       if (isHungarian(cfg.language) && !looksHungarianText(digestText(result))) {

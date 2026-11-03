@@ -206,7 +206,7 @@ export function priceOff(t, x) {
 }
 
 // Ticker / name → instrument of the tile's data source. Prefers listings in the trade's currency.
-async function findAsset(t, providerName, provider, memo, held) {
+export async function findAsset(t, providerName, provider, memo, held = new Set()) {
   const text = t.symbol || t.name;
   if (!text) return null;
   const k = `${text}|${t.currency}`;
