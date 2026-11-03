@@ -49,6 +49,17 @@ export function findFreeSpot(items, w, h, cx, cy) {
   return { x: x0, y: b + 1 };
 }
 
+// A tile without a spot yet (made on a phone, by the assistant…): next to the existing tiles — the free spot
+// closest to the middle of their group — instead of a fixed corner of the canvas that may be far from them.
+export function spotNearTiles(items, w, h, fallback) {
+  if (!items.length) return findFreeSpot(items, w, h, fallback.x, fallback.y);
+  const minX = Math.min(...items.map((i) => i.x));
+  const minY = Math.min(...items.map((i) => i.y));
+  const maxX = Math.max(...items.map((i) => i.x + i.w));
+  const maxY = Math.max(...items.map((i) => i.y + i.h));
+  return findFreeSpot(items, w, h, (minX + maxX) / 2, (minY + maxY) / 2);
+}
+
 // After a drag: the moved tile stays where it was dropped, or goes to the nearest free spot.
 function resolveDrag(layout, id) {
   const moved = layout.find((l) => l.i === id);

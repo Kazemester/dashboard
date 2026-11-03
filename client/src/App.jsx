@@ -8,7 +8,7 @@ import ConfigModal from './components/ConfigModal.jsx';
 import TopBar from './components/TopBar.jsx';
 import AiSettings from './components/AiSettings.jsx';
 import { applyAppearance, cachedAppearance } from './theme.js';
-import Canvas, { findFreeSpot } from './components/Canvas.jsx';
+import Canvas, { findFreeSpot, spotNearTiles } from './components/Canvas.jsx';
 import { t } from './i18n.js';
 import { ShellContext, newCategoryId } from './shell/context.js';
 import CategoryRail from './shell/CategoryRail.jsx';
@@ -206,8 +206,7 @@ export default function App() {
     for (const w of widgets) {
       if (items.some((c) => c.i === w.id)) continue;
       const size = REGISTRY[w.type]?.size ?? { w: 4, h: 5 };
-      const c = canvasApi.current?.centerCell() ?? { x: ORIGIN + 6, y: ORIGIN + 4 };
-      items = [...items, { i: w.id, ...findFreeSpot(items, size.w, size.h, c.x, c.y), w: size.w, h: size.h, minW: size.minW ?? 2, minH: size.minH ?? 2 }];
+      items = [...items, { i: w.id, ...spotNearTiles(items, size.w, size.h, { x: ORIGIN + 6, y: ORIGIN + 4 }), w: size.w, h: size.h, minW: size.minW ?? 2, minH: size.minH ?? 2 }];
     }
     return items;
   }, [canvas, widgets]);
@@ -224,7 +223,7 @@ export default function App() {
       if (items.some((c) => c.i === w.id)) continue;
       const main = safeCanvas.find((c) => c.i === w.id);
       const size = main ?? REGISTRY[w.type]?.size ?? { w: 4, h: 5 };
-      items = [...items, { i: w.id, ...findFreeSpot(items, size.w, size.h, ORIGIN + size.w / 2, ORIGIN + size.h / 2), w: size.w, h: size.h, minW: size.minW ?? 2, minH: size.minH ?? 2 }];
+      items = [...items, { i: w.id, ...spotNearTiles(items, size.w, size.h, { x: ORIGIN + size.w / 2, y: ORIGIN + size.h / 2 }), w: size.w, h: size.h, minW: size.minW ?? 2, minH: size.minH ?? 2 }];
     }
     return items;
   }, [cat, visible, safeCanvas]);
@@ -351,9 +350,11 @@ export default function App() {
     try {
       const w = await api.post('/widgets', { type: def.type, title: def.name, config: def.defaultConfig ?? {} });
       const next = withNewItem(layouts, w.id, def.size);
-      // canvas: nearest free spot to the middle of the screen
-      const c = canvasApi.current?.centerCell() ?? { x: ORIGIN + 6, y: ORIGIN + 4 };
-      const spot = { i: w.id, ...findFreeSpot(safeCanvas, def.size.w, def.size.h, c.x, c.y), w: def.size.w, h: def.size.h, minW: def.size.minW ?? 2, minH: def.size.minH ?? 2 };
+      // canvas: on desktop the nearest free spot to the middle of the screen; on a phone (no canvas on screen)
+      // next to the existing tiles, so it does not end up far away when the dashboard is opened on a desktop
+      const c = isDesktop ? canvasApi.current?.centerCell() : null;
+      const place = (items) => (c ? findFreeSpot(items, def.size.w, def.size.h, c.x, c.y) : spotNearTiles(items, def.size.w, def.size.h, { x: ORIGIN + 6, y: ORIGIN + 4 }));
+      const spot = { i: w.id, ...place(safeCanvas), w: def.size.w, h: def.size.h, minW: def.size.minW ?? 2, minH: def.size.minH ?? 2 };
       setWidgets((ws) => [...ws, w]);
       setLayouts(next);
       persistLayouts(next);
@@ -361,7 +362,7 @@ export default function App() {
       let shown = spot;
       if (cat) {
         // added inside a category: it goes there too, next to the middle of this category's view
-        shown = { ...spot, ...findFreeSpot(catCanvas, def.size.w, def.size.h, c.x, c.y) };
+        shown = { ...spot, ...place(catCanvas) };
         updateCategories((prev) => prev.map((x) => (x.id === cat.id ? { ...x, tiles: [...x.tiles, w.id], canvas: [...x.canvas, shown] } : x)));
       }
       setPicker(false);
