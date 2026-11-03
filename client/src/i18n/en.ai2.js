@@ -45,4 +45,8 @@ export default {
   'Elküldött értesítések': 'Sent notifications',
   'Előzmények': 'History',
   'Még nem ment értesítés.': 'No notification sent yet.',
+  'FELUGRÓ ABLAKOK': 'POPUPS',
+  'Tömör': 'Solid',
+  'Enyhén áttetsző': 'Slightly see-through',
+  'Üveg': 'Glass',
 };

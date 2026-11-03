@@ -146,6 +146,9 @@ select.input option { background: var(--surface); color: var(--text); }
 
 /* ---------- overlays ---------- */
 .overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.7); display: flex; justify-content: flex-end; animation: fade 0.15s; }
+/* iOS sends a tap (click) only to elements that look clickable: without this a tap on the backdrop does not close */
+.overlay { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.overlay > * { cursor: auto; }
 .overlay.center { justify-content: center; align-items: flex-start; padding: 8vh 16px; overflow: auto; }
 .drawer, .modal {
   background: var(--surface);

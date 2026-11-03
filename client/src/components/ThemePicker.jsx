@@ -11,10 +11,11 @@ export default function ThemePicker({ appearance, onChange }) {
     if (!open) return;
     const close = (e) => !ref.current?.contains(e.target) && setOpen(false);
     const esc = (e) => e.key === 'Escape' && setOpen(false);
-    document.addEventListener('mousedown', close);
+    // pointerdown: an iPhone tap on a plain area sends no mousedown, so the popover would stay open
+    document.addEventListener('pointerdown', close, true);
     document.addEventListener('keydown', esc);
     return () => {
-      document.removeEventListener('mousedown', close);
+      document.removeEventListener('pointerdown', close, true);
       document.removeEventListener('keydown', esc);
     };
   }, [open]);
@@ -64,6 +65,20 @@ export default function ThemePicker({ appearance, onChange }) {
               {t('A téma eredeti színei')}
             </button>
           )}
+          <div className="theme-panels">
+            <span className="eyebrow">{t('FELUGRÓ ABLAKOK')}</span>
+            <div className="panel-seg" role="group">
+              {[
+                ['solid', 'Tömör'],
+                ['soft', 'Enyhén áttetsző'],
+                ['glass', 'Üveg'],
+              ].map(([k, label]) => (
+                <button key={k} type="button" className={(appearance.panels ?? 'solid') === k ? 'on' : ''} onClick={() => onChange({ ...appearance, panels: k })}>
+                  {t(label)}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="muted sm">{t('A beállítás az adatbázisba mentődik.')}</div>
         </div>
       )}

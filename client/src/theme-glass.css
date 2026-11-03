@@ -13,6 +13,7 @@
   --glass-shadow: 0 12px 40px rgba(70, 48, 28, 0.14), 0 2px 6px rgba(70, 48, 28, 0.06);
   --panel: var(--glass);
   --surface: rgba(250, 247, 243, 0.86);
+  --surface-solid: #f8f4ee;
   --line: rgba(40, 30, 20, 0.08);
   --line-strong: rgba(40, 30, 20, 0.14);
   --faint: rgba(40, 30, 20, 0.05);
@@ -31,6 +32,7 @@
   --glass-edge: rgba(255, 255, 255, 0.1);
   --glass-shadow: 0 14px 44px rgba(0, 0, 0, 0.45);
   --surface: rgba(30, 31, 38, 0.92);
+  --surface-solid: #1e1f26;
   --line: rgba(255, 255, 255, 0.08);
   --line-strong: rgba(255, 255, 255, 0.14);
   --faint: rgba(255, 255, 255, 0.05);
@@ -127,6 +129,10 @@
   border: 1px solid var(--glass-edge);
   box-shadow: 0 24px 60px rgba(40, 28, 16, 0.22);
 }
+/* how see-through the popovers and dialogs are (Téma → Felugró ablakok). Solid by default: a popover inside the
+   header gets no backdrop blur on iOS (nested backdrop-filter), so a glass one shows the tiles right through. */
+:root[data-style='glass']:not([data-panels='glass']) :is(.drawer, .modal, .pop, .theme-pop, .sheet) { background: var(--surface-solid); }
+:root[data-style='glass'][data-panels='soft'] :is(.drawer, .modal, .pop, .theme-pop, .sheet) { background: color-mix(in srgb, var(--surface-solid) 90%, transparent); }
 :root[data-style='glass'] .modal { border-radius: 24px; }
 :root[data-style='glass'] .drawer { border-radius: 24px 0 0 24px; }
 :root[data-style='glass'] .drawer-head h2 { font-weight: 600; letter-spacing: -0.01em; }

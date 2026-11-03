@@ -57,6 +57,7 @@ export function applyAppearance(a) {
   document.documentElement.dataset.scheme = r.scheme;
   document.documentElement.dataset.style = r.style; // 'glass' (Vision) or 'hud' (the sci-fi themes)
   document.documentElement.dataset.anim = animEnabled(a) ? 'on' : 'off';
+  document.documentElement.dataset.panels = a?.panels ?? 'solid'; // popovers / dialogs: solid | soft | glass
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', r.bg);
   try {
     localStorage.setItem(STORE, JSON.stringify(a)); // lets the next page load start in the right colours

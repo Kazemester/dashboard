@@ -229,3 +229,7 @@
 .push-log-item:hover { background: var(--accent-soft); }
 .push-log-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
 .push-log-body { font-size: 13px; line-height: 1.45; white-space: pre-wrap; color: var(--text); opacity: 0.85; }
+.theme-panels { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.panel-seg { display: inline-flex; align-self: flex-start; border: 1px solid var(--line-strong); border-radius: 999px; overflow: hidden; }
+.panel-seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer; }
+.panel-seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
