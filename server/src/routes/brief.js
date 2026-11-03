@@ -98,6 +98,20 @@ async function gather(cfg) {
   return ctx;
 }
 
+// Is this real Hungarian prose? Small models sometimes mix in English or Chinese, or invent long words.
+export function readableHungarian(text) {
+  const t = String(text ?? '').trim();
+  if (t.length < 40) return false;
+  if (/[\u3000-\u9fff\uac00-\ud7af]/.test(t)) return false; // CJK / Hangul
+  const words = t.toLowerCase().match(/\p{L}+/gu) ?? [];
+  if (!words.length) return false;
+  const english = words.filter((w) => /^(the|and|you|your|is|are|will|today|with|for|this|that|have|weather|good|morning)$/.test(w)).length;
+  const hungarian = words.filter((w) => /^(és|a|az|egy|ma|van|nem|hogy|lesz|még|már|ne|felejtsd|teendő|teendők|teendőd|időjárás|fok|nap|napod|reggelt|jó|szép|holnap|kell|érdemes|vegyél|vigyél)$/.test(w)).length;
+  const monsters = words.filter((w) => w.length > 22).length;
+  const repeated = words.length > 20 && new Set(words).size / words.length < 0.35;
+  return english < 3 && hungarian >= 3 && monsters < 2 && !repeated;
+}
+
 // Plain-text fallback when no LLM is configured.
 function fallback(ctx) {
   const lines = [`${ctx.now}.`];
@@ -138,8 +152,16 @@ export async function makeBrief(cfg = {}) {
   let text;
   let ai = false;
   if (await llmConfigured()) {
-    const persona =
-      `You are J.A.R.V.I.S., a calm, dry-witted personal assistant. Address the user as "${cfg.address || 'Uram'}". ` +
+    const hu = /^(hu|hungarian|magyar)/i.test(cfg.language || 'Hungarian');
+    // small local models write broken Hungarian from an English prompt at a high temperature:
+    // a Hungarian prompt, short plain sentences, low temperature (and a check below)
+    const persona = hu
+      ? `Te egy nyugodt, barátságos személyi asszisztens vagy. Szólítsd így a felhasználót: "${cfg.address || 'Uram'}". ` +
+        'Írj rövid reggeli összefoglalót HELYES, EGYSZERŰ MAGYARSÁGGAL a megadott JSON adatokból: köszönés, időjárás és mit vegyen fel, ' +
+        'a mai programok, a 3 legfontosabb teendő, rövid emlékeztetők (szokások, határidők). Legfeljebb 90 szó, rövid mondatok, ' +
+        'nincs címsor, nincs angol szó, nincs kitalált adat — csak ami a JSON-ban van.' +
+        (cfg.instructions ? `\nTovábbi kérés: ${cfg.instructions}` : '')
+      : `You are J.A.R.V.I.S., a calm, dry-witted personal assistant. Address the user as "${cfg.address || 'Uram'}". ` +
       `Write a short spoken-style daily briefing in ${cfg.language || 'Hungarian'} from the JSON context: ` +
       'greeting fitting the time of day, weather and what to wear/bring, schedule, the 3 most important things to focus on, ' +
       'gentle reminders (habits, deadlines, countdowns), one closing line. Max ~150 words, no markdown headings, ' +
@@ -152,9 +174,14 @@ export async function makeBrief(cfg = {}) {
           // small models drift into English after an English-keyed JSON: say the language last, too
         { role: 'user', content: `${JSON.stringify(ctx)}\n\n${/^(hu|hungarian|magyar)/i.test(cfg.language || 'Hungarian') ? 'Írd meg a briefet MAGYARUL.' : `Write the briefing in ${cfg.language}.`}` },
         ],
-        { model: cfg.model || undefined, temperature: 0.6, purpose: 'background' },
+        { model: cfg.model || undefined, temperature: hu ? 0.3 : 0.6, purpose: 'background' },
       );
       ai = true;
+      // garbled output (mixed languages, made-up words): the plain summary instead
+      if (hu && !readableHungarian(text)) {
+        text = fallback(ctx);
+        ai = false;
+      }
     } catch (err) {
       text = `${fallback(ctx)}\n\n(AI hiba: ${err.message})`;
     }

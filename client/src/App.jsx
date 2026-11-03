@@ -294,7 +294,14 @@ export default function App() {
   // opened from a push notification: /?w=<tile id> scrolls to that tile
   useEffect(() => {
     if (!loaded) return;
-    const id = new URLSearchParams(location.search).get('w');
+    const params = new URLSearchParams(location.search);
+    // a notification without a tile (morning summary…): open the bell's history
+    if (params.get('log')) {
+      history.replaceState(null, '', location.pathname);
+      setTimeout(() => window.dispatchEvent(new CustomEvent('nexus:pushlog')), 300);
+      return;
+    }
+    const id = params.get('w');
     if (!id) return;
     history.replaceState(null, '', location.pathname);
     setTimeout(() => revealAnywhere(id), 300);

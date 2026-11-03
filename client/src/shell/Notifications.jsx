@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
-import { getLang, t } from '../i18n.js';
+import { getLang, locale, t } from '../i18n.js';
 import PushToggle from './PushToggle.jsx';
 
 const ICON = { todo: '☐', event: '★', calendar: '◷', habit: '◈', money: '¤' };
@@ -18,6 +18,16 @@ export default function Notifications({ onReveal }) {
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
   const [seen, setSeen] = useState(readSeen);
+  const [log, setLog] = useState(null); // sent push notifications (history), null = not shown
+  const openLog = useCallback(() => {
+    setOpen(true);
+    setLog([]);
+    api.get('/push/log').then(setLog).catch(() => setLog([]));
+  }, []);
+  useEffect(() => {
+    window.addEventListener('nexus:pushlog', openLog);
+    return () => window.removeEventListener('nexus:pushlog', openLog);
+  }, [openLog]);
   const box = useRef(null);
 
   const load = useCallback(() => {
@@ -89,15 +99,40 @@ export default function Notifications({ onReveal }) {
       {open && (
         <div className="pop bell-panel" role="dialog" aria-label={t('Értesítések')}>
           <div className="bell-head">
-            <span className="eyebrow">{t('Értesítések')}</span>
+            <span className="eyebrow">{log ? t('Elküldött értesítések') : t('Értesítések')}</span>
+            <button className="btn btn-ghost sm" onClick={() => (log ? setLog(null) : openLog())}>
+              {log ? `← ${t('Teendők')}` : t('Előzmények')}
+            </button>
             {unseen > 0 && (
               <button className="btn btn-ghost sm" onClick={markAll}>
                 {t('Mind olvasott')}
               </button>
             )}
           </div>
-          {!items.length && <div className="muted small bell-empty">{t('Minden rendben, nincs teendő.')}</div>}
-          <ul>
+          {log && (
+            <ul className="push-log">
+              {!log.length && <li className="muted small bell-empty">{t('Még nem ment értesítés.')}</li>}
+              {log.map((n) => (
+                <li key={n.id}>
+                  <button
+                    className="push-log-item"
+                    onClick={() => {
+                      const id = new URL(n.url || '/', location.origin).searchParams.get('w');
+                      if (id) (setOpen(false), onReveal(id));
+                    }}
+                  >
+                    <span className="push-log-head">
+                      <b>{n.title}</b>
+                      <span className="muted small">{new Date(n.created_at).toLocaleString(locale(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                    </span>
+                    {n.body && <span className="push-log-body">{n.body}</span>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {!log && !items.length && <div className="muted small bell-empty">{t('Minden rendben, nincs teendő.')}</div>}
+          {!log && <ul>
             {items.map((n) => (
               <li key={n.id}>
                 <button
@@ -121,8 +156,8 @@ export default function Notifications({ onReveal }) {
                 </button>
               </li>
             ))}
-          </ul>
-          <PushToggle />
+          </ul>}
+          {!log && <PushToggle />}
         </div>
       )}
     </div>

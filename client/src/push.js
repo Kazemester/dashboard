@@ -13,8 +13,10 @@ export function registerServiceWorker() {
   // a tapped notification while the app is open: go to its tile
   navigator.serviceWorker.addEventListener('message', (e) => {
     if (e.data?.type !== 'open') return;
-    const id = new URL(e.data.url, location.origin).searchParams.get('w');
+    const u = new URL(e.data.url, location.origin);
+    const id = u.searchParams.get('w');
     if (id) window.dispatchEvent(new CustomEvent('nexus:reveal', { detail: { id } }));
+    else if (u.searchParams.get('log')) window.dispatchEvent(new CustomEvent('nexus:pushlog'));
   });
 }
 

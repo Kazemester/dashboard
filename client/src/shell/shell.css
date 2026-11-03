@@ -222,3 +222,10 @@
 .rules-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .rules-actions { display: flex; gap: 4px; align-items: center; flex: none; }
 @media (max-width: 560px) { .rules-list li { flex-direction: column; } }
+
+/* bell: history of sent push notifications */
+.push-log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.push-log-item { width: 100%; display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 8px 6px; border: 0; border-radius: 10px; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+.push-log-item:hover { background: var(--accent-soft); }
+.push-log-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.push-log-body { font-size: 13px; line-height: 1.45; white-space: pre-wrap; color: var(--text); opacity: 0.85; }

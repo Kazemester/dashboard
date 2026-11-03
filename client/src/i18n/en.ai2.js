@@ -42,4 +42,7 @@ export default {
   'Hangulat': 'Mood',
   'Lépés': 'Steps',
   vasárnap: 'Sunday', hétfő: 'Monday', kedd: 'Tuesday', szerda: 'Wednesday', csütörtök: 'Thursday', péntek: 'Friday', szombat: 'Saturday',
+  'Elküldött értesítések': 'Sent notifications',
+  'Előzmények': 'History',
+  'Még nem ment értesítés.': 'No notification sent yet.',
 };

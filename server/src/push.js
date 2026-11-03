@@ -41,6 +41,21 @@ async function ensureTables() {
     agent      TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
   )`);
+  // what was sent, for the bell's history (iOS removes a notification from the Notification Centre once tapped)
+  await q(`CREATE TABLE IF NOT EXISTS push_log (
+    id         SERIAL PRIMARY KEY,
+    title      TEXT,
+    body       TEXT,
+    url        TEXT,
+    tag        TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`);
+  // the morning brief sent before the history existed is saved in settings: start the history with it
+  const { rows: logged } = await q('SELECT 1 FROM push_log LIMIT 1');
+  if (!logged.length) {
+    const { rows: mb } = await q("SELECT value FROM settings WHERE key = 'morning_brief'");
+    if (mb[0]?.value?.text) await q("INSERT INTO push_log (title, body, url, tag, created_at) VALUES ('Jó reggelt', $1, '/?log=1', 'daily', $2)", [mb[0].value.text, mb[0].value.generatedAt ?? new Date().toISOString()]);
+  }
   await q(`CREATE TABLE IF NOT EXISTS push_sent (
     key     TEXT PRIMARY KEY,
     sent_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -52,10 +67,13 @@ async function ensureTables() {
 export async function sendPush(payload, { endpoint } = {}) {
   await vapid();
   const badge = await unseenCount().catch(() => undefined);
+  const full = typeof payload === 'function' ? payload('hu') : payload;
+  if (full?.tag !== 'test') await logPush(full).catch(() => {});
   const { rows } = endpoint ? await q('SELECT * FROM push_subscriptions WHERE endpoint = $1', [endpoint]) : await q('SELECT * FROM push_subscriptions');
   let sent = 0;
   for (const s of rows) {
     const body = { badge, ...(typeof payload === 'function' ? payload(s.lang) : payload) };
+    delete body.fullText; // only for the history; the notification carries the short text (payloads are ~4 kB max)
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, JSON.stringify(body), { TTL: 6 * 3600, urgency: 'normal' });
       sent++;
@@ -67,7 +85,17 @@ export async function sendPush(payload, { endpoint } = {}) {
   return sent;
 }
 
+async function logPush(p) {
+  await q('INSERT INTO push_log (title, body, url, tag) VALUES ($1, $2, $3, $4)', [p.title ?? '', p.fullText ?? p.body ?? '', p.url ?? '/', p.tag ?? null]);
+  await q('DELETE FROM push_log WHERE id NOT IN (SELECT id FROM push_log ORDER BY id DESC LIMIT 100)');
+}
+
 // ---------- routes ----------
+r.get('/push/log', async (_req, res) => {
+  const { rows } = await q('SELECT id, title, body, url, tag, created_at FROM push_log ORDER BY id DESC LIMIT 50');
+  res.json(rows);
+});
+
 r.get('/push/key', async (_req, res) => {
   res.json({ publicKey: (await vapid()).publicKey });
 });
@@ -224,7 +252,7 @@ async function morningBrief() {
       [t.id, JSON.stringify(value)],
     );
   await q("INSERT INTO settings (key, value) VALUES ('morning_brief', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [JSON.stringify(value)]);
-  await sendPush({ title: 'Jó reggelt', body: short(value.text, 300), url: tiles[0] ? `/?w=${encodeURIComponent(tiles[0].id)}` : '/', tag: 'daily' });
+  await sendPush({ title: 'Jó reggelt', body: short(value.text, 300), fullText: value.text, url: tiles[0] ? `/?w=${encodeURIComponent(tiles[0].id)}` : '/?log=1', tag: 'daily' });
 }
 // the first sentences that fit (a notification shows a few lines)
 const short = (text, max) => {
@@ -243,7 +271,7 @@ async function weeklyReview(now) {
   if (!(await once(`weekly:${dayIn(now)}`))) return;
   const { rows } = await q("SELECT id FROM widgets WHERE type = 'review' ORDER BY created_at LIMIT 1");
   const review = await makeReview();
-  await sendPush({ title: 'Heti áttekintés', body: short(review.text, 300), url: rows[0] ? `/?w=${encodeURIComponent(rows[0].id)}` : '/', tag: 'weekly' });
+  await sendPush({ title: 'Heti áttekintés', body: short(review.text, 300), fullText: review.text, url: rows[0] ? `/?w=${encodeURIComponent(rows[0].id)}` : '/?log=1', tag: 'weekly' });
 }
 
 r.get('/push/prefs', async (_req, res) => res.json(await pushPrefs()));
