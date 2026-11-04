@@ -10,13 +10,14 @@ import shell from './i18n/en.shell.js';
 import portfolio from './i18n/en.portfolio.js';
 import shortcuts from './i18n/en.shortcuts.js';
 import ai2 from './i18n/en.ai2.js';
+import projectsEn from './i18n/en.projects.js';
 
 /*
  * UI language (hu | en). The source language of every string is Hungarian: `t('Mentés')` returns the
  * English text from the dictionaries in ./i18n when English is selected, and the Hungarian text otherwise
  * (so a missing translation never breaks anything). Placeholders: t('{n} perc', { n: 5 }).
  */
-const EN = { ...core, ...widgetsA, ...widgetsB, ...catalog, ...worldMap, ...finance, ...activity, ...shell, ...portfolio, ...shortcuts, ...ai2 };
+const EN = { ...core, ...widgetsA, ...widgetsB, ...catalog, ...worldMap, ...finance, ...activity, ...shell, ...portfolio, ...shortcuts, ...ai2, ...projectsEn };
 const KEY = 'nexus-lang';
 const listeners = new Set();
 

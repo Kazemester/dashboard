@@ -8,9 +8,11 @@ export default function Dock({ editing, onToggleEdit, onArrange, onAdd, onAssist
   return (
     <div className="dock" role="toolbar" aria-label={t('Műveletek')}>
       {category && <span className="dock-cat">{category}</span>}
-      <button className={`dock-btn ${editing ? 'on' : ''}`} onClick={onToggleEdit} aria-pressed={editing}>
-        {editing ? `✓ ${t('Kész')}` : `✎ ${t('Szerkesztés')}`}
-      </button>
+      {onToggleEdit && (
+        <button className={`dock-btn ${editing ? 'on' : ''}`} onClick={onToggleEdit} aria-pressed={editing}>
+          {editing ? `✓ ${t('Kész')}` : `✎ ${t('Szerkesztés')}`}
+        </button>
+      )}
       {onArrange && (
         <button className="dock-btn" onClick={onArrange} title={t('Csempék rendezése hézag nélküli rácsba')}>
           ▦ {t('Rendezés')}

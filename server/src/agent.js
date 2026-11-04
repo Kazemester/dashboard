@@ -1,6 +1,7 @@
 import { q } from './db.js';
 import { complete, isLocal, aiConfig } from './llm.js';
 import { addRule } from './rules.js';
+import { addCard, listProjects } from './routes/projects.js';
 
 // The chat tile's "dashboard access": the model gets tools to read tile contents and to change the
 // dashboard. Content changes go through the app's own REST API (same validation as the UI); tile
@@ -154,6 +155,7 @@ const TOOLS = {
     fn('list_tiles', 'List all tiles on the dashboard with id, type, title, position/size on the canvas and settings (secrets hidden).'),
     fn('read_tile', 'Read what a tile currently shows (its data: todos, habits, weather, mails, stock prices, notes…).', { id: { type: 'string', description: 'tile id' } }, ['id']),
     fn('list_tile_types', 'List the tile types that can be added, with their settings fields.'),
+    fn('list_projects', 'List the projects (right rail, Projektek) with their board columns and open cards.'),
   ],
   write: [
     fn('add_todo', 'Add one or more to-do items to a Teendők (todo) tile. With "category" they go to the to-do tile of that category (a new one is made there if it has none).', {
@@ -164,6 +166,13 @@ const TOOLS = {
       category: { type: 'string', description: 'category name, e.g. Work (optional)' },
       list_title: { type: 'string', description: 'title for a new to-do tile, if one has to be made' },
     }),
+    fn('add_project_card', 'Add a card (task) to a project\'s board.', {
+      project: { type: 'string', description: 'project name' },
+      title: { type: 'string' },
+      due: { type: 'string', description: 'optional YYYY-MM-DD' },
+      column: { type: 'string', description: 'optional column name, default the first' },
+      assignee: { type: 'string', description: 'optional person' },
+    }, ['project', 'title']),
     fn('add_rule', 'Create a notification rule from the user\'s sentence ("Szólj, ha az arany 3%-ot esik"): price moves, spending limits, mails, weather, habits not done.', {
       text: { type: 'string', description: "the user's request in their words" },
     }, ['text']),
@@ -451,6 +460,25 @@ function makeExecutor({ catalog, mode, tools, userText = '' }) {
       }
       content(w.id, texts.length === 1 ? L(`Teendő felvéve: ${texts[0]}`, `To-do added: ${texts[0]}`) : L(`${texts.length} teendő felvéve (${w.title})`, `${texts.length} to-dos added (${w.title})`));
       return { ok: true, added: texts.length, item_ids: ids, tile: w.title };
+    },
+    async list_projects() {
+      const ps = await listProjects();
+      const { rows } = await q('SELECT project_id, col, title, due, assignee FROM project_cards ORDER BY sort');
+      return ps.map((p) => ({
+        name: p.name,
+        client: p.client,
+        due: p.due,
+        open: p.counts.open,
+        columns: p.columns.map((c) => ({ name: c.name, cards: rows.filter((x) => x.project_id === p.id && x.col === c.id).map((x) => [x.title, x.due && `(${x.due})`, x.assignee && `@${x.assignee}`].filter(Boolean).join(' ')) })),
+      }));
+    },
+    async add_project_card({ project, title, due, column, assignee }) {
+      const ps = await listProjects();
+      const p = pick(ps, project, (x) => x.name);
+      const col = column ? p.columns.find((c) => fold(c.name).includes(fold(column)))?.id : undefined;
+      const card = await addCard(p.id, { title, due: /^\d{4}-\d{2}-\d{2}$/.test(due ?? '') ? due : null, col, assignee });
+      actions.push(L(`Kártya: ${card.title} → ${p.name}`, `Card: ${card.title} → ${p.name}`));
+      return { ok: true, project: p.name, card: card.title };
     },
     async add_rule({ text }) {
       const r = await addRule(text);
@@ -829,6 +857,11 @@ async function questionContext(question, budget) {
   for (const t of chosen) {
     const r = await exec.run('read_tile', { id: t.id }).catch(() => null);
     parts.push(`## ${t.title} (${t.type})\n${clip(r?.content ?? r?.config, per)}`);
+  }
+  // projects are not tiles: their boards join the context when the question is about them
+  if (/projekt|kártya|tábla|határid|feladat|project|card|board/i.test(question)) {
+    const pr = await exec.run('list_projects').catch(() => []);
+    if (pr.length) parts.push(`## Projektek\n${clip(pr, Math.max(per, 1500))}`);
   }
   const others = tiles.filter((t) => !chosen.includes(t)).map((t) => t.title);
   return clip(parts.join('\n\n') + (others.length ? `\n\nOther tiles (not shown): ${others.join(', ')}` : ''), budget);

@@ -15,7 +15,9 @@ export function registerServiceWorker() {
     if (e.data?.type !== 'open') return;
     const u = new URL(e.data.url, location.origin);
     const id = u.searchParams.get('w');
-    if (id) window.dispatchEvent(new CustomEvent('nexus:reveal', { detail: { id } }));
+    const pid = u.searchParams.get('p');
+    if (pid) window.dispatchEvent(new CustomEvent('nexus:project', { detail: { id: pid } }));
+    else if (id) window.dispatchEvent(new CustomEvent('nexus:reveal', { detail: { id } }));
     else if (u.searchParams.get('log')) window.dispatchEvent(new CustomEvent('nexus:pushlog'));
   });
 }

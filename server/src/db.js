@@ -137,6 +137,37 @@ CREATE TABLE IF NOT EXISTS activity_log (
 );
 CREATE INDEX IF NOT EXISTS activity_log_at ON activity_log (at DESC);
 CREATE INDEX IF NOT EXISTS activity_log_kind ON activity_log (kind, id DESC);
+
+-- Projects (right rail, "Projektek" mode): a Kanban board each. columns = [{ id, name, done? }]
+CREATE TABLE IF NOT EXISTS projects (
+  id         TEXT PRIMARY KEY,
+  name       TEXT NOT NULL,
+  icon       TEXT NOT NULL DEFAULT '◆',
+  color      TEXT,
+  client     TEXT,
+  status     TEXT NOT NULL DEFAULT 'active',
+  due        DATE,
+  notes      TEXT,
+  keywords   TEXT,
+  columns    JSONB NOT NULL DEFAULT '[]',
+  sort       INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS project_cards (
+  id         SERIAL PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  col        TEXT NOT NULL,
+  title      TEXT NOT NULL,
+  body       TEXT,
+  due        DATE,
+  assignee   TEXT,
+  priority   TEXT,
+  sort       DOUBLE PRECISION NOT NULL DEFAULT 0,
+  done_at    TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS project_cards_project ON project_cards (project_id, col, sort);
 `;
 
 export async function migrate(retries = 30) {

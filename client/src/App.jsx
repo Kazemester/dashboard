@@ -16,6 +16,8 @@ import CategoryEditor from './shell/CategoryEditor.jsx';
 import ScreenLayer from './shell/ScreenLayer.jsx';
 import ShortcutsGuide from './shell/ShortcutsGuide.jsx';
 import RulesPanel from './shell/RulesPanel.jsx';
+import ProjectRail from './projects/ProjectRail.jsx';
+import ProjectsView, { ProjectEditor } from './projects/Projects.jsx';
 import CaptureSheet from './shell/CaptureSheet.jsx';
 import Dock from './shell/Dock.jsx';
 import Assistant from './shell/Assistant.jsx';
@@ -25,6 +27,23 @@ const COLS = { lg: 12, md: 10, sm: 6, xs: 2 };
 // a category on a phone: one simple 2-column list (full-width or half-width tiles)
 const CAT_COLS = { lg: 2, md: 2, sm: 2, xs: 2 };
 const CAT_KEY = 'nexus-category';
+const MODE_KEY = 'nexus-rail-mode'; // right rail: 'cats' (categories, tiles) | 'projects' (Kanban boards)
+const PROJECT_KEY = 'nexus-project';
+const readKey = (k, fallback = null) => {
+  try {
+    return localStorage.getItem(k) ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
+const writeKey = (k, v) => {
+  try {
+    if (v == null) localStorage.removeItem(k);
+    else localStorage.setItem(k, v);
+  } catch {
+    /* ignore */
+  }
+};
 const BREAKPOINTS = { lg: 1200, md: 960, sm: 640, xs: 0 };
 
 function useMedia(q) {
@@ -107,6 +126,23 @@ export default function App() {
   const [profile, setProfile] = useState({});
   const [activeCat, setActiveCat] = useState(readCat);
   const [catEditor, setCatEditor] = useState(null); // null | { startNew }
+  const [railMode, setRailModeState] = useState(() => readKey(MODE_KEY, 'cats'));
+  const [activeProject, setActiveProjectState] = useState(() => readKey(PROJECT_KEY));
+  const [projects, setProjects] = useState(null);
+  const [newProject, setNewProject] = useState(false);
+  const [cardSignal, setCardSignal] = useState(0); // the dock's + on a board: open the new-card field
+  const setRailMode = useCallback((m) => (setRailModeState(m), writeKey(MODE_KEY, m)), []);
+  const setActiveProject = useCallback((id) => (setActiveProjectState(id), writeKey(PROJECT_KEY, id)), []);
+  const loadProjects = useCallback(() => api.get('/projects').then(setProjects).catch(() => setProjects([])), []);
+  useEffect(() => {
+    if (railMode === 'projects') loadProjects();
+  }, [railMode, loadProjects]);
+  // a project card's notification / the bell: open that board
+  useEffect(() => {
+    const open = (e) => (setRailMode('projects'), setActiveProject(e.detail?.id ?? null));
+    window.addEventListener('nexus:project', open);
+    return () => window.removeEventListener('nexus:project', open);
+  }, [setRailMode, setActiveProject]);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const catTimer = useRef(null);
   const wide = useMedia('(min-width: 900px)');
@@ -301,6 +337,12 @@ export default function App() {
       setTimeout(() => window.dispatchEvent(new CustomEvent('nexus:pushlog')), 300);
       return;
     }
+    if (params.get('p')) {
+      history.replaceState(null, '', location.pathname);
+      setRailMode('projects');
+      setActiveProject(params.get('p'));
+      return;
+    }
     const id = params.get('w');
     if (!id) return;
     history.replaceState(null, '', location.pathname);
@@ -491,7 +533,10 @@ export default function App() {
       onProfile={saveProfile}
       onReveal={revealAnywhere}
       wide={wide}
-      subtitle={cat ? `${cat.icon} ${cat.name}` : null}
+      subtitle={railMode === 'projects' ? (() => {
+        const p = projects?.find((x) => x.id === activeProject);
+        return p ? `${p.icon} ${p.name}` : t('Projektek');
+      })() : cat ? `${cat.icon} ${cat.name}` : null}
     />
   );
 
@@ -518,7 +563,16 @@ export default function App() {
           </div>
         )}
 
-        {isDesktop ? (
+        {railMode === 'projects' ? (
+          <ProjectsView
+            projects={projects}
+            active={projects?.some((p) => p.id === activeProject) ? activeProject : null}
+            onOpen={setActiveProject}
+            onChanged={loadProjects}
+            onNew={() => setNewProject(true)}
+            addSignal={cardSignal}
+          />
+        ) : isDesktop ? (
           <main className="canvas-main">
             {empty}
             {catEmpty}
@@ -561,18 +615,24 @@ export default function App() {
 
         <ScreenLayer>
           {!isDesktop && topBar}
-          <CategoryRail
-            categories={categories}
-            active={cat ? cat.id : null}
-            onSelect={selectCategory}
-            onAdd={() => setCatEditor({ startNew: true })}
-            onManage={() => setCatEditor({ startNew: false })}
-          />
+          {railMode === 'projects' ? (
+            <ProjectRail projects={projects} active={projects?.some((p) => p.id === activeProject) ? activeProject : null} onSelect={setActiveProject} onAdd={() => setNewProject(true)} mode={railMode} onMode={setRailMode} />
+          ) : (
+            <CategoryRail
+              categories={categories}
+              active={cat ? cat.id : null}
+              onSelect={selectCategory}
+              onAdd={() => setCatEditor({ startNew: true })}
+              onManage={() => setCatEditor({ startNew: false })}
+              mode={railMode}
+              onMode={setRailMode}
+            />
+          )}
           <Dock
             editing={editing}
-            onToggleEdit={() => setEditing((e) => !e)}
-            onArrange={isDesktop && visible.length > 1 ? arrangeCanvas : null}
-            onAdd={() => setPicker(true)}
+            onToggleEdit={railMode === 'projects' ? null : () => setEditing((e) => !e)}
+            onArrange={railMode !== 'projects' && isDesktop && visible.length > 1 ? arrangeCanvas : null}
+            onAdd={railMode === 'projects' ? () => (activeProject && projects?.some((p) => p.id === activeProject) ? setCardSignal((n) => n + 1) : setNewProject(true)) : () => setPicker(true)}
             onAssistant={wide ? null : () => setAssistantOpen(true)}
             onCapture={() => setCaptureOpen(true)}
           />
@@ -599,6 +659,16 @@ export default function App() {
               const added = next.find((c) => !categories.some((x) => x.id === c.id));
               if (added) selectCategory(added.id);
               else if (activeCat && !next.some((c) => c.id === activeCat)) selectCategory(null);
+            }}
+          />
+        )}
+        {newProject && (
+          <ProjectEditor
+            onClose={() => setNewProject(false)}
+            onSaved={(p) => {
+              setNewProject(false);
+              setActiveProject(p.id);
+              loadProjects();
             }}
           />
         )}

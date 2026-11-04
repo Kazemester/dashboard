@@ -1,11 +1,12 @@
 import React from 'react';
 import { t } from '../i18n.js';
+import { RailMode } from '../projects/ProjectRail.jsx';
 
 /*
  * The user's categories on the right edge: in reach of the right thumb on a phone, a floating glass pill on
  * the desktop. "Áttekintés" shows every tile; the categories show only what the user put into them.
  */
-export default function CategoryRail({ categories, active, onSelect, onAdd, onManage }) {
+export default function CategoryRail({ categories, active, onSelect, onAdd, onManage, mode, onMode }) {
   const item = (id, icon, label, count) => (
     <button key={id ?? 'all'} className={`rail-item ${active === id ? 'on' : ''}`} onClick={() => onSelect(id)} aria-current={active === id ? 'page' : undefined} title={label}>
       <span className="rail-ic" aria-hidden>
@@ -17,6 +18,7 @@ export default function CategoryRail({ categories, active, onSelect, onAdd, onMa
   );
   return (
     <nav className="rail" aria-label={t('Kategóriák')}>
+      {onMode && <RailMode mode={mode} onMode={onMode} />}
       {item(null, '⌂', t('Áttekintés'))}
       <div className="rail-list">{categories.map((c) => item(c.id, c.icon, c.name, c.tiles.length))}</div>
       <div className="rail-tools">

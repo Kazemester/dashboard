@@ -41,6 +41,26 @@ export async function gatherNotifications(lang = 'hu') {
     });
   }
 
+  // project cards due tomorrow / today / overdue (not in a done column)
+  const { rows: cards } = await q(
+    `SELECT c.id, c.title, c.due, c.col, p.id AS pid, p.name, p.columns FROM project_cards c JOIN projects p ON p.id = c.project_id
+     WHERE c.due IS NOT NULL AND c.due <= $1 AND p.status <> 'done'`,
+    [tomorrow],
+  ).catch(() => ({ rows: [] }));
+  for (const c of cards) {
+    if ((Array.isArray(c.columns) ? c.columns : []).some((x) => x.id === c.col && x.done)) continue;
+    const late = c.due < today;
+    out.push({
+      id: `card:${c.id}:${c.due}`,
+      kind: 'project',
+      level: late ? 'danger' : c.due === today ? 'warn' : 'info',
+      title: c.title,
+      detail: `${c.name} · ${late ? L('Lejárt határidő', 'Overdue') : c.due === today ? L('Ma esedékes', 'Due today') : L('Holnap esedékes', 'Due tomorrow')}`,
+      when: c.due,
+      projectId: c.pid,
+    });
+  }
+
   // countdown events within a week (yearly ones roll over)
   const start = new Date(now.toDateString());
   for (const w of widgets.filter((x) => x.type === 'countdown')) {

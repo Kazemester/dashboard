@@ -199,6 +199,13 @@ A csengő panel alján: **📱 iPhone Parancsok** — lépésről lépésre leí
 
 Minden hívás `X-Nexus-Token` fejlécet kér (a kulcs az útmutatóban, cserélhető). Cloudflare Access mögött a Parancsok egy **service tokennel** jutnak be (`CF-Access-Client-Id` / `CF-Access-Client-Secret`, Access policy: Service Auth).
 
+### Projektek (Kanban)
+A jobb oldali sáv tetején a **▦ / ◧** kapcsoló vált a **Kategóriák** (csempék) és a **Projektek** között. Projekt módban a sávban a projektek vannak (a szám a nyitott kártyák száma, piros, ha van lejárt), felül **Összes** = áttekintés, alul **+ Projekt**.
+- Egy projekt = Kanban tábla: alapból *Teendő → Folyamatban → Vár valakire → Kész* oszlopok (⚙ Projekt alatt átnevezhetők, bővíthetők, sorrendezhetők; a „kész” jelölésű oszlop kártyái befejezettnek számítanak).
+- Kártya: cím, leírás, határidő, felelős, prioritás. Asztalon áthúzható oszlopok között; telefonon a kártya ‹ › gombjával vagy a kártyára koppintva mozgatható. Az alsó sáv **+** gombja projekt módban új kártyát (illetve új projektet) ad hozzá.
+- A projekthez ügyfél, határidő, jegyzet és **levél-kulcsszavak** adhatók (ezekből fogja később a Mail bot a leveleket a projekthez rendelni).
+- A holnap / ma esedékes és a lejárt kártyák a csengőben és push-ban is megjelennek (koppintásra a tábla nyílik); az asszisztens látja a projekteket, és kártyát is felvehet („Vegyél fel a Miskolc projektbe egy kártyát: statikai javaslat péntekig”).
+
 ### Szabályok, gyors rögzítés, reggeli és heti AI-összefoglaló
 - **⚡ Szabályok** (csengő panel → „Szabályok”, vagy az asszisztensnek: „Szólj, ha…”): magyarul leírt figyelők — árfolyam (napi esés/emelkedés %, ár fölé/alá), kiadási keret (nap/hét/hónap, kategóriánként), levél (feladó/tárgy), időjárás (eső, hó, hőmérséklet ma/holnap), szokás (ha adott óráig nincs kipipálva). Az AI csak egyszer, létrehozáskor értelmezi; utána a szerver 5 percenként AI nélkül ellenőrzi és push-t küld (mindent egyszer).
 - **⚡ Gyors rögzítés** (alsó sáv ⚡ gombja, Siri / megosztás menü): egy mondat → az AI eldönti, hova kerül: bevásárlólista, kiadás (összeg, kategória), teendő (dátummal), jegyzet, hangulat, szokás-pipa.

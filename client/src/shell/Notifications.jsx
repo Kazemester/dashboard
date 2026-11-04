@@ -3,7 +3,7 @@ import { api } from '../api.js';
 import { getLang, locale, t } from '../i18n.js';
 import PushToggle from './PushToggle.jsx';
 
-const ICON = { todo: '☐', event: '★', calendar: '◷', habit: '◈', money: '¤' };
+const ICON = { todo: '☐', event: '★', calendar: '◷', habit: '◈', money: '¤', project: '◧' };
 const SEEN = 'nexus-seen-notifications';
 const readSeen = () => {
   try {
@@ -139,6 +139,7 @@ export default function Notifications({ onReveal }) {
                   className={`bell-item lvl-${n.level} ${seen.has(n.id) ? 'seen' : ''}`}
                   onClick={() => {
                     setOpen(false);
+                    if (n.projectId) window.dispatchEvent(new CustomEvent('nexus:project', { detail: { id: n.projectId } }));
                     if (!seen.has(n.id)) {
                       setSeen((cur) => new Set([...cur, n.id]));
                       api.post('/notifications/seen', { ids: [n.id] }).catch(() => {});

@@ -139,6 +139,7 @@ const dayIn = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(d
 // which bell items are worth a push (habits would nag every day)
 const PUSH_KINDS = {
   todo: () => true,
+  project: () => true,
   event: (n) => n.level === 'warn', // today
   calendar: (n) => n.level === 'warn', // within the hour
   money: () => true,
@@ -162,7 +163,7 @@ async function bellPushes() {
     budget--;
     await sendPush((lang) => {
       const m = (lists[lang] ?? base).find((x) => x.id === n.id) ?? n;
-      return { title: m.title, body: m.detail || '', url: m.widgetId ? `/?w=${encodeURIComponent(m.widgetId)}` : '/', tag: n.id };
+      return { title: m.title, body: m.detail || '', url: m.projectId ? `/?p=${encodeURIComponent(m.projectId)}` : m.widgetId ? `/?w=${encodeURIComponent(m.widgetId)}` : '/', tag: n.id };
     });
   }
 }
