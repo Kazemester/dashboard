@@ -2,6 +2,7 @@ import { q } from './db.js';
 import { complete, isLocal, aiConfig } from './llm.js';
 import { addRule } from './rules.js';
 import { addCard, listProjects } from './routes/projects.js';
+import { capture } from './capture.js';
 
 // The chat tile's "dashboard access": the model gets tools to read tile contents and to change the
 // dashboard. Content changes go through the app's own REST API (same validation as the UI); tile
@@ -825,7 +826,7 @@ const TOPICS = {
   todo: /teend|feladat|to-?do|tennivaló/i,
   calendar: /naptár|esemény|program|találkoz|meeting|holnap|ma\b/i,
   countdown: /szülinap|születésnap|évforduló|visszaszámlál|hány nap/i,
-  weather: /időjárás|eső|esik|hőmérséklet|fok|szél|hideg|meleg|weather/i,
+  weather: /időjárás|milyen idő|idő lesz|időnk|eső|esik|hőmérséklet|fok|szél|hideg|meleg|ernyő|kabát|weather/i,
   stocks: /árfolyam|tőzsde|részvény|usd|eur|huf|bitcoin|arany|ár\b|price|stock/i,
   crypto: /kripto|bitcoin|btc|eth/i,
   expenses: /kiadás|költ|pénz|keret|budget|bevétel/i,
@@ -889,6 +890,7 @@ const metaOf = (exec, extra = {}) => ({
 
 // What the user last asked (history may end with the bot's own nudges in older runs; skip those).
 // "…from my mails / the mail summary…" + to-do (not "add a to-do: write a mail to Péter")
+const CAPTURE_REQ = /^\s*(vegyél fel|vegyel fel|vedd fel|írd fel|ird fel|írj fel|jegyezd fel|jegyezd meg|tedd fel|rakd fel|add hozzá|add hozza)\b/i;
 const RULE_START = /^\s*(szólj|szolj|figyelmeztess|értesíts|ertesits|jelezz|jelezd|küldj (egy )?értesítést|notify me|alert me|warn me|tell me)\b[\s\S]*\b(ha|amikor|when|if)\b/i;
 const RULE_END = /^\s*(ha|amikor|if|when)\b[\s\S]*\b(szólj|szolj|figyelmeztess|értesíts|ertesits|jelezz|notify me|alert me|let me know)\b/i;
 const RULE_REQ = { test: (t) => RULE_START.test(t) || RULE_END.test(t) };
@@ -1049,18 +1051,33 @@ export async function agentTurn({ history, persona, model, catalog, mode, lang }
     }
   }
 
+  // "Vegyél fel / írd fel …" (shopping, a to-do, an expense, a note): the quick capture sorts it with one short
+  // AI call — much faster on a CPU than the tool-calling turn, which can outlast the request time limit
+  if (mode === 'full' && CAPTURE_REQ.test(said) && !/projekt|kártya|csempe|kategóri|szabály|tile|project/i.test(said)) {
+    try {
+      const r = await capture(said, { source: 'assistant' });
+      exec.changed.add(r.widgetId);
+      exec.actions.push(r.message);
+      return { answer: `${L('Kész', 'Done')} — ${r.message}`, meta: { ...metaOf(exec), layoutChanged: true } };
+    } catch (err) {
+      return { answer: `${L('Nem sikerült', 'Failed')}: ${err.message}`, meta: metaOf(exec) };
+    }
+  }
+
   // A small local model, asked a question (no command): no tools at all. It gets the contents of the tiles the
   // question is about and only has to answer — it cannot wander off calling random tools, and it is faster.
   const asked = lastUserText(history);
   if (local && mode !== 'off' && !COMMAND.test(asked) && process.env.AGENT_FORCE_JSON !== '1') {
     const ctx = await questionContext(asked, 5000);
-    const sys = `${systemPrompt({ persona, state, catalog, mode: 'read', local, hu: curLang === 'hu' })}\n\nThe tile contents that belong to the user's question:\n${ctx}\n\nAnswer the user's message from these contents, briefly and naturally. If the answer is not in them, say so. Do not invent mails, events or numbers. If the user wants something changed, ask them to say it as a command (e.g. „Tedd ki…”, „Vegyél fel…”).`;
+    const sys = `${systemPrompt({ persona, state, catalog, mode: 'read', local, hu: curLang === 'hu' })}\n\nThe tile contents that belong to the user's question:\n${ctx}\n\nAnswer the user's message from these contents, briefly and naturally, in correct simple Hungarian. (\"Milyen idő lesz?\" asks about the WEATHER, not the clock.) If the answer is not in them, say so. Do not invent mails, events or numbers. If the user wants something changed, ask them to say it as a command (e.g. „Tedd ki…”, „Vegyél fel…”).`;
     const msg = await complete([{ role: 'system', content: sys }, ...history.slice(-8)], { model, temperature: 0.3, config: turnConfig });
     return { answer: msg.content?.trim() || L('(nincs válasz)', '(no answer)'), meta: metaOf(exec) };
   }
 
-  // test hook: skip the model's native tool calling and always use the JSON planner
-  if (process.env.AGENT_FORCE_JSON === '1' && mode === 'full') {
+  // A local model on a CPU, asked to change something: the JSON planner first — one short call instead of the
+  // tool-calling turn with every tool's schema in the prompt (minutes on a CPU). Native tools only if it finds nothing.
+  // (AGENT_FORCE_JSON=1: the test hook that always uses the planner)
+  if (mode === 'full' && (process.env.AGENT_FORCE_JSON === '1' || (local && COMMAND.test(asked)))) {
     planned = true;
     const done = await runPlan();
     if (done) return done;
