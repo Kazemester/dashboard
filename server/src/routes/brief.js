@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { q } from '../db.js';
-import { chat, llmConfigured } from '../llm.js';
+import { aiConfig, chat, llmConfigured } from '../llm.js';
 import { getWidget } from '../util.js';
 import { logBrief } from '../activity.js';
 import { startJob } from '../jobs.js';
@@ -51,13 +51,24 @@ async function gather(cfg) {
         .sort((a, b) => new Date(a.start) - new Date(b.start))
         .map((e) => `${isToday(e.start) ? 'ma' : 'holnap'} ${e.allDay ? 'egész nap' : fmtTime(e.start)}: ${e.title}${e.location ? ` @ ${e.location}` : ''}`);
     }),
+    // to-dos (dated ones first) apart from shopping lists — a small model read "Gránátalma, Zab" as the day's program
     safe('todos', async () => {
       const { rows } = await q(
-        `SELECT i.data FROM widget_items i JOIN widgets w ON w.id = i.widget_id
+        `SELECT i.data, w.title FROM widget_items i JOIN widgets w ON w.id = i.widget_id
          WHERE w.type = 'todo' AND i.kind = 'todo' AND COALESCE((i.data->>'done')::boolean, false) = false
-         ORDER BY i.sort LIMIT 25`,
+         ORDER BY (i.data->>'due') NULLS LAST, i.sort LIMIT 60`,
       );
-      return rows.map((x) => x.data.text + (x.data.due ? ` (határidő: ${dueText(x.data.due)})` : ''));
+      const work = rows.filter((x) => !SHOPPING.test(x.title));
+      return work.slice(0, 12).map((x) => x.data.text + (x.data.due ? ` (határidő: ${dueText(x.data.due)})` : ''));
+    }),
+    safe('shopping', async () => {
+      const { rows } = await q(
+        `SELECT i.data, w.title FROM widget_items i JOIN widgets w ON w.id = i.widget_id
+         WHERE w.type = 'todo' AND i.kind = 'todo' AND COALESCE((i.data->>'done')::boolean, false) = false ORDER BY i.sort`,
+      );
+      const lists = {};
+      for (const x of rows.filter((y) => SHOPPING.test(y.title))) (lists[x.title] ??= []).push(x.data.text);
+      return Object.keys(lists).length ? lists : undefined;
     }),
     safe('habits_open_today', async () => {
       const { rows } = await q(
@@ -112,15 +123,25 @@ export function readableHungarian(text) {
   return english < 3 && hungarian >= 3 && monsters < 2 && !repeated;
 }
 
-// Plain-text fallback when no LLM is configured.
-function fallback(ctx) {
-  const lines = [`${ctx.now}.`];
-  if (ctx.weather) lines.push(`Időjárás, ${ctx.weather.place}: most ${ctx.weather.now}.\nMa ${ctx.weather.today}.`);
-  if (ctx.calendar) lines.push(`Események:\n${ctx.calendar.map((e) => `• ${e}`).join('\n')}`);
-  if (ctx.todos) lines.push(`Nyitott teendők (${ctx.todos.length}):\n${ctx.todos.slice(0, 6).map((t) => `• ${t}`).join('\n')}`);
-  if (ctx.habits_open_today) lines.push(`Ma még hátra: ${ctx.habits_open_today.join(', ')}.`);
-  if (ctx.countdowns) lines.push(`Közelgő: ${ctx.countdowns.join('; ')}.`);
-  if (ctx.mail) lines.push(`Levelek: ${ctx.mail.headline}`);
+const SHOPPING = /v[aá]s[aá]rl|bev[aá]s|\bdm\b|piac|shop|spar|lidl|aldi|tesco|auchan|patika/i;
+
+// The structured briefing without AI: what the tiles say, nothing invented. Also used with a local model,
+// which tends to make things up in free text (times for shopping items, sentences that mean nothing).
+function fallback(ctx, cfg = {}) {
+  const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: process.env.PUSH_TZ || 'Europe/Budapest', hour: '2-digit', hour12: false }).format(new Date()));
+  const hello = hour < 10 ? 'Jó reggelt' : hour < 18 ? 'Szép napot' : 'Jó estét';
+  const lines = [`${hello}${cfg.address && cfg.address !== 'Uram' ? `, ${cfg.address}` : ''}!`];
+  if (ctx.weather) {
+    const rainy = /(\d+)%/.exec(ctx.weather.today);
+    lines.push(`Időjárás (${ctx.weather.place}): most ${ctx.weather.now}. Ma ${ctx.weather.today}.${rainy && Number(rainy[1]) >= 50 ? ' Vigyél esernyőt.' : ''}`);
+  }
+  const todayEvents = (ctx.calendar ?? []).filter((e) => e.startsWith('ma '));
+  if (todayEvents.length) lines.push(`Mai programok:\n${todayEvents.map((e) => `• ${e.slice(3)}`).join('\n')}`);
+  if (ctx.todos?.length) lines.push(`Teendők:\n${ctx.todos.slice(0, 5).map((t) => `• ${t}`).join('\n')}${ctx.todos.length > 5 ? `\n(+${ctx.todos.length - 5} további)` : ''}`);
+  if (ctx.habits_open_today?.length) lines.push(`Szokások ma: ${ctx.habits_open_today.join(', ')}.`);
+  if (ctx.countdowns?.length) lines.push(`Közelgő: ${ctx.countdowns.join('; ')}.`);
+  if (ctx.shopping) lines.push(Object.entries(ctx.shopping).map(([list, items]) => `${list}: ${items.slice(0, 8).join(', ')}${items.length > 8 ? '…' : ''}`).join('\n'));
+  if (ctx.mail?.headline) lines.push(`Levelek: ${ctx.mail.headline}`);
   return lines.join('\n\n');
 }
 
@@ -151,7 +172,9 @@ export async function makeBrief(cfg = {}) {
   const ctx = await gather(cfg);
   let text;
   let ai = false;
-  if (await llmConfigured()) {
+  // a local model writes free Hungarian poorly (and invents): the template, unless the tile asks for AI anyway
+  const bg = await aiConfig('background');
+  if ((await llmConfigured()) && (!bg.isLocal || cfg.localAi)) {
     const hu = /^(hu|hungarian|magyar)/i.test(cfg.language || 'Hungarian');
     // small local models write broken Hungarian from an English prompt at a high temperature:
     // a Hungarian prompt, short plain sentences, low temperature (and a check below)
@@ -179,14 +202,14 @@ export async function makeBrief(cfg = {}) {
       ai = true;
       // garbled output (mixed languages, made-up words): the plain summary instead
       if (hu && !readableHungarian(text)) {
-        text = fallback(ctx);
+        text = fallback(ctx, cfg);
         ai = false;
       }
     } catch (err) {
-      text = `${fallback(ctx)}\n\n(AI hiba: ${err.message})`;
+      text = `${fallback(ctx, cfg)}\n\n(AI hiba: ${err.message})`;
     }
   } else {
-    text = fallback(ctx);
+    text = fallback(ctx, cfg);
   }
   return { text, ai, context: ctx, generatedAt: new Date().toISOString() };
 }
