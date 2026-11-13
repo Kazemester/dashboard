@@ -66,4 +66,9 @@ export default {
   'Reggeli összefoglaló': 'Morning summary',
   'Időpont': 'Time',
   '— az ikonon lévő számot is frissíti': '— also updates the number on the app icon',
+  Profilkép: 'Profile picture',
+  'Kép feltöltése': 'Upload picture',
+  'Kép cseréje': 'Change picture',
+  'Kép eltávolítása': 'Remove picture',
+  'Ezt a képet nem sikerült beolvasni.': 'Could not read this picture.',
 };

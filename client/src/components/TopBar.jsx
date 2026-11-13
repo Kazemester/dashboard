@@ -42,17 +42,58 @@ export default function TopBar({ onAi, aiVersion, appearance, onAppearance, prof
 
   const name = profile?.name?.trim();
   const askName = () => {
+    setMenu(false);
     const next = prompt(t('Hogyan szólítsalak?'), name ?? '');
-    if (next !== null) onProfile({ name: next.trim() });
+    if (next !== null) onProfile({ ...profile, name: next.trim() });
+  };
+
+  // avatar: tap → upload a picture (cropped to a square, shrunk to 256 px in the browser), or remove it
+  const [menu, setMenu] = useState(false);
+  const file = useRef(null);
+  const menuRef = useRef(null);
+  useEffect(() => {
+    if (!menu) return undefined;
+    const away = (e) => !menuRef.current?.contains(e.target) && setMenu(false);
+    document.addEventListener('pointerdown', away);
+    return () => document.removeEventListener('pointerdown', away);
+  }, [menu]);
+  const pick = async (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    setMenu(false);
+    if (!f) return;
+    try {
+      onProfile({ ...profile, avatar: await squareImage(f, 256) });
+    } catch {
+      alert(t('Ezt a képet nem sikerült beolvasni.'));
+    }
   };
 
   return (
     <header className="topbar" ref={head}>
-      <button className="hello" onClick={askName} title={t('Név megadása')}>
-        <span className="avatar" aria-hidden>
-          {name ? name[0].toUpperCase() : '◉'}
+      <div className="hello">
+        <span className="avatar-wrap" ref={menuRef}>
+          <button className={`avatar${profile?.avatar ? ' has-img' : ''}`} onClick={() => setMenu((m) => !m)} title={t('Profilkép')} aria-label={t('Profilkép')} aria-expanded={menu}>
+            {profile?.avatar ? <img src={profile.avatar} alt="" /> : name ? name[0].toUpperCase() : '◉'}
+          </button>
+          {menu && (
+            <div className="avatar-menu" role="menu">
+              <button role="menuitem" onClick={() => file.current?.click()}>
+                {profile?.avatar ? t('Kép cseréje') : t('Kép feltöltése')}
+              </button>
+              {profile?.avatar && (
+                <button role="menuitem" onClick={() => (setMenu(false), onProfile({ name: profile.name ?? '' }))}>
+                  {t('Kép eltávolítása')}
+                </button>
+              )}
+              <button role="menuitem" onClick={askName}>
+                {t('Név megadása')}
+              </button>
+            </div>
+          )}
+          <input ref={file} type="file" accept="image/*" hidden onChange={pick} />
         </span>
-        <span className="hello-text">
+        <button className="hello-text" onClick={askName} title={t('Név megadása')}>
           <span className="hello-title">
             {t(greetingKey(now))}
             {name ? `, ${name}` : ''}
@@ -61,8 +102,8 @@ export default function TopBar({ onAi, aiVersion, appearance, onAppearance, prof
             {now.toLocaleDateString(locale(), { weekday: 'long', month: 'long', day: 'numeric' })} · {now.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}
             {subtitle ? ` · ${subtitle}` : ''}
           </span>
-        </span>
-      </button>
+        </button>
+      </div>
 
       {wide && <Assistant mode="bar" />}
 
@@ -95,4 +136,25 @@ export default function TopBar({ onAi, aiVersion, appearance, onAppearance, prof
       </div>
     </header>
   );
+}
+
+// A picture → a centre-cropped square JPEG data URL (phone photos are megabytes; this is ~20 KB)
+async function squareImage(f, size) {
+  const url = URL.createObjectURL(f);
+  try {
+    const img = await new Promise((ok, fail) => {
+      const i = new Image();
+      i.onload = () => ok(i);
+      i.onerror = fail;
+      i.src = url;
+    });
+    const side = Math.min(img.naturalWidth, img.naturalHeight);
+    if (!side) throw new Error('empty');
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    c.getContext('2d').drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, size, size);
+    return c.toDataURL('image/jpeg', 0.85);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }

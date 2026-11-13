@@ -75,11 +75,15 @@ r.put('/settings/categories', async (req, res) => {
   res.json(clean);
 });
 
-// Who the dashboard greets.
+// Who the dashboard greets, and their picture (a small square image, resized in the browser).
+const AVATAR = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 r.put('/settings/profile', async (req, res) => {
   const name = String(req.body?.name ?? '').trim().slice(0, 40);
-  await saveSetting('profile', { name });
-  res.json({ name });
+  const avatar = req.body?.avatar ?? null;
+  if (avatar !== null && (typeof avatar !== 'string' || avatar.length > 400_000 || !AVATAR.test(avatar))) throw new HttpError(400, 'A kép túl nagy vagy nem kép.');
+  const profile = avatar ? { name, avatar } : { name };
+  await saveSetting('profile', profile);
+  res.json(profile);
 });
 
 // Theme + custom colours chosen in the header.
