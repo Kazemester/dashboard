@@ -1,0 +1,160 @@
+/* ===== Finance tiles (Mutatók, Egyenleg, Havi keret, Bevétel & kiadás) — theme variables only ===== */
+
+.fin-empty { height: 100%; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 10px; font-size: 13px; }
+
+/* shared bits */
+.fin-kpi, .fin-balance, .fin-budget, .fin-cashflow, .fin-exp-inc, .exp-list { --fin-ok: color-mix(in srgb, var(--ok) 70%, var(--text)); }
+.fin-trend {
+  display: inline-flex; align-items: center; gap: 2px; padding: 2px 7px; border-radius: 999px;
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; line-height: 1.4; white-space: nowrap;
+  border: 1px solid transparent;
+}
+.fin-trend.good { color: var(--fin-ok); background: color-mix(in srgb, var(--ok) 14%, transparent); border-color: color-mix(in srgb, var(--ok) 25%, transparent); }
+.fin-trend.bad { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); border-color: color-mix(in srgb, var(--danger) 25%, transparent); }
+.fin-trend.flat { color: var(--muted); background: var(--panel); border-color: var(--line); }
+.fin-kpi-period { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fin-ico {
+  flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px;
+  color: var(--text); background: var(--surface); border: 1px solid var(--line-strong);
+}
+.fin-chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px; font-family: var(--font-mono);
+  font-size: 10.5px; color: var(--text); border: 1px solid var(--line-strong); background: var(--panel);
+}
+.fin-key { display: inline-block; width: 9px; height: 9px; border-radius: 2px; vertical-align: -1px; }
+.fin-key.inc { background: repeating-linear-gradient(45deg, var(--accent) 0 1.5px, color-mix(in srgb, var(--accent) 45%, transparent) 1.5px 3.5px); }
+.fin-key.exp { background: color-mix(in srgb, var(--text) 82%, transparent); }
+
+/* ---------- Mutatók ---------- */
+.fin-kpi { container-type: inline-size; display: grid; gap: 10px; height: 100%; grid-auto-rows: 1fr; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+.fin-kpi-n1 { grid-template-columns: 1fr; }
+.fin-kpi-n4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fin-kpi-card {
+  min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 12px 12px 10px;
+  border-radius: var(--radius-lg); border: 1px solid var(--line); background: var(--panel);
+}
+.fin-kpi-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.fin-kpi-label { font-size: 13px; color: var(--muted); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fin-kpi-val { font-family: var(--font-ui); font-size: clamp(20px, 9cqi, 34px); font-weight: 500; line-height: 1.05; color: var(--text); letter-spacing: -0.01em; margin-top: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fin-kpi-n4 .fin-kpi-val, .fin-kpi-n2 .fin-kpi-val, .fin-kpi-n3 .fin-kpi-val, .fin-kpi-many .fin-kpi-val { font-size: clamp(18px, 6.5cqi, 30px); }
+.fin-kpi-err { margin-top: auto; font-size: 12px; color: var(--danger); }
+.fin-kpi-foot { display: flex; align-items: center; gap: 6px; min-width: 0; }
+/* the first card is filled with the accent (like the teal "Total Earnings" card); text uses the page bg for contrast */
+.fin-kpi-card.hero {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  /* mixing towards --text darkens on light themes and lightens on dark ones, so --bg text always contrasts */
+  background: linear-gradient(150deg, color-mix(in srgb, var(--accent) 86%, var(--text)), color-mix(in srgb, var(--accent) 70%, var(--text)));
+  /* Canvas is the scheme's own page colour (white on light themes, near-black on dark), so this always contrasts */
+  --fin-on: color-mix(in srgb, Canvas 80%, var(--bg));
+  color: var(--fin-on);
+}
+.fin-kpi-card.hero .fin-kpi-label, .fin-kpi-card.hero .fin-kpi-val, .fin-kpi-card.hero .fin-kpi-period { color: var(--fin-on); }
+.fin-kpi-card.hero .fin-kpi-period { opacity: 0.75; }
+.fin-kpi-card.hero .fin-ico { color: var(--fin-on); background: color-mix(in srgb, var(--fin-on) 18%, transparent); border-color: color-mix(in srgb, var(--fin-on) 35%, transparent); }
+.fin-kpi-card.hero .fin-trend { color: var(--fin-on); background: color-mix(in srgb, var(--fin-on) 20%, transparent); border-color: color-mix(in srgb, var(--fin-on) 30%, transparent); }
+.fin-kpi-card.hero .fin-kpi-err { color: var(--fin-on); }
+
+/* ---------- Egyenleg ---------- */
+.fin-balance { display: flex; flex-direction: column; gap: 10px; height: 100%; min-width: 0; }
+.fin-bal-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fin-bal-label { font-size: 13px; color: var(--muted); }
+.fin-bal-total { font-family: var(--font-ui); font-size: clamp(26px, 3vw, 38px); font-weight: 500; line-height: 1; color: var(--text); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.fin-bal-change { display: flex; align-items: center; gap: 6px; margin-top: -2px; }
+.fin-pills { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fin-pill {
+  font-family: var(--font-ui); font-size: 13px; font-weight: 600; padding: 9px 12px; border-radius: 999px; cursor: pointer;
+  color: var(--text); background: var(--surface); border: 1px solid var(--line-strong); transition: background 0.15s, border-color 0.15s;
+}
+.fin-pill:hover { border-color: var(--accent); }
+.fin-pill.dark { color: var(--bg); background: var(--text); border-color: var(--text); }
+.fin-pill.dark:hover { background: color-mix(in srgb, var(--text) 85%, var(--accent)); }
+.fin-quick { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: var(--radius-lg); border: 1px solid var(--line-strong); background: var(--panel); }
+.fin-quick-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fin-quick-row > * { min-width: 0; }
+.fin-quick-row .grow { flex: 1 1 120px; }
+.fin-quick-row.end { justify-content: flex-end; }
+.fin-quick-amt { flex: 1 1 110px; }
+.fin-quick-hint { font-size: 11px; color: var(--muted); }
+.fin-wallets-box { margin-top: 4px; padding: 10px; border-radius: var(--radius-lg); border: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.fin-wallets-head { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text); }
+.fin-sep { width: 1px; height: 12px; background: var(--line-strong); }
+.fin-wallets { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(118px, 1fr); gap: 8px; overflow-x: auto; scrollbar-width: thin; scroll-snap-type: x proximity; padding-bottom: 2px; }
+.fin-wallet { scroll-snap-align: start; }
+.fin-wallet { display: flex; flex-direction: column; gap: 3px; padding: 9px 10px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); min-width: 0; container-type: inline-size; }
+.fin-wallet.off { opacity: 0.72; }
+.fin-wallet-head { display: flex; align-items: center; gap: 6px; font-size: 12px; min-width: 0; }
+.fin-flag { font-size: 14px; line-height: 1; }
+.fin-wallet-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.fin-wallet-amt {
+  all: unset; cursor: text; font-family: var(--font-ui); font-size: clamp(11px, 13cqi, 16px); font-weight: 600; color: var(--text);
+  font-variant-numeric: tabular-nums; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-bottom: 1px dashed transparent;
+}
+.fin-wallet-amt:hover, .fin-wallet-amt:focus-visible { border-bottom-color: var(--accent-dim); }
+.fin-wallet-input { width: 100%; font-size: 14px; }
+.fin-wallet-limit { font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fin-wallet-state { font-size: 10.5px; font-weight: 600; color: var(--danger); }
+.fin-wallet-state.on { color: var(--fin-ok); }
+
+/* ---------- Havi keret ---------- */
+.fin-budget { --fin-c: var(--accent); display: flex; flex-direction: column; gap: 10px; height: 100%; justify-content: center; min-width: 0; }
+.fin-budget.lvl-warn, .fin-budget.lvl-ahead { --fin-c: color-mix(in srgb, var(--danger) 50%, var(--ok)); }
+.fin-budget.lvl-over { --fin-c: var(--danger); }
+.fin-bud-nums { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+.fin-bud-spent { font-family: var(--font-ui); font-size: 26px; font-weight: 600; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
+.fin-bud-of { font-size: 12.5px; color: var(--muted); }
+.fin-bud-track { position: relative; height: 12px; border-radius: 999px; background: color-mix(in srgb, var(--text) 8%, transparent); border: 1px solid var(--line); overflow: visible; }
+.fin-bud-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, color-mix(in srgb, var(--fin-c) 75%, transparent), var(--fin-c)); transition: width 0.6s cubic-bezier(.2, .8, .2, 1); min-width: 6px; }
+.fin-bud-pace { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--muted); opacity: 0.7; }
+.fin-bud-meta { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.fin-bud-status { font-family: var(--font-mono); font-size: 11px; color: var(--text); }
+.fin-bud-status.over { color: var(--danger); }
+.fin-bud-status.warn, .fin-bud-status.ahead { color: var(--fin-c); }
+.fin-bud-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fin-bud-stats > div { padding: 8px 10px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel); min-width: 0; }
+.fin-stat-v { font-family: var(--font-ui); font-size: 17px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fin-stat-l { font-size: 11px; color: var(--muted); }
+
+/* ---------- Bevétel & kiadás ---------- */
+.fin-cashflow { display: flex; flex-direction: column; gap: 6px; height: 100%; min-width: 0; }
+.fin-cf-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+.fin-cf-net-l { font-size: 12px; color: var(--muted); }
+.fin-cf-net { font-family: var(--font-ui); font-size: 24px; font-weight: 600; line-height: 1.1; color: var(--fin-ok); font-variant-numeric: tabular-nums; }
+.fin-cf-net.neg { color: var(--danger); }
+.fin-cf-legend { display: flex; gap: 12px; font-size: 11.5px; color: var(--text); padding-top: 2px; }
+.fin-cf-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.fin-cf-sub { font-size: 11.5px; color: var(--muted); }
+.fin-cf-sub b { color: var(--text); font-weight: 600; }
+.fin-cf-chart { position: relative; flex: 1; min-height: 90px; }
+.fin-cf-chart svg { position: absolute; inset: 0; overflow: visible; }
+.fin-cf-grid { stroke: var(--line); stroke-width: 1; }
+.fin-cf-axis { font-family: var(--font-mono); font-size: 9.5px; fill: var(--muted); }
+.fin-cf-axis.cur { fill: var(--text); font-weight: 600; }
+.fin-cf-inc-bg { fill: color-mix(in srgb, var(--accent) 30%, transparent); }
+.fin-cf-inc-line { stroke: var(--accent); stroke-width: 2.4; }
+.fin-cf-inc { stroke: color-mix(in srgb, var(--accent) 70%, transparent); stroke-width: 1; }
+.fin-cf-exp { fill: color-mix(in srgb, var(--text) 82%, transparent); }
+.fin-cf-hover { fill: color-mix(in srgb, var(--text) 6%, transparent); }
+.fin-cf-dim .fin-cf-inc, .fin-cf-dim .fin-cf-exp { opacity: 0.45; }
+.fin-cf-tip {
+  position: absolute; top: 0; transform: translateX(10px); z-index: 3; pointer-events: none; width: 160px;
+  padding: 8px 10px; border-radius: var(--radius); border: 1px solid var(--line-strong); background: var(--surface);
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--bg) 50%, transparent); font-size: 11.5px; color: var(--muted);
+}
+.fin-cf-tip.left { transform: translateX(calc(-100% - 10px)); }
+.fin-cf-tip-m { color: var(--text); font-weight: 600; margin-bottom: 4px; }
+.fin-cf-tip-r { display: flex; align-items: center; gap: 6px; }
+.fin-cf-tip-r b { margin-left: auto; padding-left: 10px; color: var(--text); font-variant-numeric: tabular-nums; }
+.fin-cf-tip-r.net { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
+.fin-cf-tip-r.net.pos b { color: var(--fin-ok); }
+.fin-cf-tip-r.net.neg b { color: var(--danger); }
+
+/* ---------- Költségkövető: income additions ---------- */
+.fin-exp-kind { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 999px; overflow: hidden; flex: none; }
+.fin-exp-kind button { all: unset; cursor: pointer; padding: 3px 9px; font-size: 11px; color: var(--muted); }
+.fin-exp-kind button.on { color: var(--bg); background: var(--accent); }
+.fin-exp-inc { font-size: 12px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; margin-top: -4px; }
+.fin-exp-inc b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.fin-exp-inc .pos { color: var(--fin-ok); }
+.fin-exp-inc .neg { color: var(--danger); }
+.fin-exp-plus { color: var(--fin-ok); }
+.fin-exp-note { min-width: 110px; flex: 1 1 110px; }

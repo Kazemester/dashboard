@@ -1,0 +1,143 @@
+import React, { useState } from 'react';
+import { useItems, isoDay, fmtNum } from '../hooks.js';
+import { t, locale } from '../i18n.js';
+import { notifyFinance, useFinanceReload } from './Kpi.jsx';
+import './finance.css';
+
+const pad = (n) => String(n).padStart(2, '0');
+
+export default function Expenses({ widget, editing }) {
+  const cfg = widget.config;
+  const cats = String(cfg.categories || t('Étel, Lakás, Közlekedés, Szórakozás, Egyéb')).split(',').map((c) => c.trim()).filter(Boolean);
+  const cur = cfg.currency || 'Ft';
+  const budget = Number(cfg.budget) || 0;
+  const now = new Date();
+  const [ym, setYm] = useState([now.getFullYear(), now.getMonth() + 1]);
+  const [y, m] = ym;
+  const month = `${y}-${pad(m)}`;
+  const daysIn = new Date(y, m, 0).getDate();
+  const { items, error, add, remove, reload } = useItems(widget.id, `from=${month}-01&to=${month}-${pad(daysIn)}`);
+  useFinanceReload(reload); // e.g. the Egyenleg tile logged an item here
+  const [form, setForm] = useState({ amount: '', cat: cats[0], note: '', kind: 'expense' });
+  const [showList, setShowList] = useState(false);
+
+  if (error) return <div className="w-error">{error}</div>;
+  const all = [...(items ?? [])].filter((i) => i.kind === 'expense' || i.kind === 'income').sort((a, b) => b.day.localeCompare(a.day) || b.id - a.id);
+  const list = all.filter((i) => i.kind === 'expense');
+  const income = all.filter((i) => i.kind === 'income').reduce((s, i) => s + i.value, 0);
+  const total = list.reduce((s, i) => s + i.value, 0);
+  const byCat = {};
+  for (const i of list) byCat[i.data.cat || 'Egyéb'] = (byCat[i.data.cat || 'Egyéb'] ?? 0) + i.value;
+  const catRows = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+  const isCur = month === `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+  const elapsed = isCur ? now.getDate() : daysIn;
+  const projected = isCur && elapsed ? (total / elapsed) * daysIn : null;
+  const shift = (d) => {
+    const x = new Date(y, m - 1 + d, 1);
+    setYm([x.getFullYear(), x.getMonth() + 1]);
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    const n = Number(String(form.amount).replace(/\s/g, '').replace(',', '.'));
+    if (!n) return;
+    const day = isCur ? isoDay(now) : `${month}-01`;
+    const income = form.kind === 'income';
+    await add({ kind: form.kind, day, value: n, data: income ? { note: form.note.trim() } : { cat: form.cat, note: form.note.trim() } });
+    notifyFinance();
+    setForm({ ...form, amount: '', note: '' });
+  };
+
+  return (
+    <div className="expenses">
+      <div className="habit-nav between-full">
+        <button className="icon-btn" onClick={() => shift(-1)}>
+          ‹
+        </button>
+        <span className="habit-month">{new Date(y, m - 1, 1).toLocaleDateString(locale(), { year: 'numeric', month: 'long' })}</span>
+        <button className="icon-btn" onClick={() => shift(1)}>
+          ›
+        </button>
+      </div>
+      <div className="exp-total">
+        <span className="big-num">{fmtNum(total)}</span>
+        <span className="muted"> {cur}</span>
+        {budget > 0 && <span className="eyebrow exp-budget">/ {fmtNum(budget)} {t('KERET')}</span>}
+      </div>
+      {income > 0 && (
+        <div className="fin-exp-inc">
+          <span>
+            {t('Bevétel')} <b>{fmtNum(income)}</b>
+          </span>
+          <span>
+            {t('Nettó')} <b className={income - total < 0 ? 'neg' : 'pos'}>{(income - total > 0 ? '+' : '') + fmtNum(income - total)}</b>
+          </span>
+        </div>
+      )}
+      {budget > 0 && (
+        <div className={`bar ${total > budget ? 'over' : ''}`}>
+          <div className="bar-fill" style={{ width: `${Math.min(100, (total / budget) * 100)}%` }} />
+        </div>
+      )}
+      {projected != null && total > 0 && (
+        <div className="eyebrow">
+          {t('VÁRHATÓ HÓ VÉGÉN')} ≈ {fmtNum(projected)} {cur}
+          {budget ? (projected > budget ? ` · ${t('KERET FELETT')}` : ` · ${t('KERETEN BELÜL')}`) : ''}
+        </div>
+      )}
+      <div className="exp-cats">
+        {catRows.map(([c, v]) => (
+          <div key={c} className="exp-cat">
+            <span>{c}</span>
+            <div className="bar">
+              <div className="bar-fill" style={{ width: `${(v / (catRows[0][1] || 1)) * 100}%` }} />
+            </div>
+            <span className="mono">{fmtNum(v)}</span>
+          </div>
+        ))}
+      </div>
+      {all.length > 0 && (
+        <button className="btn btn-ghost sm" onClick={() => setShowList((x) => !x)}>
+          {showList ? t('Tételek elrejtése') : t('{n} tétel', { n: all.length })}
+        </button>
+      )}
+      {showList && (
+        <ul className="exp-list">
+          {all.map((i) => (
+            <li key={i.id}>
+              <span className="muted mono">{i.day.slice(5).replace('-', '.')}</span>
+              <span className="grow">
+                {i.kind === 'income' ? t('Bevétel') : i.data.cat}
+                {i.data.note && <span className="muted"> · {i.data.note}</span>}
+              </span>
+              <span className={`mono ${i.kind === 'income' ? 'fin-exp-plus' : ''}`}>{i.kind === 'income' ? '+' : ''}{fmtNum(i.value)}</span>
+              <button className="icon-btn danger sm" onClick={() => remove(i.id).then(notifyFinance)}>
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form className="row gap wrap" onSubmit={submit}>
+        <span className="fin-exp-kind" role="group" aria-label={t('Tétel típusa')}>
+          <button type="button" className={form.kind === 'expense' ? 'on' : ''} onClick={() => setForm({ ...form, kind: 'expense' })}>
+            {t('Kiadás')}
+          </button>
+          <button type="button" className={form.kind === 'income' ? 'on' : ''} onClick={() => setForm({ ...form, kind: 'income' })}>
+            {t('Bevétel')}
+          </button>
+        </span>
+        <input className="input sm w-num" inputMode="decimal" placeholder={t('Összeg')} value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+        {form.kind === 'expense' && (
+          <select className="input sm w-cat" value={form.cat} onChange={(e) => setForm({ ...form, cat: e.target.value })}>
+            {cats.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        )}
+        <input className="input sm grow fin-exp-note" placeholder={t('Megjegyzés')} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+        <button className="btn btn-ghost sm">+</button>
+      </form>
+    </div>
+  );
+}

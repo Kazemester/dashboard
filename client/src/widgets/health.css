@@ -1,0 +1,12 @@
+/* Egészség tile */
+.hl { display: flex; flex-direction: column; gap: 12px; height: 100%; container-type: inline-size; }
+.hl-empty { align-items: flex-start; justify-content: center; }
+.hl-empty p { margin: 0; line-height: 1.45; }
+.hl-steps { display: flex; flex-direction: column; gap: 3px; }
+.hl-steps .big-num { font-size: clamp(26px, 9cqi, 40px); }
+.hl-bar { height: 6px; border-radius: 999px; background: var(--faint); overflow: hidden; margin-top: 4px; }
+.hl-bar i { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
+.hl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+.hl-cell { display: flex; flex-direction: column; gap: 2px; font-variant-numeric: tabular-nums; }
+.hl-hist { display: flex; flex-direction: column; gap: 4px; }
+.hl-foot { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
